@@ -225,7 +225,7 @@ function logicExpr = getLogicExpr(blockName)
         case 'NOT'
             localVar = checkForConnectedLocalVar(blockName);
             if(isempty(localVar))
-                logicExpr = ['~' getExpressionForBlock(srcPorts(1))];
+                logicExpr = ['~(' getExpressionForBlock(srcPorts(1)) ')'];
             else
                logicExpr = ['~' localVar]; 
             end
