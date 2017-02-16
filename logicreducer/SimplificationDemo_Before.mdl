@@ -19,7 +19,7 @@ Model {
       Name		      "Out1"
     }
     ParameterArgumentNames  ""
-    ComputedModelVersion    "1.17"
+    ComputedModelVersion    "1.20"
     NumModelReferences	    0
     NumTestPointedSignals   0
   }
@@ -38,11 +38,11 @@ Model {
   Creator		  "760162"
   UpdateHistory		  "UpdateHistoryNever"
   ModifiedByFormat	  "%<Auto>"
-  LastModifiedBy	  "monika"
+  LastModifiedBy	  "Ben"
   ModifiedDateFormat	  "%<Auto>"
-  LastModifiedDate	  "Wed Nov 23 14:42:22 2016"
-  RTWModifiedTimeStamp	  401812929
-  ModelVersionFormat	  "1.%<AutoIncrement:17>"
+  LastModifiedDate	  "Wed Feb 15 19:52:22 2017"
+  RTWModifiedTimeStamp	  409089090
+  ModelVersionFormat	  "1.%<AutoIncrement:20>"
   ConfigurationManager	  "None"
   SampleTimeColors	  off
   SampleTimeAnnotations	  off
@@ -80,6 +80,7 @@ Model {
     $ObjectID		    1
     $ClassName		    "Simulink.SimulationData.ModelLoggingInfo"
     model_		    "Faz_untitled"
+    signals_		    []
     overrideMode_	    [0.0]
     Array {
       Type		      "Cell"
@@ -669,19 +670,6 @@ Model {
       ActionType	      "unset"
     }
     Block {
-      BlockType		      Constant
-      Value		      "1"
-      VectorParams1D	      on
-      SamplingMode	      "Sample based"
-      OutMin		      "[]"
-      OutMax		      "[]"
-      OutDataTypeStr	      "Inherit: Inherit from 'Constant value'"
-      LockScale		      off
-      SampleTime	      "inf"
-      FramePeriod	      "inf"
-      PreserveConstantTs      off
-    }
-    Block {
       BlockType		      If
       NumInputs		      "1"
       IfExpression	      "u1 > 0"
@@ -766,7 +754,7 @@ Model {
   }
   System {
     Name		    "SimplificationDemo_Before"
-    Location		    [2, 82, 1616, 1021]
+    Location		    [2, 95, 1616, 1034]
     Open		    on
     ModelBrowserVisibility  off
     ModelBrowserWidth	    200
@@ -780,7 +768,7 @@ Model {
     ShowPageBoundaries	    off
     ZoomFactor		    "164"
     ReportName		    "simulink-default.rpt"
-    SIDHighWatermark	    "54"
+    SIDHighWatermark	    "57"
     Block {
       BlockType		      Inport
       Name		      "In1"
@@ -826,7 +814,7 @@ Model {
       System {
 	Name			"Action1"
 	Location		[265, 251, 1411, 908]
-	Open			off
+	Open			on
 	ModelBrowserVisibility	off
 	ModelBrowserWidth	200
 	ScreenColor		"white"
@@ -846,12 +834,16 @@ Model {
 	  ActionType		  "then"
 	}
 	Block {
-	  BlockType		  Constant
-	  Name			  "Constant"
-	  SID			  "50"
-	  Position		  [100, 100, 130, 130]
-	  ZOrder		  -4
-	  Value			  "0"
+	  BlockType		  Reference
+	  Name			  "FALSE Constant"
+	  SID			  "57"
+	  Ports			  [0, 1]
+	  Position		  [25, 198, 290, 222]
+	  ForegroundColor	  "orange"
+	  ShowName		  off
+	  LibraryVersion	  "v14sp2plus.REL.01.553"
+	  SourceBlock		  "ChryslerLib/Parameters\n&\nConstants/FALSE Constant"
+	  SourceType		  ""
 	}
 	Block {
 	  BlockType		  Outport
@@ -862,8 +854,9 @@ Model {
 	  IconDisplay		  "Port number"
 	}
 	Line {
-	  SrcBlock		  "Constant"
+	  SrcBlock		  "FALSE Constant"
 	  SrcPort		  1
+	  Points		  [0, -70; -20, 0]
 	  DstBlock		  "Out1"
 	  DstPort		  1
 	}
@@ -894,7 +887,7 @@ Model {
       MaskIconUnits	      "autoscale"
       System {
 	Name			"Action2"
-	Location		[202, 82, 1438, 847]
+	Location		[202, 95, 1438, 860]
 	Open			off
 	ModelBrowserVisibility	off
 	ModelBrowserWidth	200
@@ -915,22 +908,27 @@ Model {
 	  ActionType		  "elseif"
 	}
 	Block {
-	  BlockType		  Constant
-	  Name			  "Constant"
-	  SID			  "51"
-	  Position		  [80, 100, 110, 130]
-	  ZOrder		  -4
+	  BlockType		  Reference
+	  Name			  "TRUE Constant"
+	  SID			  "55"
+	  Ports			  [0, 1]
+	  Position		  [85, 188, 350, 212]
+	  ForegroundColor	  "orange"
+	  ShowName		  off
+	  LibraryVersion	  "v14sp2plus.REL.01.553"
+	  SourceBlock		  "ChryslerLib/Parameters\n&\nConstants/TRUE Constant"
+	  SourceType		  ""
 	}
 	Block {
 	  BlockType		  Outport
 	  Name			  "Out1"
 	  SID			  "39"
-	  Position		  [270, 108, 300, 122]
+	  Position		  [440, 193, 470, 207]
 	  BackgroundColor	  "green"
 	  IconDisplay		  "Port number"
 	}
 	Line {
-	  SrcBlock		  "Constant"
+	  SrcBlock		  "TRUE Constant"
 	  SrcPort		  1
 	  DstBlock		  "Out1"
 	  DstPort		  1
@@ -963,7 +961,7 @@ Model {
       System {
 	Name			"Default"
 	Location		[186, 284, 1332, 941]
-	Open			off
+	Open			on
 	ModelBrowserVisibility	off
 	ModelBrowserWidth	200
 	ScreenColor		"white"
@@ -983,23 +981,27 @@ Model {
 	  ActionType		  "else"
 	}
 	Block {
-	  BlockType		  Constant
-	  Name			  "Constant"
-	  SID			  "52"
-	  Position		  [105, 105, 135, 135]
-	  ZOrder		  -4
-	  Value			  "0"
+	  BlockType		  Reference
+	  Name			  "FALSE Constant"
+	  SID			  "56"
+	  Ports			  [0, 1]
+	  Position		  [35, 238, 300, 262]
+	  ForegroundColor	  "orange"
+	  ShowName		  off
+	  LibraryVersion	  "v14sp2plus.REL.01.553"
+	  SourceBlock		  "ChryslerLib/Parameters\n&\nConstants/FALSE Constant"
+	  SourceType		  ""
 	}
 	Block {
 	  BlockType		  Outport
 	  Name			  "Out1"
 	  SID			  "42"
-	  Position		  [270, 113, 300, 127]
+	  Position		  [390, 243, 420, 257]
 	  BackgroundColor	  "green"
 	  IconDisplay		  "Port number"
 	}
 	Line {
-	  SrcBlock		  "Constant"
+	  SrcBlock		  "FALSE Constant"
 	  SrcPort		  1
 	  DstBlock		  "Out1"
 	  DstPort		  1
