@@ -31,8 +31,8 @@ function expression = SimplifyLogic(blocks)
     end
     
     for i = 1:length(constants)
-        if strcmp(get_param(constants{i}, 'Mask'), 'on')
-            name = get_param(constants{i}, 'Value');
+        name = get_param(constants{i}, 'Value');
+        if strcmp(get_param(constants{i}, 'Mask'), 'on')||strcmp(name(1:2), 'Ke')
             try
                 newIn = add_block(constants{i}, [parentName '_newLogic/' name]);
                 atomics(name) = newIn;
@@ -72,7 +72,8 @@ function expression = SimplifyLogic(blocks)
         newExpression = strrep(newExpression, 'and', '&');
         newExpression = strrep(newExpression, 'not', '~');
         newExpression = strrep(newExpression, 'or', '|');
-        newExpression = strrep(newExpression, '=', '==');
+        newExpression = strrep(newExpression, '<>', '~=');
+        newExpression = regexprep(newExpression, '[^<>]=[^<>]', '==');
         
         %Strip whitespace
         newExpression = regexprep(newExpression,'[^\w&_|~><=()]','');

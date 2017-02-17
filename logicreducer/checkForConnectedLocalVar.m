@@ -7,12 +7,16 @@ function connectedLocalVar = checkForConnectedLocalVar(blockName)
         blockType = srcBlocks{i}.BlockType;
         switch blockCategoryDic(blockType)
             case 'Branching'
+                port = get_param(fullName, 'PortHandles');
+                port = port.Outport;
                 connectedLocalVar =...
-                    getExpressionForBlock(fullName);
+                    getExpressionForBlock(port);
                 return;
             case 'Memory'
+                port = get_param(fullName, 'PortHandles');
+                port = port.Outport;
                 connectedLocalVar =...
-                    getExpressionForBlock(fullName);
+                    getExpressionForBlock(port);
                 return;
             otherwise
 %           do nothing
