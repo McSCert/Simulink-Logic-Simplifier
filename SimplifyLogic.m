@@ -8,6 +8,7 @@ function expression = SimplifyLogic(blocks)
     parent = get_param(blocks{1}, 'parent');
     inports = find_system(parent, 'SearchDepth', 1, 'BlockType', 'Inport');
     froms = find_system(parent, 'SearchDepth', 1, 'BlockType', 'From');
+    constants = find_system(parent, 'SearchDepth', 1, 'BlockType', 'Constant');
     
     parentName = get_param(parent, 'Name');
     try
@@ -27,6 +28,17 @@ function expression = SimplifyLogic(blocks)
         name = get_param(froms{i}, 'Name');
         newIn = add_block(froms{i}, [parentName '_newLogic/' name]);
         atomics(name) = newIn;
+    end
+    
+    for i = 1:length(constants)
+        if strcmp(get_param(constants{i}, 'Mask'), 'on')
+            name = get_param(constants{i}, 'Value');
+            try
+                newIn = add_block(constants{i}, [parentName '_newLogic/' name]);
+                atomics(name) = newIn;
+            catch
+            end 
+        end
     end
 
     for i = 1:length(blocks)
