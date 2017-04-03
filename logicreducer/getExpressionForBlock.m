@@ -160,44 +160,61 @@ function ioExpr = getIOExpr(blockName, blockType, blockPort)
                     getExpressionForBlock(blockPort)];
             end
         case 'SubSystem'
-            specialPort = find_system(blockName, 'SearchDepth', 1, 'BlockType', 'ActionPort');
-            ports = get_param(blockName, 'PortHandles');
-            oportNum = get_param(blockPort, 'PortNumber');
             
-            %get expression for subsystem
-            portBlock = find_system(blockName, 'SearchDepth', 1, 'BlockType', 'Outport', 'Port', num2str(oportNum));
-            portBlock = portBlock{1};
-            oportInLine = get_param(portBlock, 'LineHandles');
-            oportInLine = oportInLine.Inport;
-            callPort = get_param(oportInLine, 'SrcPortHandle');
-            
-            subExpr = getExpressionForBlock(callPort);
-            
-            if ~isempty(specialPort)
-                iport = ports.Ifaction;
-                line = get_param(iport, 'Line');
-                port = get_param(line, 'SrcPortHandle');
-                ifblock = get_param(port, 'parent');
-                const = find_system(blockName, 'SearchDepth', 1, 'BlockType', 'Constant');
+            maskType = get_param(blockName, 'MaskType');
+            if isempty(maskType)
+                specialPort = find_system(blockName, 'SearchDepth', 1, 'BlockType', 'ActionPort');
+                ports = get_param(blockName, 'PortHandles');
+                oportNum = get_param(blockPort, 'PortNumber');
                 
-                %Find the expression
-                exp = getIfExpr(ifblock, port);
-                ioExpr = ['(~' exp ' | ' subExpr ')'];
-            else
-                inportBlocks = find_system(blockName, 'SearchDepth', 1, 'BlockType', 'Inport');
+                %get expression for subsystem
+                portBlock = find_system(blockName, 'SearchDepth', 1, 'BlockType', 'Outport', 'Port', num2str(oportNum));
+                portBlock = portBlock{1};
+                oportInLine = get_param(portBlock, 'LineHandles');
+                oportInLine = oportInLine.Inport;
+                callPort = get_param(oportInLine, 'SrcPortHandle');
                 
-                for i = 1:length(inportBlocks)
-                    inportName = get_param(inportBlocks{i}, 'Name');
-                    inportNum = str2num(get_param(inportBlocks{i}, 'Port'));
-                    subsysInLines = get_param(blockName, 'LineHandles');
-                    subsysInLines = subsysInLines.Inport;
-                    if ismatrix(subsysInLines)
-                        exprPort = get_param(subsysInLines(inportNum), 'SrcPortHandle');
-                        %add stuff for swapping inport stuff for expr
-                    else
-                        exprPort = get_param(subsysInLines, 'SrcPortHandle');
-                        %add stuff for swapping inport stuff for expr
+                subExpr = getExpressionForBlock(callPort);
+                
+                if ~isempty(specialPort)
+                    iport = ports.Ifaction;
+                    line = get_param(iport, 'Line');
+                    port = get_param(line, 'SrcPortHandle');
+                    ifblock = get_param(port, 'parent');
+                    const = find_system(blockName, 'SearchDepth', 1, 'BlockType', 'Constant');
+                    
+                    %Find the expression
+                    exp = getIfExpr(ifblock, port);
+                    ioExpr = ['(~' exp ' | ' subExpr ')'];
+                else
+                    inportBlocks = find_system(blockName, 'SearchDepth', 1, 'BlockType', 'Inport');
+                    
+                    for i = 1:length(inportBlocks)
+                        inportName = get_param(inportBlocks{i}, 'Name');
+                        inportNum = str2num(get_param(inportBlocks{i}, 'Port'));
+                        subsysInLines = get_param(blockName, 'LineHandles');
+                        subsysInLines = subsysInLines.Inport;
+                        if ismatrix(subsysInLines)
+                            exprPort = get_param(subsysInLines(inportNum), 'SrcPortHandle');
+                            %add stuff for swapping inport stuff for expr
+                        else
+                            exprPort = get_param(subsysInLines, 'SrcPortHandle');
+                            %add stuff for swapping inport stuff for expr
+                        end
                     end
+                end
+            else
+                maskIns = get_param(blockName, 'PortHandles');
+                maskIns = maskIns.Inport;
+                switch maskType
+                    case 'Compare To Zero'
+                        inLine = get_param(maskIns, 'Line');
+                        localVarPort = get_param(inLine, 'SrcPortHandle');
+                        maskVals = get_param(blockName, 'MaskValues');
+                        localVar = getExpressionForBlock(localVarPort);
+                        ioExpr = ['((' localVar ') ' maskVals{1}  ' 0)'];
+                    otherwise
+                        
                 end
             end
         otherwise
@@ -225,7 +242,7 @@ function logicExpr = getLogicExpr(blockName)
         case 'NOT'
             localVar = checkForConnectedLocalVar(blockName);
             if(isempty(localVar))
-                logicExpr = ['~(' getExpressionForBlock(srcPorts(1)) ')'];
+                logicExpr = ['~' getExpressionForBlock(srcPorts(1))];
             else
                logicExpr = ['~' localVar]; 
             end
