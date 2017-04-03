@@ -32,12 +32,15 @@ function expression = SimplifyLogic(blocks)
 
     for i = 1:length(constants)
         name = get_param(constants{i}, 'Value');
-        if strcmp(get_param(constants{i}, 'Mask'), 'on')||strcmp(name(1:2), 'Ke')
-            try
-                newIn = add_block(constants{i}, [parentName '_newLogic/' name]);
-                atomics(name) = newIn;
-            catch
+        try
+            if strcmp(get_param(constants{i}, 'Mask'), 'on')||strcmp(name(1:2), 'Ke')
+                try
+                    newIn = add_block(constants{i}, [parentName '_newLogic/' name]);
+                    atomics(name) = newIn;
+                catch
+                end
             end
+        catch
         end
     end
 

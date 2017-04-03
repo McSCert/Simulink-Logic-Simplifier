@@ -213,6 +213,12 @@ function ioExpr = getIOExpr(blockName, blockType, blockPort)
                         maskVals = get_param(blockName, 'MaskValues');
                         localVar = getExpressionForBlock(localVarPort);
                         ioExpr = ['((' localVar ') ' maskVals{1}  ' 0)'];
+                    case 'Compare To Constant'
+                        inLine = get_param(maskIns, 'Line');
+                        localVarPort = get_param(inLine, 'SrcPortHandle');
+                        maskVals = get_param(blockName, 'MaskValues');
+                        localVar = getExpressionForBlock(localVarPort);
+                        ioExpr = ['((' localVar ') ' maskVals{1}  ' ' maskVals{2} ')'];
                     otherwise
                         
                 end
