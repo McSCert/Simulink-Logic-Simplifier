@@ -83,7 +83,17 @@ function expression = SimplifyLogic(blocks)
 
         %Remove old blocks and add new ones representing simplified logical
         %expression
-        [outExpression, ~] = createLogicBlocks(expressionToGenerate, 1, 1, atomics, memo, getfullname(demoSys));
+        if strcmp(expressionToGenerate, '(TRUE)') || strcmp(expressionToGenerate, '(CbTRUE)')
+            constLoc = ['ChryslerLib/Parameters' char(10) '&' char(10) 'Constants/TRUE Constant'];
+            memo('(TRUE)')=add_block(constLoc, [getfullname(demoSys) '/simplifier_generated_true']);
+            outExpression = '(TRUE)';
+        elseif strcmp(expressionToGenerate, '(FALSE)') || strcmp(expressionToGenerate, '(CbFALSE)')
+            constLoc = ['ChryslerLib/Parameters' char(10) '&' char(10) 'Constants/FALSE Constant'];
+            memo('(FALSE)') = add_block(constLoc, [getfullname(demoSys) '/simplifier_generated_false']);
+            outExpression = '(FALSE)';
+        else
+            [outExpression, ~] = createLogicBlocks(expressionToGenerate, 1, 1, atomics, memo, getfullname(demoSys));
+        end
 
         %Connect to the outport
         logicOut = memo(outExpression);
