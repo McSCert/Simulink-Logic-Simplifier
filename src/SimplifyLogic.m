@@ -65,6 +65,8 @@ for i = 1:length(blocks)
     if isNewerVer
         expression = makeBoolsTorF(expression);
         
+        expression = strrep(expression, 'CbTRUE', 'TRUE');
+        expression = strrep(expression, 'CbFALSE', 'FALSE');
         expression = strrep(expression, '==', '=');
         
         %Let MATLAB simplify the expression
