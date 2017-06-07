@@ -3,7 +3,7 @@ function expression = SimplifyLogic(blocks)
 %them.
 
 ver = version('-release');
-isNewerVer = str2num(ver(1:4)) >= 2015; %need to figure out what version it actually changed
+isNewerVer = str2num(ver(1:4)) >= 2015;
 
 memo = containers.Map();
 atomics = containers.Map();
@@ -63,6 +63,8 @@ for i = 1:length(blocks)
     expression = getExpressionForBlock(port);
     
     if isNewerVer
+        expression = makeBoolsTorF(expression);
+        
         expression = strrep(expression, '==', '=');
         
         %Let MATLAB simplify the expression
@@ -73,6 +75,8 @@ for i = 1:length(blocks)
         
         newExpression = strrep(newExpression, '=', '==');
     else
+        expression = makeBoolsTorF(expression);
+        
         expression = strrep(expression, 'CbTRUE', 'TRUE');
         expression = strrep(expression, 'CbFALSE', 'FALSE');
         expression = strrep(expression, '&', ' and ');
@@ -100,13 +104,24 @@ for i = 1:length(blocks)
     
     %Remove old blocks and add new ones representing simplified logical
     %expression
+    trueBlockGiven = false; falseBlockGiven = false; % Run without FCA blocks
     if strcmp(expressionToGenerate, '(TRUE)') || strcmp(expressionToGenerate, '(CbTRUE)')
-        constLoc = ['ChryslerLib/Parameters' char(10) '&' char(10) 'Constants/TRUE Constant'];
-        memo('(TRUE)')=add_block(constLoc, [getfullname(demoSys) '/simplifier_generated_true']);
+        if trueBlockGiven
+            constLoc = ['ChryslerLib/Parameters' char(10) '&' char(10) 'Constants/TRUE Constant'];
+            memo('(TRUE)')=add_block(constLoc, [getfullname(demoSys) '/simplifier_generated_true'],'MAKENAMEUNIQUE','ON');
+        else
+            memo('(TRUE)')=add_block('built-in/Constant', ...
+                [getfullname(demoSys) '/simplifier_generated_true'],'MAKENAMEUNIQUE','ON','Value','1','OutDataTypeStr','boolean');
+        end
         outExpression = '(TRUE)';
     elseif strcmp(expressionToGenerate, '(FALSE)') || strcmp(expressionToGenerate, '(CbFALSE)')
-        constLoc = ['ChryslerLib/Parameters' char(10) '&' char(10) 'Constants/FALSE Constant'];
-        memo('(FALSE)') = add_block(constLoc, [getfullname(demoSys) '/simplifier_generated_false']);
+        if falseBlockGiven
+            constLoc = ['ChryslerLib/Parameters' char(10) '&' char(10) 'Constants/FALSE Constant'];
+            memo('(FALSE)') = add_block(constLoc, [getfullname(demoSys) '/simplifier_generated_false'],'MAKENAMEUNIQUE','ON');
+        else
+            memo('(FALSE)')=add_block('built-in/Constant', ...
+                [getfullname(demoSys) '/simplifier_generated_false'],'MAKENAMEUNIQUE','ON','Value','0','OutDataTypeStr','boolean');
+        end
         outExpression = '(FALSE)';
     else
         [outExpression, ~] = createLogicBlocks(expressionToGenerate, 1, 1, atomics, memo, getfullname(demoSys));
