@@ -62,13 +62,13 @@ for i = 1:length(blocks)
     port = port.Outport;
     expression = getExpressionForBlock(port);
     
+    %Swap logical 1/0 for TRUE/FALSE (determine if 1/0 is logical from context)
+    expression = makeBoolsTorF(expression);
+    
+    %Swap Chrysler's CbTRUE for symengine's TRUE
+    expression = strrep(expression, 'CbTRUE', 'TRUE');
+    expression = strrep(expression, 'CbFALSE', 'FALSE');
     if isNewerVer
-        expression = makeBoolsTorF(expression);
-        
-        expression = strrep(expression, 'CbTRUE', 'TRUE');
-        expression = strrep(expression, 'CbFALSE', 'FALSE');
-        expression = strrep(expression, '==', '=');
-        
         %Let MATLAB simplify the expression
         newExpression = evalin(symengine, ['simplify(' expression ', logic)']);
         
@@ -77,14 +77,12 @@ for i = 1:length(blocks)
         
         newExpression = strrep(newExpression, '=', '==');
     else
-        expression = makeBoolsTorF(expression);
-        
-        expression = strrep(expression, 'CbTRUE', 'TRUE');
-        expression = strrep(expression, 'CbFALSE', 'FALSE');
+        %Swap out MATLAB symbols for ones that symengine uses
         expression = strrep(expression, '&', ' and ');
         expression = strrep(expression, '~', ' not ');
         expression = strrep(expression, '|', ' or ');
         expression = strrep(expression, '==', '=');
+        expression = strrep(expression, '~=', '<>');
         
         %Let MATLAB simplify the expression
         newExpression = evalin(symengine, ['simplify(' expression ', condition)']);
@@ -92,10 +90,12 @@ for i = 1:length(blocks)
         %Convert from symbolic type to string
         newExpression = char(newExpression);
         
+        %Swap symbols back
         newExpression = strrep(newExpression, 'and', '&');
         newExpression = strrep(newExpression, 'not', '~');
         newExpression = strrep(newExpression, 'or', '|');
         newExpression = strrep(newExpression, '=', '==');
+        expression = strrep(expression, '<>', '~=');
     end
     
     %Strip whitespace
