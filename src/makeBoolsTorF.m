@@ -10,22 +10,24 @@ function [newexpression] = makeBoolsTorF(expression)
 %       newexpression   Resulting expression after swapping logical 1s and
 %                       0s with TRUE or FALSE respectively.
 
-% Reference for order of precedence (1 is highest precedence):
-%   0. [0-9a-zA-Z]  (number should be associated with an identifier)
+% http://www.ele.uri.edu/~daly/106/precedence.html
+% Reference for order of precedence in MATLAB (1 is highest precedence):
+%   0. [0-9a-zA-Z]  (indicates the 1/0 should be associated with an identifier)
 %   1. ( )
-%   2. ~
-%   3. > >= < <=
-%   4. == ~=
-%   5. &
-%   6. |
+%   2. N/A
+%   3. ~
+%   4. -    (I'm assuming this operation is done like multiplication)
+%   5. N/A
+%   6. > >= < <= == ~=
+%   7. &
+%   8. |
 
-% For reference, this is the expected grammar for the input expression 
+% For reference, this is the expected grammar for the input expression
 % (start with an O):
 %
 % O -> A( '|' A)*
-% A -> E( '&' E)*
-% E -> R( ('~=' | '==') R)*
-% R -> P( ('[><]=?') P)*
+% A -> R( '&' R)*
+% R -> P( ('[><]=?|[~=]=') P)*
 % P -> '(' O ')' | '~' P | NUMBER | VARIABLE | 'TRUE' | 'FALSE'
 
 % Test: makeBoolsTorF('~x  & y < 1 | (((1)) == ((0 < z)) ~= 0) & ~1 & 0 < 1 & (1 == FALSE | 0 == y)')
@@ -33,18 +35,33 @@ function [newexpression] = makeBoolsTorF(expression)
 
 % Remove whitespace
 temp_expr = regexprep(expression,'[^\w&_|~><=()]','');
+%^this also removes the minus even though it probably wasn't intended to
+% % Remove unary-minus
+% temp_expr = strrep(temp_expr,'-','');
 
-% Remove some brackets that are in the way
-cont = ~isempty(findstr(temp_expr,'(0)')); % Flag to stop while loop
+% Remove all brackets that don't surround at least one operator
+cont = true;
 while cont
-    temp_expr = strrep(temp_expr,'(0)','0');
-    cont = ~isempty(findstr(temp_expr,'(0)'));
+    old = temp_expr;
+    temp_expr = regexprep(old,'(\()([^\(~\-><=&|]*)(\))', '$2');
+    cont = ~strcmp(temp_expr,old);
 end
-cont = ~isempty(findstr(temp_expr,'(1)')); % Flag to stop while loop
-while cont
-    temp_expr = strrep(temp_expr,'(1)','1');
-    cont = ~isempty(findstr(temp_expr,'(1)'));
-end
+
+%%%Old bracket removal was just for 0s and 1s.
+%%%Have to remove other brackets because some assumptions are made in the
+%%%implementation below that all things surrounded in brackets evaluate to
+%%%logical.
+% % Remove some brackets that are in the way
+% cont = ~isempty(findstr(temp_expr,'(0)')); % Flag to stop while loop (stands for continue)
+% while cont
+%     temp_expr = strrep(temp_expr,'(0)','0');
+%     cont = ~isempty(findstr(temp_expr,'(0)'));
+% end
+% cont = ~isempty(findstr(temp_expr,'(1)')); % Flag to stop while loop
+% while cont
+%     temp_expr = strrep(temp_expr,'(1)','1');
+%     cont = ~isempty(findstr(temp_expr,'(1)'));
+% end
 
 
 % Identify which 0s and 1s need to change
@@ -118,11 +135,11 @@ function p = priority(symbol)
 
 switch symbol
     case '#'
-        p = 5;
-    case '~'
         p = 4;
-    case 'R'
+    case '~'
         p = 3;
+    case 'R'
+        p = 2;
     case 'E'
         p = 2;
     case 'L'
@@ -181,8 +198,8 @@ end
 function makeBool = checkLeftEquality(expr, index)
 % Checks the left side of an equality or inequality (== or ~=) in expr to
 % see if the right side should be numeric or logical. Returns 1 if it
-% should be logical else 0. Assumes the input is correct (i.e. that index 
-% is right after an equality and that there is a proper term or expression 
+% should be logical else 0. Assumes the input is correct (i.e. that index
+% is right after an equality and that there is a proper term or expression
 % on that side).
 
 expr = expr(1:index-1);
@@ -190,8 +207,10 @@ expr = expr(1:index-1);
 if ~isempty(regexp(expr, '(TRUE|FALSE|\))$', 'ONCE'))
     makeBool = 1;
 else
-    next1 = regexp(expr, '<=|>=|>|<|~=|==|&|\||~', 'ONCE');
-    next2 = regexp(expr, '<=|>=|>|<|~=|==|~', 'ONCE');
+    next1 = regexp(expr, '<=|>=|>|<|~=|==|&|\||~|\(');
+    next2 = regexp(expr, '<=|>=|>|<|~=|==|~'); %if previous symbol is one of these, then make it bool
+    % ^ could have flipped expr and then used the 'ONCE' option to be more
+    % efficient since we only need the last match (didn't for simplicity)
     
     if isempty(next2)
         makeBool = 0;
@@ -206,8 +225,8 @@ end
 function makeBool = checkRightEquality(expr, index)
 % Checks the right side of an equality or inequality (== or ~=) in expr to
 % see if the left side should be numeric or logical. Returns 1 if it
-% should be logical else 0. Assumes the input is correct (i.e. that index 
-% is right after an equality and that there is a proper term or expression 
+% should be logical else 0. Assumes the input is correct (i.e. that index
+% is right after an equality and that there is a proper term or expression
 % on that side).
 
 expr = expr(index+1:end);
@@ -215,15 +234,18 @@ expr = expr(index+1:end);
 if ~isempty(regexp(expr, '^(TRUE|FALSE|~|\()', 'ONCE'))
     makeBool = 1;
 else
-    next1 = regexp(expr, '<=|>=|>|<|~=|==|&|\|', 'ONCE');
-    next2 = regexp(expr, '<=|>=|>|<', 'ONCE');
-    
-    if isempty(next2)
-        makeBool = 0;
-    elseif next2(1) == next1(1)
-        makeBool = 1;
-    else
-        makeBool = 0;
-    end
+    makeBool = 0;
+    %%% Old version before realising MATLAB gives equal precedence to == and >:
+    %
+    %     next1 = regexp(expr, '<=|>=|>|<|~=|==|&|\||\)', 'ONCE');
+    %     next2 = regexp(expr, '<=|>=|>|<', 'ONCE'); %if next symbol is one of these, then make it bool
+    %
+    %     if isempty(next2)
+    %         makeBool = 0;
+    %     elseif next2(1) == next1(1)
+    %         makeBool = 1;
+    %     else
+    %         makeBool = 0;
+    %     end
 end
 end
