@@ -62,6 +62,9 @@ for i = 1:length(blocks)
     port = port.Outport;
     expression = getExpressionForBlock(port);
     
+    %Add brackets to remove ambiguity
+    expression = bracketForPrecedence(expression);
+    
     %Swap logical 1/0 for TRUE/FALSE (determine if 1/0 is logical from context)
     expression = makeBoolsTorF(expression);
     
@@ -70,12 +73,12 @@ for i = 1:length(blocks)
     expression = strrep(expression, 'CbFALSE', 'FALSE');
     if isNewerVer
         %Let MATLAB simplify the expression
-        newExpression = evalin(symengine, ['simplify(' expression ', logic)']);
+        newExpression = evalin(symengine, ['simplify(' expression ', condition)']);
         
         %Convert from symbolic type to string
         newExpression = char(newExpression);
         
-        newExpression = strrep(newExpression, '=', '==');
+%         newExpression = strrep(newExpression, '=', '==');
     else
         %Swap out MATLAB symbols for ones that symengine uses
         expression = strrep(expression, '&', ' and ');
