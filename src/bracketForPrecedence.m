@@ -6,7 +6,7 @@ function newexpression = bracketForPrecedence(expression)
 %
 %   Inputs:
 %       expression      Character array of a logical expression consisting
-%                       of brackets, logical negation, unary minus
+%                       of brackets, logical negation, unary minus,
 %                       relational operators, logical AND, logical OR,
 %                       as well as whitespace, numeric values,
 %                       boolean values, and identifiers. {(, ), ~, -, <, <=,

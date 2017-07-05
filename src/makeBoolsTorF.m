@@ -4,7 +4,7 @@ function [newexpression] = makeBoolsTorF(expression)
 %   numerical as determined by context within the string.
 %
 %   Inputs:
-%       expression  Character array
+%       expression      Character array
 %
 %   Outputs:
 %       newexpression   Resulting expression after swapping logical 1s and
