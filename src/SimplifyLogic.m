@@ -87,16 +87,17 @@ for i = 1:length(blocks)
         %Let MATLAB simplify the expression as a condition
         prevExpression = expression;
         newExpression = evalin(symengine, ['simplify(' prevExpression ', condition)']);
-        
-        %Convert from symbolic type to string
-        newExpression = char(newExpression);
+        newExpression = char(newExpression); % Convert from symbolic type to string
         
         %Let MATLAB simplify the expression as a logical expression
         prevExpression = newExpression;
         newExpression = evalin(symengine, ['simplify(' prevExpression ', logic)']);
+        newExpression = char(newExpression); % Convert from symbolic type to string
         
-        %Convert from symbolic type to string
-        newExpression = char(newExpression);
+        %Let MATLAB simplify the expression using a different function
+        prevExpression = newExpression;
+        newExpression = evalin(symengine, ['Simplify(' prevExpression ')']);
+        newExpression = char(newExpression); % Convert from symbolic type to string
         
         %         newExpression = strrep(newExpression, '=', '==');
     else
@@ -110,16 +111,17 @@ for i = 1:length(blocks)
         %Let MATLAB simplify the expression as a condition
         prevExpression = expression;
         newExpression = evalin(symengine, ['simplify(' prevExpression ', condition)']);
-        
-        %Convert from symbolic type to string
-        newExpression = char(newExpression);
+        newExpression = char(newExpression); % Convert from symbolic type to string
         
         %Let MATLAB simplify the expression as a logical expression
         prevExpression = newExpression;
         newExpression = evalin(symengine, ['simplify(' prevExpression ', logic)']);
+        newExpression = char(newExpression); % Convert from symbolic type to string
         
-        %Convert from symbolic type to string
-        newExpression = char(newExpression);
+        %Let MATLAB simplify the expression using a different function
+        prevExpression = newExpression;
+        newExpression = evalin(symengine, ['Simplify(' prevExpression ')']);
+        newExpression = char(newExpression); % Convert from symbolic type to string
         
         %Swap symbols back
         newExpression = strrep(newExpression, 'or', '|');
@@ -130,7 +132,9 @@ for i = 1:length(blocks)
     end
     
     %Strip whitespace
-    newExpression = regexprep(newExpression,'[^\w&_|~><=()]','');
+    newExpression = regexprep(newExpression,'\s','');
+    % newExpression = regexprep(newExpression,'[^\w&_|~><=()]','');
+    %^this also removes the minus even though it probably wasn't intended to
     
     %Make the newExpression well formed
     expressionToGenerate = makeWellFormed(newExpression);
