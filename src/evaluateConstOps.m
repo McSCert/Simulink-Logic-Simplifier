@@ -21,9 +21,6 @@ function newExpr = evaluateConstOps(expression)
 %       evaluateConstOps('1 == 2 & a')
 %       --> '0&a'
 
-%   Test Case:
-%       evaluateConstOps('((0))==1|0&a&1~=~-2')
-
 % Remove whitespace
 newExpr = regexprep(expression,'\s','');
 
@@ -68,9 +65,9 @@ function [isAtomic, newStr] = reduceR(str)
 % else is variable or value
 
 if strcmp(str(1), '(')
-    % The form of the expression is either: 
+    % The form of the expression is either:
     %   '(expr)' or '(expr1)OP(expr2)OP...OP(exprN)'
-    %   where OP is a binary operator of constant precedence 
+    %   where OP is a binary operator of constant precedence
     %   and expr,expr1,expr2,...,exprN are expressions
     
     matchIndex = findMatchingParen(str,1);
@@ -90,7 +87,8 @@ elseif ~isempty(regexp(str(1),'~|-', 'once')) % is ~ or -
         isAtomic = false;
     end
 else
-    newStr = str;
+    %newStr = str;
+    [~, newStr] = evalInEmptyWS(str);
     isAtomic = true;
 end
 
@@ -139,7 +137,7 @@ while close ~= length(newStr)
             close = length(newStr); % This time close is just updated to end the loop since the end of the string has been reached
             isAtomic = true; % Each OP fully evaluated (every other case in this function is false)
         else
-            newStr = ['(', subStr, ')', newStr(close+1)]; % Adding brackets here to make the algorithm slightly simpler later on
+            newStr = ['(', subStr, ')', newStr(close+1:end)]; % Adding brackets here to make the algorithm slightly simpler later on
             close = length(subStr)+2; % This time close just represents the index before the next operator
         end
     else
@@ -262,11 +260,11 @@ end
 %         assert(strcmp(str(matchIndex + opEndIndex + 1),'(')) % There are brackets on either side of the operator
 %         rhsMatch = findMatchingParen(str,matchIndex + opEndIndex + 1);
 %         rhs = str(matchIndex + opEndIndex + 1:rhsMatch); % rhs: right hand side
-%         
+%
 %         % Recurse over both cases of 'expr'
 %         [subIsAtomicL, subStrL] = reduceR(lhs);
 %         [subIsAtomicR, subStrR] = reduceR(rhs);
-%         
+%
 %         % Replace expressions with simplified ones
 %         if subIsAtomicR
 %             str = [str(1:matchIndex + opEndIndex), subStrR];
@@ -277,7 +275,7 @@ end
 %             clear matchIndex opEndIndex % These are no longer valid
 %         end
 %         newStr = str;
-%         
+%
 %         % Determine if the result is atomic (and reduce if it is)
 %         if subIsAtomicL && subIsAtomicR
 %             [isAtomic, newStr] = evalInEmptyWS(newStr);
