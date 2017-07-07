@@ -2,9 +2,6 @@ function expression = SimplifyLogic(blocks)
 %SIMPLIFYLOGIC A function that takes a set of logic blocks and simplifies
 %them.
 
-ver = version('-release');
-isNewerVer = str2num(ver(1:4)) >= 2015;
-
 memo = containers.Map();
 atomics = containers.Map();
 
@@ -62,74 +59,12 @@ for i = 1:length(blocks)
     port = port.Outport;
     expression = getExpressionForBlock(port);
     
-    %TODO: check if the following needs to be done for other symbols
-    expression = strrep(expression,'<>','~=');
-    
-    %Evaluate parts that MATLAB can already evaluate
-    %TODO fix bug that occurs if TRUE is contained within the name of
-    %another identifier. This situation may be nearly impossible or simply
-    %unlikely to occur.
-    %     expression = strrep(expression, 'TRUE', '1'); %Replace TRUE/FALSE with 1/0 so that MATLAB can evaluate them
-    %     expression = strrep(expression, 'FALSE', '0');
-    %     expression = evaluateConstOps(expression);
-    
-    %Add brackets to remove potential ambiguity
-    expression = bracketForPrecedence(expression);
-    
-    %Swap logical 1/0 for TRUE/FALSE (determine if 1/0 is logical from context)
-    %This is done because symengine will assume 1/0 are logical
-    expression = makeBoolsTorF(expression);
-    
     %Swap Chrysler's CbTRUE for symengine's TRUE
     expression = strrep(expression, 'CbTRUE', 'TRUE');
     expression = strrep(expression, 'CbFALSE', 'FALSE');
-    if isNewerVer
-        %Let MATLAB simplify the expression as a condition
-        prevExpression = expression;
-        newExpression = evalin(symengine, ['simplify(' prevExpression ', condition)']);
-        newExpression = char(newExpression); % Convert from symbolic type to string
-        
-        %Let MATLAB simplify the expression as a logical expression
-        prevExpression = newExpression;
-        newExpression = evalin(symengine, ['simplify(' prevExpression ', logic)']);
-        newExpression = char(newExpression); % Convert from symbolic type to string
-        
-        %Let MATLAB simplify the expression using a different function
-        prevExpression = newExpression;
-        newExpression = evalin(symengine, ['Simplify(' prevExpression ')']);
-        newExpression = char(newExpression); % Convert from symbolic type to string
-        
-        %         newExpression = strrep(newExpression, '=', '==');
-    else
-        %Swap out MATLAB symbols for ones that symengine uses
-        expression = strrep(expression, '~=', '<>'); % This line must go before unary negation because otherwise the block could do
-        expression = strrep(expression, '~', ' not ');
-        expression = strrep(expression, '==', '=');
-        expression = strrep(expression, '&', ' and ');
-        expression = strrep(expression, '|', ' or ');
-        
-        %Let MATLAB simplify the expression as a condition
-        prevExpression = expression;
-        newExpression = evalin(symengine, ['simplify(' prevExpression ', condition)']);
-        newExpression = char(newExpression); % Convert from symbolic type to string
-        
-        %Let MATLAB simplify the expression as a logical expression
-        prevExpression = newExpression;
-        newExpression = evalin(symengine, ['simplify(' prevExpression ', logic)']);
-        newExpression = char(newExpression); % Convert from symbolic type to string
-        
-        %Let MATLAB simplify the expression using a different function
-        prevExpression = newExpression;
-        newExpression = evalin(symengine, ['Simplify(' prevExpression ')']);
-        newExpression = char(newExpression); % Convert from symbolic type to string
-        
-        %Swap symbols back
-        newExpression = strrep(newExpression, 'or', '|');
-        newExpression = strrep(newExpression, 'and', '&');
-        newExpression = strrep(newExpression, '=', '==');
-        newExpression = strrep(newExpression, 'not', '~');
-        newExpression = strrep(newExpression, '<>', '~=');
-    end
+    
+    %Do the simplification
+    newExpression = simplifyExpression(expression);
     
     %Strip whitespace
     newExpression = regexprep(newExpression,'\s','');
@@ -173,7 +108,7 @@ for i = 1:length(blocks)
     
     add_line(getfullname(demoSys), logicOutPort,outBlockInPort);
     
-    if isNewerVer
+    if isLsNewerVer()
         %Perform second pass, finding common block patterns and reducing them
         secondPass(getfullname(demoSys));
     end
