@@ -174,7 +174,8 @@ for i = 1:length(blocks)
         secondPass(getfullname(demoSys));
     end
     
-    if strcmp(delete,'on')
+    del = 'off';
+    if strcmp(del,'on')
         %Delete blocks with ports unconnected to other blocks (should mean the
         %block wasn't needed)
         deleteIfUnconnectedSignal(demoSys, 1);
