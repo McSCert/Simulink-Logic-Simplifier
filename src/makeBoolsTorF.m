@@ -34,10 +34,12 @@ function [newexpression] = makeBoolsTorF(expression)
 % Expected Output: '~x  & y < 1 | (((TRUE)) == ((0 < z)) ~= FALSE) & ~TRUE & 0 < 1 & (TRUE == FALSE | 0 == y)'
 
 % Remove whitespace
-temp_expr = regexprep(expression,'[^\w&_|~><=()]','');
+temp_expr = regexprep(expression,'\s','');
+%temp_expr = regexprep(expression,'[^\w&_|~><=()]','');
 %^this also removes the minus even though it probably wasn't intended to
-% % Remove unary-minus
-% temp_expr = strrep(temp_expr,'-','');
+
+% Remove unary-minus
+temp_expr = strrep(temp_expr,'-','');
 
 % Remove all brackets that don't surround at least one operator
 cont = true;
@@ -110,6 +112,20 @@ for i = length(bools01):-1:1
         newexpression = swapBool(newexpression,bools01(i),'TRUE');
     end
 end
+
+% Remove all brackets that don't surround at least one operator
+cont = true;
+while cont
+    old = newexpression;
+    newexpression = regexprep(old,'(\()([^\(~\-><=&|]*)(\))', '$2');
+    cont = ~strcmp(newexpression,old);
+end
+if strcmp(newexpression,'1')
+    newexpression = 'TRUE';
+elseif strcmp(newexpression,'0')
+    newexpression = 'FALSE';
+end
+
     function str = swapBool(str,index,repStr)
         % Swap char at given index in str with repStr
         % (removes a single char, but may replace with multiple)
