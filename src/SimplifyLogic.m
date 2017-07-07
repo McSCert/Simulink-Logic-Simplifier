@@ -62,43 +62,71 @@ for i = 1:length(blocks)
     port = port.Outport;
     expression = getExpressionForBlock(port);
     
-    %Add brackets to remove ambiguity
+    %TODO: check if the following needs to be done for other symbols
+    expression = strrep(expression,'<>','~=');
+    
+    %Evaluate parts that MATLAB can already evaluate
+    %TODO fix bug that occurs if TRUE is contained within the name of
+    %another identifier. This situation may be nearly impossible or simply
+    %unlikely to occur.
+    %     expression = strrep(expression, 'TRUE', '1'); %Replace TRUE/FALSE with 1/0 so that MATLAB can evaluate them
+    %     expression = strrep(expression, 'FALSE', '0');
+    %     expression = evaluateConstOps(expression);
+    
+    %Add brackets to remove potential ambiguity
     expression = bracketForPrecedence(expression);
     
     %Swap logical 1/0 for TRUE/FALSE (determine if 1/0 is logical from context)
+    %This is done because symengine will assume 1/0 are logical
     expression = makeBoolsTorF(expression);
     
     %Swap Chrysler's CbTRUE for symengine's TRUE
     expression = strrep(expression, 'CbTRUE', 'TRUE');
     expression = strrep(expression, 'CbFALSE', 'FALSE');
     if isNewerVer
-        %Let MATLAB simplify the expression
-        newExpression = evalin(symengine, ['simplify(' expression ', condition)']);
+        %Let MATLAB simplify the expression as a condition
+        prevExpression = expression;
+        newExpression = evalin(symengine, ['simplify(' prevExpression ', condition)']);
         
         %Convert from symbolic type to string
         newExpression = char(newExpression);
         
-%         newExpression = strrep(newExpression, '=', '==');
+        %Let MATLAB simplify the expression as a logical expression
+        prevExpression = newExpression;
+        newExpression = evalin(symengine, ['simplify(' prevExpression ', logic)']);
+        
+        %Convert from symbolic type to string
+        newExpression = char(newExpression);
+        
+        %         newExpression = strrep(newExpression, '=', '==');
     else
         %Swap out MATLAB symbols for ones that symengine uses
-        expression = strrep(expression, '&', ' and ');
+        expression = strrep(expression, '~=', '<>'); % This line must go before unary negation because otherwise the block could do
         expression = strrep(expression, '~', ' not ');
-        expression = strrep(expression, '|', ' or ');
         expression = strrep(expression, '==', '=');
-        expression = strrep(expression, '~=', '<>');
+        expression = strrep(expression, '&', ' and ');
+        expression = strrep(expression, '|', ' or ');
         
-        %Let MATLAB simplify the expression
-        newExpression = evalin(symengine, ['simplify(' expression ', condition)']);
+        %Let MATLAB simplify the expression as a condition
+        prevExpression = expression;
+        newExpression = evalin(symengine, ['simplify(' prevExpression ', condition)']);
+        
+        %Convert from symbolic type to string
+        newExpression = char(newExpression);
+        
+        %Let MATLAB simplify the expression as a logical expression
+        prevExpression = newExpression;
+        newExpression = evalin(symengine, ['simplify(' prevExpression ', logic)']);
         
         %Convert from symbolic type to string
         newExpression = char(newExpression);
         
         %Swap symbols back
-        newExpression = strrep(newExpression, 'and', '&');
-        newExpression = strrep(newExpression, 'not', '~');
         newExpression = strrep(newExpression, 'or', '|');
+        newExpression = strrep(newExpression, 'and', '&');
         newExpression = strrep(newExpression, '=', '==');
-        expression = strrep(expression, '<>', '~=');
+        newExpression = strrep(newExpression, 'not', '~');
+        newExpression = strrep(newExpression, '<>', '~=');
     end
     
     %Strip whitespace
@@ -146,10 +174,16 @@ for i = 1:length(blocks)
         secondPass(getfullname(demoSys));
     end
     
+    if strcmp(delete,'on')
+        %Delete blocks with ports unconnected to other blocks (should mean the
+        %block wasn't needed)
+        deleteIfUnconnectedSignal(demoSys, 1);
+    end
+    
     %Fix the layout
     AutoLayout(getfullname(demoSys));
     
-    % Zoom on new system
+    %Zoom on new system
     set_param(getfullname(demoSys), 'Zoomfactor', '100');
 end
 end
