@@ -76,29 +76,30 @@ for i = 1:length(blocks)
     
     %Remove old blocks and add new ones representing simplified logical
     %expression
-    trueBlockGiven = false; falseBlockGiven = false; % Run without FCA blocks
-    if strcmp(expressionToGenerate, '(TRUE)') || strcmp(expressionToGenerate, '(CbTRUE)')
-        if trueBlockGiven
-            constLoc = ['ChryslerLib/Parameters' char(10) '&' char(10) 'Constants/TRUE Constant'];
-            memo('(TRUE)')=add_block(constLoc, [getfullname(demoSys) '/simplifier_generated_true'],'MAKENAMEUNIQUE','ON');
-        else
-            memo('(TRUE)')=add_block('built-in/Constant', ...
-                [getfullname(demoSys) '/simplifier_generated_true'],'MAKENAMEUNIQUE','ON','Value','true','OutDataTypeStr','boolean');
-        end
-        outExpression = '(TRUE)';
-    elseif strcmp(expressionToGenerate, '(FALSE)') || strcmp(expressionToGenerate, '(CbFALSE)')
-        if falseBlockGiven
-            constLoc = ['ChryslerLib/Parameters' char(10) '&' char(10) 'Constants/FALSE Constant'];
-            memo('(FALSE)') = add_block(constLoc, [getfullname(demoSys) '/simplifier_generated_false'],'MAKENAMEUNIQUE','ON');
-        else
-            memo('(FALSE)')=add_block('built-in/Constant', ...
-                [getfullname(demoSys) '/simplifier_generated_false'],'MAKENAMEUNIQUE','ON','Value','false','OutDataTypeStr','boolean');
-        end
-        outExpression = '(FALSE)';
-    else
-        [outExpression, ~] = createLogicBlocks(expressionToGenerate, 1, 1, atomics, memo, getfullname(demoSys));
-    end
-    
+    [outExpression, ~] = createLogicBlocks(expressionToGenerate, 1, 1, atomics, memo, getfullname(demoSys));
+%     trueBlockGiven = false; falseBlockGiven = false; % Run without FCA blocks
+%     if strcmp(expressionToGenerate, '(TRUE)') || strcmp(expressionToGenerate, '(CbTRUE)')
+%         if trueBlockGiven
+%             constLoc = ['ChryslerLib/Parameters' char(10) '&' char(10) 'Constants/TRUE Constant'];
+%             memo('(TRUE)')=add_block(constLoc, [getfullname(demoSys) '/simplifier_generated_true'],'MAKENAMEUNIQUE','ON');
+%         else
+%             memo('(TRUE)')=add_block('built-in/Constant', ...
+%                 [getfullname(demoSys) '/simplifier_generated_true'],'MAKENAMEUNIQUE','ON','Value','true','OutDataTypeStr','boolean');
+%         end
+%         outExpression = '(TRUE)';
+%     elseif strcmp(expressionToGenerate, '(FALSE)') || strcmp(expressionToGenerate, '(CbFALSE)')
+%         if falseBlockGiven
+%             constLoc = ['ChryslerLib/Parameters' char(10) '&' char(10) 'Constants/FALSE Constant'];
+%             memo('(FALSE)') = add_block(constLoc, [getfullname(demoSys) '/simplifier_generated_false'],'MAKENAMEUNIQUE','ON');
+%         else
+%             memo('(FALSE)')=add_block('built-in/Constant', ...
+%                 [getfullname(demoSys) '/simplifier_generated_false'],'MAKENAMEUNIQUE','ON','Value','false','OutDataTypeStr','boolean');
+%         end
+%         outExpression = '(FALSE)';
+%     else
+%         [outExpression, ~] = createLogicBlocks(expressionToGenerate, 1, 1, atomics, memo, getfullname(demoSys));
+%     end
+
     %Connect to the outport
     logicOut = memo(outExpression);
     logicOutPort = get_param(logicOut, 'PortHandles');
