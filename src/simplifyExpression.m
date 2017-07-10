@@ -18,6 +18,10 @@ expr = strrep(expr,'<>','~=');
 % TODO fix bug that occurs if TRUE is contained within the name of
 % another identifier. This situation may be nearly impossible or simply
 % unlikely to occur.
+
+% TODO:
+% comment these lines while checking for errors as it may hide some
+% uncomment for releases
 expr = strrep(expr, 'TRUE', '1'); % Replace TRUE/FALSE with 1/0 so that MATLAB can evaluate them
 expr = strrep(expr, 'FALSE', '0');
 expr = evaluateConstOps(expr);
@@ -27,7 +31,7 @@ expr = bracketForPrecedence(expr);
 
 % Swap logical 1/0 for TRUE/FALSE (determine if 1/0 is logical from context)
 % This is done because symengine will assume 1/0 are numerical
-expr = makeBoolsTorF(expr);
+expr = makeBoolsTorF(expr,'upper');
 
 % Swap out MATLAB symbols for ones that symengine uses
 expr = swap4Symengine(expr);
@@ -50,7 +54,6 @@ expr = char(expr); % Convert from symbolic type to string
 %Swap symbols back
 expr = swap4Simulink(expr);
 % newExpression = strrep(newExpression, '=', '=='); % is this needed for newer versions for some reason?
-
 end
 
 function expr = swap4Symengine(expr)

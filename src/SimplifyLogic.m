@@ -83,7 +83,7 @@ for i = 1:length(blocks)
             memo('(TRUE)')=add_block(constLoc, [getfullname(demoSys) '/simplifier_generated_true'],'MAKENAMEUNIQUE','ON');
         else
             memo('(TRUE)')=add_block('built-in/Constant', ...
-                [getfullname(demoSys) '/simplifier_generated_true'],'MAKENAMEUNIQUE','ON','Value','1','OutDataTypeStr','boolean');
+                [getfullname(demoSys) '/simplifier_generated_true'],'MAKENAMEUNIQUE','ON','Value','true','OutDataTypeStr','boolean');
         end
         outExpression = '(TRUE)';
     elseif strcmp(expressionToGenerate, '(FALSE)') || strcmp(expressionToGenerate, '(CbFALSE)')
@@ -92,7 +92,7 @@ for i = 1:length(blocks)
             memo('(FALSE)') = add_block(constLoc, [getfullname(demoSys) '/simplifier_generated_false'],'MAKENAMEUNIQUE','ON');
         else
             memo('(FALSE)')=add_block('built-in/Constant', ...
-                [getfullname(demoSys) '/simplifier_generated_false'],'MAKENAMEUNIQUE','ON','Value','0','OutDataTypeStr','boolean');
+                [getfullname(demoSys) '/simplifier_generated_false'],'MAKENAMEUNIQUE','ON','Value','false','OutDataTypeStr','boolean');
         end
         outExpression = '(FALSE)';
     else
