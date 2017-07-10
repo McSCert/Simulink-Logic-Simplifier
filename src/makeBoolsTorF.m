@@ -1,14 +1,20 @@
-function [newexpression] = makeBoolsTorF(expression)
+function [newexpression] = makeBoolsTorF(expression, tfCase)
 % MAKEBOOLSTORF Swaps 1s and 0s in input string with TRUE or FALSE
 %   respectively based on whether or not they are intended to be logical or
 %   numerical as determined by context within the string.
 %
 %   Inputs:
 %       expression      Character array
+%       tfCase          The case to use to write TRUE/FALSE.
+%                       Lower -> true/false
+%                       Upper -> TRUE/FALSE
 %
 %   Outputs:
 %       newexpression   Resulting expression after swapping logical 1s and
 %                       0s with TRUE or FALSE respectively.
+
+truestr = eval([tfCase '(''true'')']);
+falsestr = eval([tfCase '(''false'')']);
 
 % http://www.ele.uri.edu/~daly/106/precedence.html
 % Reference for order of precedence in MATLAB (1 is highest precedence):
@@ -30,7 +36,7 @@ function [newexpression] = makeBoolsTorF(expression)
 % R -> P( ('[><]=?|[~=]=') P)*
 % P -> '(' O ')' | '~' P | NUMBER | VARIABLE | 'TRUE' | 'FALSE'
 
-% Test: makeBoolsTorF('~x  & y < 1 | (((1)) == ((0 < z)) ~= 0) & ~1 & 0 < 1 & (1 == FALSE | 0 == y)')
+% Test: makeBoolsTorF('~x  & y < 1 | (((1)) == ((0 < z)) ~= 0) & ~1 & 0 < 1 & (1 == FALSE | 0 == y)', 'upper')
 % Expected Output: '~x  & y < 1 | (((TRUE)) == ((0 < z)) ~= FALSE) & ~TRUE & 0 < 1 & (TRUE == FALSE | 0 == y)'
 
 % Remove whitespace
@@ -42,29 +48,7 @@ temp_expr = regexprep(expression,'\s','');
 temp_expr = strrep(temp_expr,'-','');
 
 % Remove all brackets that don't surround at least one operator
-cont = true;
-while cont
-    old = temp_expr;
-    temp_expr = regexprep(old,'(\()([^\(~\-><=&|]*)(\))', '$2');
-    cont = ~strcmp(temp_expr,old);
-end
-
-%%%Old bracket removal was just for 0s and 1s.
-%%%Have to remove other brackets because some assumptions are made in the
-%%%implementation below that all things surrounded in brackets evaluate to
-%%%logical.
-% % Remove some brackets that are in the way
-% cont = ~isempty(findstr(temp_expr,'(0)')); % Flag to stop while loop (stands for continue)
-% while cont
-%     temp_expr = strrep(temp_expr,'(0)','0');
-%     cont = ~isempty(findstr(temp_expr,'(0)'));
-% end
-% cont = ~isempty(findstr(temp_expr,'(1)')); % Flag to stop while loop
-% while cont
-%     temp_expr = strrep(temp_expr,'(1)','1');
-%     cont = ~isempty(findstr(temp_expr,'(1)'));
-% end
-
+temp_expr = removeAtomixBrackets(temp_expr);
 
 % Identify which 0s and 1s need to change
 
@@ -82,7 +66,7 @@ for index = temp0sAnd1s
         if strcmp(right, 'L') || strcmp(right, '~')
             whichToSwap(count) = 1; count = count + 1;
         elseif strcmp(right, 'E')
-            swap = checkRightEquality(temp_expr, index+2);
+            swap = checkRightEquality(temp_expr, index+2, truestr, falsestr);
             whichToSwap(count) = swap; count = count + 1;
         else
             whichToSwap(count) = 0; count = count + 1;
@@ -91,7 +75,7 @@ for index = temp0sAnd1s
         if strcmp(left, 'L') || strcmp(left, '~')
             whichToSwap(count) = 1; count = count + 1;
         elseif strcmp(left, 'E')
-            swap = checkLeftEquality(temp_expr, index-2);
+            swap = checkLeftEquality(temp_expr, index-2, truestr, falsestr);
             whichToSwap(count) = swap; count = count + 1;
         else
             whichToSwap(count) = 0; count = count + 1;
@@ -107,23 +91,20 @@ bools01 = bools01(logical(whichToSwap));
 newexpression = expression;
 for i = length(bools01):-1:1
     if strcmp(newexpression(bools01(i)), '0')
-        newexpression = swapBool(newexpression,bools01(i),'FALSE');
+        newexpression = swapBool(newexpression,bools01(i),falsestr);
     else % elseif strcmp(expression(bools01(i)), '1')
-        newexpression = swapBool(newexpression,bools01(i),'TRUE');
+        newexpression = swapBool(newexpression,bools01(i),truestr);
     end
 end
 
 % Remove all brackets that don't surround at least one operator
-cont = true;
-while cont
-    old = newexpression;
-    newexpression = regexprep(old,'(\()([^\(~\-><=&|]*)(\))', '$2');
-    cont = ~strcmp(newexpression,old);
-end
+newexpression = removeAtomixBrackets(newexpression);
+
+% Replace newexpression with TRUE/FALSE if it's 1/0
 if strcmp(newexpression,'1')
-    newexpression = 'TRUE';
+    newexpression = truestr;
 elseif strcmp(newexpression,'0')
-    newexpression = 'FALSE';
+    newexpression = falsestr;
 end
 
     function str = swapBool(str,index,repStr)
@@ -131,6 +112,19 @@ end
         % (removes a single char, but may replace with multiple)
         str = [str(1:index-1), repStr, str(index+1:end)];
     end
+end
+
+function expr = removeAtomixBrackets(expr)
+% REMOVEATOMICBRACKETS removes all brackets that don't surround at least
+% one operator (as this means they surround an atomic value or identifier).
+
+cont = true;
+while cont
+    old = expr;
+    expr = regexprep(old,'(\()([^\(~\-><=&|]*)(\))', '$2');
+    cont = ~strcmp(expr,old);
+end
+
 end
 
 function p = priority(symbol)
@@ -211,7 +205,7 @@ elseif ~isempty(regexp(str(i+1), '[&|]', 'ONCE'))
 end
 end
 
-function makeBool = checkLeftEquality(expr, index)
+function makeBool = checkLeftEquality(expr, index, truestr, falsestr)
 % Checks the left side of an equality or inequality (== or ~=) in expr to
 % see if the right side should be numeric or logical. Returns 1 if it
 % should be logical else 0. Assumes the input is correct (i.e. that index
@@ -220,7 +214,8 @@ function makeBool = checkLeftEquality(expr, index)
 
 expr = expr(1:index-1);
 
-if ~isempty(regexp(expr, '(TRUE|FALSE|\))$', 'ONCE'))
+pat = ['(' truestr '|' falsestr '|\))$'];
+if ~isempty(regexp(expr, pat, 'ONCE'))
     makeBool = 1;
 else
     next1 = regexp(expr, '<=|>=|>|<|~=|==|&|\||~|\(');
@@ -238,7 +233,7 @@ else
 end
 end
 
-function makeBool = checkRightEquality(expr, index)
+function makeBool = checkRightEquality(expr, index, truestr, falsestr)
 % Checks the right side of an equality or inequality (== or ~=) in expr to
 % see if the left side should be numeric or logical. Returns 1 if it
 % should be logical else 0. Assumes the input is correct (i.e. that index
@@ -247,7 +242,8 @@ function makeBool = checkRightEquality(expr, index)
 
 expr = expr(index+1:end);
 
-if ~isempty(regexp(expr, '^(TRUE|FALSE|~|\()', 'ONCE'))
+pat = ['^(' truestr '|' falsestr '|~|\()'];
+if ~isempty(regexp(expr, pat, 'ONCE'))
     makeBool = 1;
 else
     makeBool = 0;
