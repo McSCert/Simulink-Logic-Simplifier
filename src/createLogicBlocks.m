@@ -239,8 +239,10 @@ while (index <= length(expression))
             %the case where the index is an atomic proposition (a variable), the base case
             atomic = regexp(expression(index:end), '^[\w]+', 'match');
             
+            % Check if atomic is a constant, if it is, get its value
             if strcmp(atomic{1},'TRUE') || strcmp(atomic{1},'FALSE')
-                val = lower(atomic{1});
+                atomic{1} = lower(atomic{1});
+                val = atomic{1};
                 isConstant = true;
             elseif ~isempty(regexp(atomic{1}, '^[0-9]+\.?[0-9]*$', 'once'))
                 val = regexp(atomic{1}, '^[0-9]+\.?[0-9]*$', 'match', 'once');
