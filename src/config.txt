@@ -1,0 +1,11 @@
+#DELETE_UNUSED Indicates whether or not to delete blocks which are unused in the
+	final model.
+#Default is off.
+#
+#Acceptable parameter values are:
+#	on (blocks will be deleted if they have an unused port, one way this could
+#		occur is if an inport signal is sent into an if block that won't use that
+#		signal), 
+#	off (blocks that would have been deleted are left in the system for the user 
+#		to decide what to do)
+delete_unused: on

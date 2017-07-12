@@ -2,6 +2,9 @@ function expression = SimplifyLogic(blocks)
 %SIMPLIFYLOGIC A function that takes a set of logic blocks and simplifies
 %them.
 
+% Constants:
+DELETE_UNUSED = getLogicSimplifierConfig('delete_unused', 'off'); % Indicates whether or not to delete blocks which are unused in the final model
+
 memo = containers.Map();
 atomics = containers.Map();
 
@@ -114,8 +117,7 @@ for i = 1:length(blocks)
         secondPass(getfullname(demoSys));
     end
     
-    del = 'off';
-    if strcmp(del,'on')
+    if strcmp(DELETE_UNUSED,'on')
         %Delete blocks with ports unconnected to other blocks (should mean the
         %block wasn't needed)
         deleteIfUnconnectedSignal(demoSys, 1);
