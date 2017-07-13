@@ -1,4 +1,4 @@
-function expression = SimplifyLogic(blocks)
+function [oldexpr newexpr] = SimplifyLogic(blocks)
 %SIMPLIFYLOGIC A function that takes a set of logic blocks and simplifies
 %them.
 
@@ -116,17 +116,20 @@ for i = 1:length(blocks)
         %Perform second pass, finding common block patterns and reducing them
         secondPass(getfullname(demoSys));
     end
-    
-    if strcmp(DELETE_UNUSED,'on')
-        %Delete blocks with ports unconnected to other blocks (should mean the
-        %block wasn't needed)
-        deleteIfUnconnectedSignal(demoSys, 1);
-    end
-    
-    %Fix the layout
-    AutoLayout(getfullname(demoSys));
-    
-    %Zoom on new system
-    set_param(getfullname(demoSys), 'Zoomfactor', '100');
 end
+
+if strcmp(DELETE_UNUSED,'on')
+    %Delete blocks with ports unconnected to other blocks (should mean the
+    %block wasn't needed)
+    deleteIfUnconnectedSignal(demoSys, 1);
+end
+
+%Fix the layout
+AutoLayout(getfullname(demoSys));
+
+%Zoom on new system
+set_param(getfullname(demoSys), 'Zoomfactor', '100');
+
+oldExpr = expression;
+newExpr = newExpression;
 end
