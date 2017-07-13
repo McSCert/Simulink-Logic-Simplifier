@@ -185,7 +185,8 @@ function ioExpr = getIOExpr(blockName, blockType, blockPort)
                     
                     %Find the expression
                     exp = getIfExpr(ifblock, port);
-                    ioExpr = ['(~' exp ' | ' subExpr ')'];
+                    ioExpr = ['(' exp ' & ' subExpr ')']; % If the if condition is met, then the SubSystem expression determines the result, else it is false
+                    %ioExpr = ['(~' exp ' | ' subExpr ')']; % Though intuitive because this form is implies, this is wrong
                 else
                     inportBlocks = find_system(blockName, 'SearchDepth', 1, 'BlockType', 'Inport');
                     
@@ -240,7 +241,7 @@ function logicExpr = getLogicExpr(blockName)
             assert(srcPorts(i) ~= -1)
         end
     catch
-        error(['Nothing is connected to ' blockName '...']);
+        error([blockName ' is missing at least one connection.']);
     end
     numInputs = length(srcPorts);
     operator = get_param(blockName, 'Operator');
