@@ -1,4 +1,4 @@
-function newexpression = bracketForPrecedence(expression)
+function newexpression = bracketForPrecedence(expression, preserveLeft2Right)
 % BRACKETFORPRECEDENCE Takes a logical expression and applies additional
 %   brackets in order to preserve the appropriate order of operations
 %   within the expression while only having to observe precedence of
@@ -12,6 +12,10 @@ function newexpression = bracketForPrecedence(expression)
 %                       boolean values, and identifiers. {(, ), ~, -, <, <=,
 %                       >, >=, ==, ~=, &, |,  , [0-9]+, TRUE, FALSE,
 %                       [a-zA-Z][a-zA-Z0-9]*}
+%       preserveLeft2Right  Logical. If true, additional brackets are added
+%                           to ensure that left-to-right precedence is
+%                           followed for operations with equal precedence.
+%                           E.g. a & b & c -> (a & b) & c
 %
 %   Outputs:
 %       newexpression   Resulting expression after swapping logical 1s and
@@ -47,6 +51,85 @@ newexpression = strrep(newexpression, '&', '))&((');
 % Replace | by ")))|((("
 newexpression = strrep(newexpression, '|', ')))|(((');
 
+
+% Remove whitespace
+newexpression = regexprep(newexpression,'\s','');
+
+% (a) & (b) & (c) -> ((a) & (b)) & (c)
+if preserveLeft2Right
+    newexpression = addL2R(newexpression);
+end
+
+end
+
+function str = addL2R(str)
+% Recursively add brackets to preserve left to right precedence
+
+% Test case:
+% addL2R('(((a)==(1)~=(TRUE))&((3)>(var)<(TRUE)==(1)))')
+% Expected: '((((a)==(1))~=(TRUE))&((((3)>(var))<(TRUE))==(1)))'
+
+% Form should follow:
+% str = 'str1'; str1 does not lead with a '('
+% Or:
+% str = '(str1)o1(str2)o2...oN-1(strN)'; oN is an operator, strN is a substring of the same form
+
+% Base case
+if ~strcmp(str(1),'(')
+    return
+end % else continue to recursive case
+
+% Split str into (str1), o1, (str2), o2, ..., oN-1, (strN) and save in terms
+terms = splitAtOps(str);
+
+% Recurse on str1, str2, ..., strN
+for i = 1:2:length(terms) % Skipping o1, o2, ..., oN-1
+    terms{i} = ['(', addL2R(terms{i}(2:end-1)), ')']; % 2:end-1 strips '(', ')' from '(strN)'
+end
+
+% Combine the terms back together
+str = combineTerms(terms);
+
+end
+
+function str = combineTerms(terms)
+% Recursive
+
+if length(terms) == 1
+    % 'a' -> 'a'
+    str = [terms{1:end}];
+elseif length(terms) == 3
+    % 'a & b' -> 'a & b'
+    str = [terms{1:end}];
+else
+    % 'a & b & c'     -> ' (a & b) & c'
+    % 'a & b & c & d' -> '((a & b) & c) & d'
+    str = ['(', combineTerms(terms(1:end-2)), ')', terms{end-1}, terms{end}];
+end
+
+end
+
+function terms = splitAtOps(str)
+% Recursive
+
+starti = 1; % Start index for a pair of parentheses
+endi = findMatchingParen(str,starti);
+
+if endi == length(str)
+    terms = {str(starti:endi)};
+else
+    % Left-most term
+    leftTerm = str(starti:endi);
+    
+    % Find next start paren
+    starti2 = regexp(str(endi+1:end), '\(', 'once');
+    starti2 = starti2 + endi;
+    % Next operator is between current end paren and next start paren:
+    op = str(endi+1:starti2-1);
+    
+    terms = splitAtOps(str(starti2:end));
+    terms = {leftTerm, op, terms{1:end}};
+end
 end
 
 %%%%%% Old test case when I thought == and ~= had lower precedence than > < >= <= %%%%%%
