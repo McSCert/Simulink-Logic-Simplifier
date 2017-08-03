@@ -25,15 +25,16 @@ function newExpr = evaluateConstOps(expression)
 newExpr = regexprep(expression,'\s','');
 
 % Apply brackets appropriately
-newExpr = bracketForPrecedence(newExpr);
+newExpr = bracketForPrecedence(newExpr, true);
 
 [~, newExpr] = reduceR(newExpr);
 
 % Remove outer brackets
-while strcmp(newExpr(1),'(')
-    assert(strcmp(newExpr(end),')'));
-    newExpr = newExpr(2:end-1);
-end
+%% TODO - for implementation below consider '(a)&(b)'
+% while strcmp(newExpr(1),'(')
+%     assert(strcmp(newExpr(end),')'));
+%     newExpr = newExpr(2:end-1);
+% end
 end
 
 function [isAtomic, newStr] = reduceR(str)
