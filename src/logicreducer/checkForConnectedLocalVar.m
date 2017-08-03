@@ -3,7 +3,7 @@ function connectedLocalVar = checkForConnectedLocalVar(blockName)
     [srcBlocks, ~] = getConnectedBlocks(blockName);
     connectedLocalVar = '';
     for i=1:length(srcBlocks)
-        fullName = [srcBlocks{i}.Path '/' srcBlocks{i}.Name];
+        fullName = getfullname(srcBlocks{i}.Handle);
         blockType = srcBlocks{i}.BlockType;
         switch blockCategoryDic(blockType)
             case 'Branching'
