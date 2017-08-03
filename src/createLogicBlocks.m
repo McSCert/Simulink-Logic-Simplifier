@@ -236,7 +236,7 @@ while (index <= length(expression))
             outIndex = index;
             return
         otherwise
-            %the case where the index is an atomic proposition (a variable), the base case
+            %the case where the index is an atomic proposition (a variable or constant), the base case
             atomic = regexp(expression(index:end), '^[\w]+', 'match');
             
             % Check if atomic is a constant, if it is, get its value
