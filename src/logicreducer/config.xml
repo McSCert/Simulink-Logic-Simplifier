@@ -12,6 +12,7 @@
   <Block type="LatchOn" category="Memory"/>
   <Block type="From" category="Memory"/>
   <Block type="Goto" category="Memory"/>
+
   <!--Collapsible Blocks -->
   <Block type="Constant" category="Collapsible"/>
   <Block type="Gain" category="Collapsible"/>
