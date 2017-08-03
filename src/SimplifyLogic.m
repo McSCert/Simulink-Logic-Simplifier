@@ -1,25 +1,53 @@
-function [oldexpr newexpr] = SimplifyLogic(blocks)
-%SIMPLIFYLOGIC A function that takes a set of logic blocks and simplifies
-%them.
+function [oldExpr newExpr] = SimplifyLogic(blocks)
+% SIMPLIFYLOGIC A function that takes a set of logic blocks and simplifies
+%   them.
+%
+%   Input:
+%       blocks  Cell array of blocks (indicated by fullname). All blocks
+%               should be in the same system/subsystem. Input blocks should
+%               be the outputs of the simplification (i.e. if the only only
+%               block is an outport, it will simplify the blocks that
+%               impact it).
+%
+%   Outputs:
+%       oldExpr     Cell array of expressions found for the blocks as
+%                   given.
+%       newExpr     Cell array of expressions found for the blocks after
+%                   the simplification process.
 
 % Constants:
 DELETE_UNUSED = getLogicSimplifierConfig('delete_unused', 'off'); % Indicates whether or not to delete blocks which are unused in the final model
+REPLACE_EXISTING_MODEL = 'on'; % When creating the model for the simplification, it will replace a file with the same name if 'on' otherwise it will error
 
 memo = containers.Map();
 atomics = containers.Map();
 
-parent = get_param(blocks{1}, 'parent');
-inports = find_system(parent, 'SearchDepth', 1, 'BlockType', 'Inport');
-froms = find_system(parent, 'SearchDepth', 1, 'BlockType', 'From');
-constants = find_system(parent, 'SearchDepth', 1, 'BlockType', 'Constant');
+parent = get_param(blocks{1}, 'parent'); % Get name of system the blocks are in
+inports = find_system(parent, 'SearchDepth', 1, 'BlockType', 'Inport'); % List of inports in the system
+froms = find_system(parent, 'SearchDepth', 1, 'BlockType', 'From'); % List of froms in the system
+constants = find_system(parent, 'SearchDepth', 1, 'BlockType', 'Constant'); % List of constant blocks in the system
 
+% Create a new system for the simplification
 parentName = get_param(parent, 'Name');
 try
-    demoSys = open_system([parentName '_newLogic']);
-catch
-    demoSys = new_system([parentName '_newLogic']);
-    open_system(demoSys);
+    logicSys = new_system([parentName '_newLogic']); % This will error if it's already open
+catch ME
+    if strcmp(REPLACE_EXISTING_MODEL, 'off')
+        rethrow(ME)
+    elseif strcmp(REPLACE_EXISTING_MODEL, 'on')
+        close_system([parentName '_newLogic']);
+        logicSys = new_system([parentName '_newLogic']);
+    else
+        error(['Error in ' mfilename ', REPLACE_EXISTING_MODEL should be ''on'' or ''off''.']);
+    end
 end
+open_system(logicSys);
+% try
+%     demoSys = open_system([parentName '_newLogic']);
+% catch
+%     demoSys = new_system([parentName '_newLogic']);
+%     open_system(demoSys);
+% end
 
 for i = 1:length(inports)
     name = get_param(inports{i}, 'Name');
@@ -60,6 +88,7 @@ for i = 1:length(blocks)
     %Find the logical expression of the blocks
     port = get_param(srcBlock, 'PortHandles');
     port = port.Outport;
+    %[expression, ~] = getExpressionForBlock(port);
     expression = getExpressionForBlock(port);
     
     %Swap Chrysler's CbTRUE for symengine's TRUE
@@ -79,7 +108,7 @@ for i = 1:length(blocks)
     
     %Remove old blocks and add new ones representing simplified logical
     %expression
-    [outExpression, ~] = createLogicBlocks(expressionToGenerate, 1, 1, atomics, memo, getfullname(demoSys));
+    [outExpression, ~] = createLogicBlocks(expressionToGenerate, 1, 1, atomics, memo, getfullname(logicSys));
 %     trueBlockGiven = false; falseBlockGiven = false; % Run without FCA blocks
 %     if strcmp(expressionToGenerate, '(TRUE)') || strcmp(expressionToGenerate, '(CbTRUE)')
 %         if trueBlockGiven
@@ -110,25 +139,25 @@ for i = 1:length(blocks)
     outBlockInPort = get_param(outBlock, 'PortHandles');
     outBlockInPort = outBlockInPort.Inport;
     
-    add_line(getfullname(demoSys), logicOutPort,outBlockInPort);
+    add_line(getfullname(logicSys), logicOutPort,outBlockInPort);
     
     if isLsNewerVer()
         %Perform second pass, finding common block patterns and reducing them
-        secondPass(getfullname(demoSys));
+        secondPass(getfullname(logicSys));
     end
 end
 
 if strcmp(DELETE_UNUSED,'on')
     %Delete blocks with ports unconnected to other blocks (should mean the
     %block wasn't needed)
-    deleteIfUnconnectedSignal(demoSys, 1);
+    deleteIfUnconnectedSignal(logicSys, 1);
 end
 
 %Fix the layout
-AutoLayout(getfullname(demoSys));
+AutoLayout(getfullname(logicSys));
 
 %Zoom on new system
-set_param(getfullname(demoSys), 'Zoomfactor', '100');
+set_param(getfullname(logicSys), 'Zoomfactor', '100');
 
 oldExpr = expression;
 newExpr = newExpression;
