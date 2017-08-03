@@ -2,6 +2,9 @@ function inoutBlock = subport2inoutblock(subPort)
 %
 % Get the Inport or Outport block which corresponds with a given SubSystem
 % Inport or Outport.
+%
+% inoutBlock is returned as a cell array because there may be more than one
+% corresponding block.
 
 parent = get_param(subPort, 'Parent');
 
