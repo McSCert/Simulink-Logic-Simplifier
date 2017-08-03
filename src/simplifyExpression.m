@@ -27,7 +27,7 @@ expr = strrep(expr, 'FALSE', '0');
 expr = evaluateConstOps(expr);
 
 % Add brackets to remove potential ambiguity
-expr = bracketForPrecedence(expr);
+expr = bracketForPrecedence(expr, true);
 
 % Swap logical 1/0 for TRUE/FALSE (determine if 1/0 is logical from context)
 % This is done because symengine will assume 1/0 are numerical
@@ -42,9 +42,9 @@ expr = evalin(symengine, ['simplify(' prev ', condition)']);
 expr = char(expr); % Convert from symbolic type to string
 
 % Let MATLAB simplify the expression as a logical expression
-prev = expr; % Can use this to check equivalence between steps
-expr = evalin(symengine, ['simplify(' prev ', logic)']);
-expr = char(expr); % Convert from symbolic type to string
+%prev = expr; % Can use this to check equivalence between steps
+%expr = evalin(symengine, ['simplify(' prev ', logic)']);
+%expr = char(expr); % Convert from symbolic type to string
 
 %Let MATLAB simplify the expression using a different function
 prev = expr; % Can use this to check equivalence between steps
