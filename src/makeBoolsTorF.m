@@ -44,7 +44,7 @@ temp_expr = regexprep(expression,'\s','');
 %temp_expr = regexprep(expression,'[^\w&_|~><=()]','');
 %^this also removes the minus even though it probably wasn't intended to
 
-% Remove unary-minus
+% Remove unary-minus since it has no impact
 temp_expr = strrep(temp_expr,'-','');
 
 % Remove all brackets that don't surround at least one operator
@@ -163,7 +163,7 @@ function left = getLeft(str,i)
 if i <= 1 || ~isempty(regexp(str(i-1), '[)(]', 'ONCE'))
     % Null (or effectively null)
     left = '!';
-elseif ~isempty(regexp(str(i-1), '[0-9a-zA-Z]', 'ONCE'))
+elseif ~isempty(regexp(str(i-1), '[0-9a-zA-Z_]', 'ONCE'))
     % Alphanumeric
     left = '#';
 elseif ~isempty(regexp(str(i-1), '[~]', 'ONCE'))
@@ -190,7 +190,7 @@ function right = getRight(str,i)
 if i >= length(str) || ~isempty(regexp(str(i+1), '[)(]', 'ONCE'))
     % Null (or effectively null)
     right = '!'; % Arbitrary character chosen to indicate null
-elseif ~isempty(regexp(str(i+1), '[0-9a-zA-Z]', 'ONCE'))
+elseif ~isempty(regexp(str(i+1), '[0-9a-zA-Z_]', 'ONCE'))
     % Alphanumeric
     right = '#';
 elseif ~isempty(regexp(str(i+1), '[><]', 'ONCE'))
