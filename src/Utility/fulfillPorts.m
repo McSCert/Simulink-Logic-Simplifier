@@ -62,7 +62,7 @@ for i = 1:length(ports)
         
         if ~hasSrc
             % Create ground
-            bHandle = add_block('built-in/Ground', [portSys '/generated_ground'], 'MakeNameUnique', 'on', 'Value', '1');
+            bHandle = add_block('built-in/Ground', [portSys '/generated_ground'], 'MakeNameUnique', 'on');
             
             % Get the ground's inport
             pHandles = get_param(bHandle, 'PortHandles');
