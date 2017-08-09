@@ -1,4 +1,4 @@
-function [subExprOut, outIndex] = createLogicBlocks4(expression, atomicExpr, memo, predicates, startSys, endSys)
+function [subExprOut, outIndex] = createLogicBlocks4(expression, atomicExpr, memo, predicates, inExprs, startSys, endSys)
 % CREATELOGICBLOCKS Places blocks with appropriate connections into an
 %   empty model to represent a logical expression.
 %
@@ -10,6 +10,8 @@ function [subExprOut, outIndex] = createLogicBlocks4(expression, atomicExpr, mem
 %       index
 %       atomicExpr
 %       memo
+%       predicates
+%       inExprs
 %       sys
 %
 %   Output:
@@ -29,110 +31,224 @@ elseif strcmp(handleType, 'port')
     block = get_param(handle, 'Parent');
 end
 blockType = get_param(block, 'BlockType');
+newBlock = regexprep(block,['^' startSys], endSys, 'ONCE');
 
+assert(~isempty(find_system(block)))
+isIfActionExpr = false; % Will update in the following if it should be true
 if strcmp(blockType, 'SubSystem')
-    assert(~isempty(find_system(block)))
-    createSys = regexprep(block, ['^' startSys], endSys, 'ONCE'); % Create blocks for this expression in this system
+    % Determine if it's an if action SubSystem
+    ifPat = ['(^|[^0-9A-z_])(', 'If_port_', '(Sub_|)', '[1-9]([0-9]*|)', ')([^0-9A-z_]|$)']; % Starts and ends with non-alphanumeric chars, may contain 'Sub_', must have a number at the end
+    isIfActionExpr = ~isempty(regexp(expressionRHS, ifPat, 'once'));
+
+    if ~isIfActionExpr
+        createSys = newBlock; % Create blocks for this expression in this system
+    else
+        createSys = get_param(newBlock, 'Parent'); % Create blocks for this expression in this system
+    end
 elseif strcmp(blockType, 'Inport')
-    assert(~isempty(find_system(block)))
-    temp = regexprep(get_param(block, 'Parent'), ['^' startSys], endSys, 'ONCE');
-    createSys = get_param(temp, 'Parent'); % Create blocks for this expression in the system above where the LHS is
+    createSys = get_param(get_param(newBlock, 'Parent'), 'Parent'); % Create blocks for this expression in the system above where the LHS is
 else
-    assert(~isempty(find_system(block)))
-    createSys = regexprep(get_param(block, 'Parent'), ['^' startSys], endSys, 'ONCE'); % Create blocks for this expression in this system
+    createSys = regexprep(get_param(block, 'Parent'),['^' startSys], endSys, 'ONCE'); % Create blocks for this expression in this system
 end
     
 %% TODO look into the need for this
 % Make expression well formed
 expressionRHS = makeWellFormed(expressionRHS);
 
-% Create blocks for RHS of expression
-[outExpression, ~] = createExpression(expressionRHS, 1, 1, atomicExpr, memo, createSys);
-
-% Connect LHS to RHS
-if strcmp(blockType, 'SubSystem')
-    % Note: SubSystem already created
-    
-    assert(strcmp(handleType, 'port'))
-    
-    % Get the outport corresponding to the indicated port of the new 
-    % SubSystem.
-    subPort = atomicExpr(predicates(handle));
-    inoutBlock = subport2inoutblock(subPort);
-    assert(length(inoutBlock) == 1)
-    outportSubBlockHandle = get_param(inoutBlock{1}, 'Handle');
-    
-    % Connect outport to expression
-    logicOut = memo(outExpression);
-    if strcmp(get_param(logicOut, 'Type'), 'block')
+% If LHS is a key to inExprs, then we need to connect the RHS to the port
+% indicated in inExprs rather than to the LHS
+isInExpr = inExprs.isKey(outBlockID);
+if isInExpr
+    if strcmp(blockType, 'Inport')
+        % Connect Inport to the port indicated by inExprs and continue as
+        % though LHS was not a key to inExprs
+        
+        % outBlockInport is the port indicated by inExprs
+        ifInID = inExprs(outBlockID);
+        tokens = regexp(ifInID, ['(^.*)' '(_u)' '([1-9][0-9]*$)'], 'tokens');
+        ifID = tokens{1}{1};
+        inNum = str2double(tokens{1}{3});
+        ifHandle = getKeyFromVal(predicates, ifID);
+        
+        % Get the if block
+        if strcmp(get_param(ifHandle,'Type'), 'block')
+            ifBlock = getfullname(ifHandle);
+        else
+            ifBlock = get_param(ifHandle, 'Parent');
+        end
+        ifBlock = regexprep(ifBlock,['^' startSys], endSys, 'ONCE');
+        ifLineSys = get_param(ifBlock, 'Parent');
+        
+        % Get the inport for the LHS of the expression
+        outBlockInport = get_param(ifBlock, 'PortHandles');
+        outBlockInport = outBlockInport.Inport;
+        outBlockInport = outBlockInport(inNum);
+        
+        logicOut = regexprep(block,['^' startSys], endSys, 'ONCE');
         logicOutport = get_param(logicOut, 'PortHandles');
         logicOutport = logicOutport.Outport;
+            
+        add_line(ifLineSys, logicOutport, outBlockInport);
+        
+        isInExpr = false;
     else
-        logicOutport = logicOut;
+        blockType = 'foobar'; % The type we determined was irrelevant since the LHS will not be the output anymore
     end
-    outBlockInport = get_param(outportSubBlockHandle, 'PortHandles');
-    outBlockInport = outBlockInport.Inport;
+end
     
-    add_line(createSys, logicOutport, outBlockInport);
+% Create blocks for RHS of expression
+if ~isIfActionExpr
+    if strcmp(blockType, 'If')
+        return % The expression is encapsulated in the If block itself
+    else
+        [outExpression, ~] = createExpression(expressionRHS, 1, 1, atomicExpr, memo, createSys, startSys);
+    end
     
-%     % Get port number of that outport
-%     pNum = str2double(get_param(outportSubBlockHandle, 'Port'));
-%     
-%     % Get SubSystem outport with the same port number and set logicOutport
-%     %   to that.
-%     logicOutport = subPort;
-%     clear logicOutport
-%     subOutports = get_param(outBlock, 'PortHandles');
-%     subOutports = subOutports.Outport;
-%     for i = 1:length(subOutports)
-%         if get_param(subOutports(i), 'PortNumber') == pNum
-%             logicOutport = subOutports(i);
-%             break
-%         end
-%     end
-%     assert(exist('logicOutport','var'));
-else
-    % Create block for LHS of expression
-    outBlock = regexprep(block,['^' startSys], endSys, 'ONCE');
+    % Connect LHS to RHS
+    if strcmp(blockType, 'SubSystem')
+        % Note: SubSystem already created
+        
+        assert(strcmp(handleType, 'port'))
+        
+        % Get the outport corresponding to the indicated port of the new
+        % SubSystem.
+        subPort = atomicExpr(predicates(handle));
+        inoutBlock = subport2inoutblock(subPort);
+        assert(length(inoutBlock) == 1)
+        outportSubBlockHandle = get_param(inoutBlock{1}, 'Handle');
+        
+        % Connect outport to expression
+        logicOut = memo(outExpression);
+        if strcmp(get_param(logicOut, 'Type'), 'block')
+            logicOutport = get_param(logicOut, 'PortHandles');
+            logicOutport = logicOutport.Outport;
+        else
+            logicOutport = logicOut;
+        end
+        outBlockInport = get_param(outportSubBlockHandle, 'PortHandles');
+        outBlockInport = outBlockInport.Inport;
+        
+        add_line(createSys, logicOutport, outBlockInport);
+        
+        %     % Get port number of that outport
+        %     pNum = str2double(get_param(outportSubBlockHandle, 'Port'));
+        %
+        %     % Get SubSystem outport with the same port number and set logicOutport
+        %     %   to that.
+        %     logicOutport = subPort;
+        %     clear logicOutport
+        %     subOutports = get_param(outBlock, 'PortHandles');
+        %     subOutports = subOutports.Outport;
+        %     for i = 1:length(subOutports)
+        %         if get_param(subOutports(i), 'PortNumber') == pNum
+        %             logicOutport = subOutports(i);
+        %             break
+        %         end
+        %     end
+        %     assert(exist('logicOutport','var'));
+    else
+        % Create block for LHS of expression
+        if ~isInExpr
+            outBlock = regexprep(block,['^' startSys], endSys, 'ONCE');
+            try
+                outBlockHandle = add_block(block, outBlock);
+            catch ME
+                if (strcmp(ME.identifier,'Simulink:Commands:AddBlockCantAdd'))
+                    outBlockHandle = get_param(outBlock, 'Handle');
+                else
+                    rethrow(ME)
+                end
+            end
+        end % else the block is already created
+        % origOutBlockHandle = getKeyFromVal(predicates, outBlockID);
+        % origOutBlock = getfullname(origOutBlockHandle);
+        % % origOutName = get_param(origOutBlockHandle, 'Name');
+        % outBlock = regexprep(origOutBlock,['^' startSys], endSys, 'ONCE');
+        % outBlockHandle = add_block(origOutBlock, outBlock);
+        
+        logicOut = memo(outExpression);
+        
+        handleType = get_param(logicOut,'Type');
+        if strcmp(handleType, 'block')
+            logicOutport = get_param(logicOut, 'PortHandles');
+            logicOutport = logicOutport.Outport;
+        elseif strcmp(handleType, 'port')
+            logicOutport = logicOut;
+        else
+            error('Something went wrong')
+        end
+        
+        if strcmp(blockType, 'Inport')
+            outBlockInport = inoutblock2subport(outBlockHandle);
+        else
+            if ~isInExpr
+                outBlockInport = get_param(outBlockHandle, 'PortHandles');
+                outBlockInport = outBlockInport.Inport;
+            else
+                % outBlockInport is the port indicated by inExprs
+                ifInID = inExprs(outBlockID);
+                tokens = regexp(ifInID, ['(^.*)' '(_u)' '([1-9][0-9]*$)'], 'tokens');
+                ifID = tokens{1}{1};
+                inNum = str2double(tokens{1}{3});
+                ifHandle = getKeyFromVal(predicates, ifID);
+                
+                % Get the if block
+                if strcmp(get_param(ifHandle,'Type'), 'block')
+                    ifBlock = getfullname(ifHandle);
+                else
+                    ifBlock = get_param(ifHandle, 'Parent');
+                end
+                ifBlock = regexprep(ifBlock,['^' startSys], endSys, 'ONCE');
+                
+                % Get the inport for the LHS of the expression
+                outBlockInport = get_param(ifBlock, 'PortHandles');
+                outBlockInport = outBlockInport.Inport;
+                outBlockInport = outBlockInport(inNum);
+            end
+        end
+        
+        add_line(createSys, logicOutport, outBlockInport);
+    end
+else % is an if action subsystem expression
+    % Create the ActionPort
+    origActionPortBlock = find_system(block, 'SearchDepth', 1, 'BlockType', 'ActionPort'); % Find the original ActionPort
+    origActionPortBlock = origActionPortBlock{1};
+    newActionPortBlock = regexprep(origActionPortBlock, ['^' startSys], endSys, 'ONCE');
+
     try
-        outBlockHandle = add_block(block, outBlock);
+        add_block(origActionPortBlock, newActionPortBlock);
     catch ME
         if (strcmp(ME.identifier,'Simulink:Commands:AddBlockCantAdd'))
-            outBlockHandle = get_param(outBlock, 'Handle');
+            % Do nothing
         else
             rethrow(ME)
         end
     end
-    % origOutBlockHandle = getKeyFromVal(predicates, outBlockID);
-    % origOutBlock = getfullname(origOutBlockHandle);
-    % % origOutName = get_param(origOutBlockHandle, 'Name');
-    % outBlock = regexprep(origOutBlock,['^' startSys], endSys, 'ONCE');
-    % outBlockHandle = add_block(origOutBlock, outBlock);
     
-    logicOut = memo(outExpression);
+    % Connect the If port to the SubSystem's action port
     
-    handleType = get_param(logicOut,'Type');
-    if strcmp(handleType, 'block')
-        logicOutport = get_param(logicOut, 'PortHandles');
-        logicOutport = logicOutport.Outport;
-    elseif strcmp(handleType, 'port')
-        logicOutport = logicOut;
-    else
-        error('Something went wrong')
-    end
+    % Get the action port
+    subPort = atomicExpr(predicates(handle));
+    ifActionBlock = get_param(subPort, 'Parent');
+    subPorts = get_param(ifActionBlock, 'PortHandles');
+    ifActionPort = subPorts.Ifaction;
+            
+    % Get the relevant if port
     
-    if strcmp(blockType, 'Inport')
-        outBlockInport = inoutblock2subport(outBlockHandle);
-    else
-        outBlockInport = get_param(outBlockHandle, 'PortHandles');
-        outBlockInport = outBlockInport.Inport;
-    end
+    % Recall: ifPat = ['(^|[^0-9A-z_])(', 'If_port_', '(Sub_|)', '[1-9]([0-9]*|)', ')([^0-9A-z_]|$)']; % Starts and ends with non-alphanumeric chars, may contain 'Sub_', must have a number at the end
+    ifID = regexp(expressionRHS, ifPat, 'tokens');
+    ifID = ifID{1}{2};
+    ifPortHandle = atomicExpr(ifID);
     
-    add_line(createSys, logicOutport, outBlockInport);
+%     pNum = get_param(handle, 'PortNumber');
+%     ifPortHandle = find_system(, 'FindAll', 'on', 'Type', 'port', 'PortType', 'outport', 'PortNumber', pNum);
+%     assert(length(ifPortHandle) == 1)
+    
+    add_line(createSys, ifPortHandle, ifActionPort);
 end
 end
 
-function [subExprOut, outIndex] = createExpression(expression, startIndex, index, atomicExpr, memo, sys)
+function [subExprOut, outIndex] = createExpression(expression, startIndex, index, atomicExpr, memo, sys, startSys)
 %list of characters recognzied as valid connective characters.
 connectives = {'&', '~', '=', '<', '>', '|'};
 
@@ -142,7 +258,7 @@ while (index <= length(expression))
     switch character
         case '('
             %recursively call the function to create blocks for the inside of expression
-            [subExpr, index] = createExpression(expression, index, index + 1, atomicExpr, memo, sys);
+            [subExpr, index] = createExpression(expression, index, index + 1, atomicExpr, memo, sys, startSys);
             index = index + 1;
         case ')'
             subExprOut = subExpr;
@@ -159,7 +275,7 @@ while (index <= length(expression))
             
             if type == 2 % Unary operator
                 % Create the NOT logical block
-                [subExprToNegate, newIndex] = createExpression(expression, index + 1, index + 1, atomicExpr, memo, sys);
+                [subExprToNegate, newIndex] = createExpression(expression, index + 1, index + 1, atomicExpr, memo, sys, startSys);
                 
                 % Get the full expression of the logical operation
                 if newIndex > length(expression)
@@ -221,7 +337,7 @@ while (index <= length(expression))
                     nextIndex = index+length(connective)+1;
                     
                     %get the sub expression of the second operand
-                    [operand, newIndex] = createExpression(expression, nextIndex - 1, nextIndex, atomicExpr, memo, sys);
+                    [operand, newIndex] = createExpression(expression, nextIndex - 1, nextIndex, atomicExpr, memo, sys, startSys);
                     
                     %get the full expression of the logical
                     %operation
@@ -281,7 +397,7 @@ while (index <= length(expression))
                     
                     %Find the subexpression for the secnod operand
                     nextIndex = index+length(connective);
-                    [operand, newIndex] = createExpression(expression, nextIndex, nextIndex, atomicExpr, memo, sys);
+                    [operand, newIndex] = createExpression(expression, nextIndex, nextIndex, atomicExpr, memo, sys, startSys);
                     
                     %Get the full expression of the operation
                     try
@@ -341,7 +457,7 @@ while (index <= length(expression))
                 nextIndex = index+length(connective);
                 
                 %get the logical expression of the second operand
-                [operand, newIndex] = createExpression(expression, nextIndex, nextIndex, atomicExpr, memo, sys);
+                [operand, newIndex] = createExpression(expression, nextIndex, nextIndex, atomicExpr, memo, sys, startSys);
                 
                 %get the full expression of the relational
                 %operation
@@ -408,8 +524,13 @@ while (index <= length(expression))
                 isConstant = false;
             end
             
-            if isConstant && ~isKey(atomicExpr, val)
-                atomicBlock = add_block('built-in/Constant', [sys '/generated_constant_' val], 'Value', val);
+            if isConstant && ~isKey(atomicExpr, val) && ~strcmp(startSys, sys)
+                atomicBlock = add_block('built-in/Constant', [sys '/generated_' val '_constant'], 'MakeNameUnique', 'on', 'Value', val);
+                % Don't save in atomicExpr because that's used at top level
+                % specifically
+                %% TODO extend atomicExpr to work beyond top-level
+            elseif isConstant && ~isKey(atomicExpr, val)
+                atomicBlock = add_block('built-in/Constant', [sys '/generated_' val '_constant'], 'Value', val);
                 atomicExpr(val) = atomicBlock;
             else
                 atomicBlock = atomicExpr(atomic{1});

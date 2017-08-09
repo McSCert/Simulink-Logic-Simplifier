@@ -25,12 +25,15 @@ origSys = get_param(blocks{1}, 'Parent');
 
 % Keep a list of blocks/ports that we have expressions for
 predicates = containers.Map('KeyType','double','ValueType','char');
+% Keep record of the inports that a source goes to for non obvious block
+% types (e.g. If blocks)
+inExprs = containers.Map('KeyType','char','ValueType','char'); % Key is a value from predicates, Value is a char indicating another value from predicates as well as an inport
 
 % Get expression for each block in form:
 % 'blockID = expr', where expr is an expression which may involve other blockIDs
 % --getExps2Simp(blx)
 % ---output: cell array of expressions, 1 for each of blx, 1 for each subsystem input, 1 for each subsystem output
-tempExpressions = getBlockExpressions(origSys, blocks, predicates);
+tempExpressions = getBlockExpressions(origSys, blocks, predicates, inExprs);
 
 % % Find which expressions should be subbed into others
 % subsIdx = whichExpressionsToSub(tempExpressions); % subsI is indices from tempExpressions
@@ -59,7 +62,7 @@ if strcmp(SUBSYSTEM_RULE, 'blackbox')
     % their contents.
     for i = length(expressionsToGenerate):-1:1
         [lhs, ~] = getExpressionLhsRhs(expressionsToGenerate{i});
-        handle = predicates(getKeyFromVal(lhs));
+        handle = getKeyFromVal(predicates, lhs);
         
         handleType = get_param(handle,'Type');
 
@@ -128,8 +131,34 @@ else
 %             newOut = add_block(outport, newOutport);
 %             atomics(expressionID) = newOut;
             
+            % Add SubSystem port to atomics
             expressionID = predicates(handle);
             atomics(expressionID) = inoutblock2subport(newOutport);
+        elseif strcmp(blockType, 'If') || strcmp(blockType, 'SwitchCase')
+            % Create If/SwitchCase block in new system
+            newBlock = regexprep(block,['^' origSys], sysName, 'ONCE');
+            try
+                newBlockHandle = add_block(block, newBlock);
+            catch ME
+                if (strcmp(ME.identifier,'Simulink:Commands:AddBlockCantAdd'))
+                    newBlockHandle = get_param(newBlock, 'Handle');
+                else
+                    rethrow(ME)
+                end
+            end
+            
+            % Since the block was copied we won't need to worry about 
+            % having the right number of ports
+            
+            % Add If port to atomics
+            assert(strcmp(handleType, 'port'))
+            pNum = get_param(handle, 'PortNumber');
+            
+            ifPortHandle = find_system(newBlockHandle, 'FindAll', 'on', 'Type', 'port', 'PortType', 'outport', 'PortNumber', pNum);
+            assert(length(ifPortHandle) == 1)
+            
+            expressionID = predicates(handle);
+            atomics(expressionID) = ifPortHandle;
         end
     end
 end
@@ -138,7 +167,7 @@ memo = containers.Map();
 
 % Create blocks for each expression
 for i = 1:length(expressionsToGenerate)
-    createLogicBlocks4(expressionsToGenerate{i}, atomics, memo, predicates, origSys, sysName);
+    createLogicBlocks4(expressionsToGenerate{i}, atomics, memo, predicates, inExprs, origSys, sysName);
 end
 
 % Create blocks for each expression
@@ -269,15 +298,20 @@ end
 end
 
 function atomics = copySystemSubSystems(startSys, endSys, atomics, predicates)
-subsystems = find_system(startSys, 'SearchDepth', 1, 'BlockType', 'SubSystem'); % List of inports in the system
+subsystems = find_system(startSys, 'SearchDepth', 1, 'BlockType', 'SubSystem', 'Parent', startSys); % List of SubSystems in the system
 for i = 1:length(subsystems)
     newBlock = regexprep(subsystems{i},['^' startSys], endSys, 'ONCE');
     newSub = add_block(subsystems{i}, newBlock);
     
+    oldSubOutports = get_param(subsystems{i}, 'PortHandles');
+    oldSubOutports = oldSubOutports.Outport;
+    
     subOutports = get_param(newSub, 'PortHandles');
     subOutports = subOutports.Outport;
+    
+    assert(length(oldSubOutports) == length(subOutports))
     for j = 1:length(subOutports)
-        expressionID = predicates(subOutports(j));
+        expressionID = predicates(oldSubOutports(j));
         atomics(expressionID) = subOutports(j);
     end
 end
