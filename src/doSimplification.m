@@ -108,8 +108,9 @@ else
             % Create SubSystem block in new system
             newBlock = regexprep(block,['^' origSys], sysName, 'ONCE');
             try
-                newBlockHandle = add_block(block, newBlock);
-                Simulink.SubSystem.deleteContents(newBlockHandle)
+%                 newBlockHandle = add_block(block, newBlock);
+%                 Simulink.SubSystem.deleteContents(newBlockHandle)
+                add_block('built-in/SubSystem', newBlock);
                 atomics = copySystemInports(block, newBlock, atomics, predicates);
             catch ME
                 if (strcmp(ME.identifier,'Simulink:Commands:AddBlockCantAdd'))
@@ -311,8 +312,10 @@ for i = 1:length(subsystems)
     
     assert(length(oldSubOutports) == length(subOutports))
     for j = 1:length(subOutports)
-        expressionID = predicates(oldSubOutports(j));
-        atomics(expressionID) = subOutports(j);
+        if isKey(predicates, oldSubOutports(j))
+            expressionID = predicates(oldSubOutports(j));
+            atomics(expressionID) = subOutports(j);
+        end
     end
 end
 end
