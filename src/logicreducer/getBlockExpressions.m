@@ -109,7 +109,7 @@ if ~predicates.isKey(handle)
             end
         case {'Logic', 'RelationalOperator'}
             [newExprs, ~] = getLogicExpr(startSystem, handle, handleID, handleType, block, predicates, inExprs);
-        case 'Outport'
+        case {'Outport', 'Goto'}
             % Get the source
             srcPorts = getSrcPorts(block); % DstPort of a block which connects to this
             assert(length(srcPorts) <= 1, 'Outport not expected to have multiple sources.')
@@ -126,6 +126,17 @@ if ~predicates.isKey(handle)
         case 'UnitDelay'
         case 'Delay'
         case 'From'
+            % Get corresponding Goto block
+            %goto = getGoto4From(block);
+            gotoInfo = get_param(block,'GotoBlock');
+            srcHandle = gotoInfo.handle;
+            
+            % Get Goto expressions
+            [srcExprs, srcID] = getExpr(startSystem, srcHandle, predicates, inExprs);
+            
+            % Record this block's expressions
+            expr = [handleID ' = ' srcID]; % This block/port's expression with respect to its sources
+            newExprs = {expr, srcExprs{1:end}}; % Expressions involved in this block's expressions
         case 'Switch'
         case 'Deadzone'
         case 'Merge'
@@ -241,7 +252,7 @@ end
 
 function [newExprs, handleID] = getSubSystemExpr(startSystem, handle, handleID, handleType, block, predicates, inExprs)
 
-%% TODO, consider if it's an ifaction subsystem and such
+%% TODO, consider other cases such as with triggers
 
 if strcmp(handleType, 'block')
     ports = get_param(block, 'PortHandles');
