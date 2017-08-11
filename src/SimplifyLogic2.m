@@ -65,12 +65,12 @@ AutoLayout(getfullname(logicSys));
 %Zoom on new system
 set_param(getfullname(logicSys), 'Zoomfactor', '100');
 
-% Do layout and zoom on SubSystems as well
-subsystems = find_system(logicSys, 'BlockType', 'SubSystem');
-for i = 1:length(subsystems)
-    AutoLayout(getfullname(subsystems(i)));
-    set_param(getfullname(subsystems(i)), 'Zoomfactor', '100');
+if ~strcmp(SUBSYSTEM_RULE, 'blackbox')
+    % Do layout and zoom on SubSystems as well
+    subsystems = find_system(logicSys, 'BlockType', 'SubSystem', 'Mask', 'off');
+    for i = 1:length(subsystems)
+        AutoLayout(getfullname(subsystems(i)));
+        set_param(getfullname(subsystems(i)), 'Zoomfactor', '100');
+    end
 end
-
-
 end
