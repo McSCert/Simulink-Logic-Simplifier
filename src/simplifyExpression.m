@@ -40,6 +40,8 @@ expr = swap4Symengine(expr);
 prev = expr; % Can use this to check equivalence between steps
 expr = evalin(symengine, ['simplify(' prev ', condition)']);
 expr = char(expr); % Convert from symbolic type to string
+% Note this converts 'X == 1 | X == 2' to 'X in {1, 2}' <- at the moment
+% this causes errors
 
 % Let MATLAB simplify the expression as a logical expression
 %prev = expr; % Can use this to check equivalence between steps
