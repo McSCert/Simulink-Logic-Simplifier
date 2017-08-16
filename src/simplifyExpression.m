@@ -1,6 +1,6 @@
 function expr = simplifyExpression(expr)
 % SIMPLIFYEXPRESSION Takes an expression extracted from a Simulink system
-%   and attempts to simplify it (though what is 'simple' is not not well
+%   and attempts to simplify it (though what is 'simple' is not too well
 %   defined).
 %
 %   Inputs:
@@ -15,15 +15,11 @@ function expr = simplifyExpression(expr)
 expr = strrep(expr,'<>','~=');
 
 % Evaluate parts that MATLAB can already evaluate
-% TODO fix bug that occurs if TRUE is contained within the name of
-% another identifier. This situation may be nearly impossible or simply
-% unlikely to occur.
 
-% TODO:
-% comment these lines while checking for errors as it may hide some
-% uncomment for releases
-expr = strrep(expr, 'TRUE', '1'); % Replace TRUE/FALSE with 1/0 so that MATLAB can evaluate them
-expr = strrep(expr, 'FALSE', '0');
+truePat = '(^|[^0-9A-z_])(TRUE)([^0-9A-z_]|$)'; % Replace TRUE/FALSE with 1/0 so that MATLAB can evaluate them
+falsePat = '(^|[^0-9A-z_])(FALSE)([^0-9A-z_]|$)';
+expr = regexprep(expr, truePat, '1');
+expr = regexprep(expr, falsePat, '0');
 expr = evaluateConstOps(expr);
 
 % Add brackets to remove potential ambiguity
