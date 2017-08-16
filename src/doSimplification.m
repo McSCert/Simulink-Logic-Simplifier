@@ -114,7 +114,7 @@ else
                 atomics = copySystemInports(block, newBlock, atomics, predicates);
             catch ME
                 if (strcmp(ME.identifier,'Simulink:Commands:AddBlockCantAdd'))
-                    newBlockHandle = get_param(newBlock, 'Handle');
+%                     newBlockHandle = get_param(newBlock, 'Handle');
                 else
                     rethrow(ME)
                 end
