@@ -15,10 +15,9 @@ function expr = simplifyExpression(expr)
 expr = strrep(expr,'<>','~=');
 
 % Evaluate parts that MATLAB can already evaluate
-
-truePat = '(^|[^0-9A-z_])(TRUE)([^0-9A-z_]|$)'; % Replace TRUE/FALSE with 1/0 so that MATLAB can evaluate them
-falsePat = '(^|[^0-9A-z_])(FALSE)([^0-9A-z_]|$)';
-expr = regexprep(expr, truePat, '1');
+truePat = identifierPattern('TRUE');
+falsePat = identifierPattern('FALSE');
+expr = regexprep(expr, truePat, '1'); % Replace TRUE/FALSE with 1/0 so that MATLAB can evaluate them
 expr = regexprep(expr, falsePat, '0');
 expr = evaluateConstOps(expr);
 
@@ -36,7 +35,7 @@ expr = swap4Symengine(expr);
 prev = expr; % Can use this to check equivalence between steps
 expr = evalin(symengine, ['simplify(' prev ', condition)']);
 expr = char(expr); % Convert from symbolic type to string
-% Note this converts 'X == 1 | X == 2' to 'X in {1, 2}' <- at the moment
+% Note the above converts 'X == 1 | X == 2' to 'X in {1, 2}' <- at the moment
 % this causes errors
 
 % Let MATLAB simplify the expression as a logical expression
