@@ -199,7 +199,7 @@ function [valid, result] = evalInEmptyWS(expression)
 try
     % Variable in expression -> invalid
     % The only variable in the workspace is expression so:
-    assert(isempty(findstr(expression,'expression')))
+    assert(~contains(expression,'expression'))
     
     % Expression does not evaluate -> invalid
     result = eval(expression); % Assumes no variables in the workspace appear in it because we've already checked
