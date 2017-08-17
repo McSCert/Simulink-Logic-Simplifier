@@ -138,7 +138,28 @@ if ~predicates.isKey(handle)
             expr = [handleID ' = ' srcID]; % This block/port's expression with respect to its sources
             newExprs = {expr, srcExprs{1:end}}; % Expressions involved in this block's expressions
         case 'Switch'
+            lines = get_param(block, 'LineHandles');
+            lines = lines.Inport;
+            assert(length(lines) == 3)
+            
+            % Get source expressions
+            srcHandle1 = get_param(lines(1), 'SrcPortHandle');
+            srcHandle2 = get_param(lines(2), 'SrcPortHandle');
+            srcHandle3 = get_param(lines(3), 'SrcPortHandle');
+            [srcExprs1, srcID1] = getExpr(startSystem, srcHandle1, predicates, inExprs);
+            [srcExprs2, srcID2] = getExpr(startSystem, srcHandle2, predicates, inExprs);
+            [srcExprs3, srcID3] = getExpr(startSystem, srcHandle3, predicates, inExprs);
+            
+            criteria_param = get_param(block, 'Criteria');
+            thresh = get_param(block, 'Threshold');
+            criteria = strrep(strrep(criteria_param, 'u2 ', ['(' srcID2 ')']), 'Threshold', thresh);
+
+            % Record source expressions
+            expr = [handleID ' = ' '(((' criteria ')&(' srcID1 '))|(~(' criteria ')&(' srcID3 ')))']; % This block/port's expression with respect to its 1st source
+            newExprs = {expr, srcExprs1{1:end}, srcExprs2{1:end}, srcExprs3{1:end}}; % Expressions involved in this block's expressions
+            
         case 'Deadzone'
+            % Treat as blackbox
         case 'Merge'
         case 'DataStoreRead'
         case 'DataStoreWrite'
