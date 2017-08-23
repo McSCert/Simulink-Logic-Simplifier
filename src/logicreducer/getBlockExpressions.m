@@ -158,8 +158,12 @@ if ~predicates.isKey(handle)
             criteria = strrep(strrep(criteria_param, 'u2 ', ['(' srcID2 ')']), 'Threshold', thresh);
 
             % Record source expressions
-            expr = [handleID ' = ' '(((' criteria ')*(' srcID1 '))+(~(' criteria ')*(' srcID3 ')))']; % This block/port's expression with respect to its 1st source
-            %expr = [handleID ' = ' '(((' criteria ')&(' srcID1 '))|(~(' criteria ')&(' srcID3 ')))']; % srcID1 and 3 may not be logical so this doesn't work
+            mult_add_available = false;
+            if mult_add_available
+                expr = [handleID ' = ' '(((' criteria ')*(' srcID1 '))+(~(' criteria ')*(' srcID3 ')))']; % This block/port's expression with respect to its 1st source
+            else
+                expr = [handleID ' = ' '(((' criteria ')&(' srcID1 '))|(~(' criteria ')&(' srcID3 ')))']; % srcID1 and 3 may not be logical so this doesn't work
+            end
             newExprs = {expr, srcExprs1{1:end}, srcExprs2{1:end}, srcExprs3{1:end}}; % Expressions involved in this block's expressions
             
         case 'Deadzone'
