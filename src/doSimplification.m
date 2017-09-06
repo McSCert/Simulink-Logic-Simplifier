@@ -39,7 +39,7 @@ tempExpressions = getBlockExpressions(origSys, blocks, predicates, inExprs);
 % subsIdx = whichExpressionsToSub(tempExpressions); % subsI is indices from tempExpressions
 % % Substitute expressions each other
 % startingExpressions = substituteExpressions(tempExpressions, subsIdx);
-startingExpressions = substituteExpressions2(tempExpressions, blocks, predicates);
+startingExpressions = substituteExpressions(tempExpressions, blocks, predicates);
 
 % Simplify each expression
 endingExpressions = cell(1,length(startingExpressions));
@@ -168,7 +168,7 @@ memo = containers.Map();
 
 % Create blocks for each expression
 for i = 1:length(expressionsToGenerate)
-    createLogicBlocks4(expressionsToGenerate{i}, atomics, memo, predicates, inExprs, origSys, sysName);
+    createLogicBlocks(expressionsToGenerate{i}, atomics, memo, predicates, inExprs, origSys, sysName);
 end
 
 % Create blocks for each expression
