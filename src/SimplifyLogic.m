@@ -24,6 +24,9 @@ REPLACE_EXISTING_MODEL = 'off'; % When creating the model for the simplification
 parent = get_param(blocks{1}, 'parent'); % Get name of system the blocks are in
 origModel = bdroot(blocks{1});
 
+assert(strcmp(get_param(origModel, 'UnderspecifiedInitializationDetection'), 'Classic'), ...
+    ['The ' mfilename ' function only currently supports the ''UnderspecifiedInitializationDetection'' model parameter being set to ''Classic''.'])
+
 % Create a new system for the simplification
 parentName = get_param(parent, 'Name');
 try
