@@ -19,9 +19,10 @@ function [newExpr, oldExpr] = SimplifyLogic2(blocks)
 DELETE_UNUSED = getLogicSimplifierConfig('delete_unused', 'off'); % Indicates whether or not to delete blocks which are unused in the final model
 SUBSYSTEM_RULE = getLogicSimplifierConfig('subsystem_rule', 'blackbox'); % Indicates how to address subsystems in the simplification process
 % Non-config constant:
-REPLACE_EXISTING_MODEL = 'on'; % When creating the model for the simplification, it will replace a file with the same name if 'on' otherwise it will error
+REPLACE_EXISTING_MODEL = 'off'; % When creating the model for the simplification, it will replace a file with the same name if 'on' otherwise it will error
 
 parent = get_param(blocks{1}, 'parent'); % Get name of system the blocks are in
+origModel = bdroot(blocks{1});
 
 % Create a new system for the simplification
 parentName = get_param(parent, 'Name');
@@ -38,6 +39,10 @@ catch ME
     end
 end
 open_system(logicSys);
+set_param(logicSys, 'Solver', get_param(origModel, 'Solver'));
+set_param(logicSys, 'SolverType', get_param(origModel, 'SolverType'));
+set_param(logicSys, 'ProdHWDeviceType', get_param(origModel, 'ProdHWDeviceType'));
+set_param(logicSys, 'UnderspecifiedInitializationDetection', get_param(origModel, 'UnderspecifiedInitializationDetection'));
 
 [newExpr, oldExpr] = doSimplification(logicSys, blocks);
 
