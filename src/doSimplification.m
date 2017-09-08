@@ -111,6 +111,10 @@ else
 %                 newBlockHandle = add_block(block, newBlock);
 %                 Simulink.SubSystem.deleteContents(newBlockHandle)
                 add_block('built-in/SubSystem', newBlock);
+                foreColor = get_param(block, 'ForegroundColor');
+                backColor = get_param(block, 'BackgroundColor');
+                set_param(newBlock, 'ForegroundColor', foreColor)
+                set_param(newBlock, 'BackgroundColor', backColor)
                 atomics = copySystemInports(block, newBlock, atomics, predicates);
             catch ME
                 if (strcmp(ME.identifier,'Simulink:Commands:AddBlockCantAdd'))
