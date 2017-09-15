@@ -112,11 +112,17 @@ else
 %                 Simulink.SubSystem.deleteContents(newBlockHandle)
                 add_block('built-in/SubSystem', newBlock);
                 
-                % Preserve block color
+                % Preserve some block parameters from the original SubSystem
                 foreColor = get_param(block, 'ForegroundColor');
                 backColor = get_param(block, 'BackgroundColor');
+                showName = get_param(block, 'ShowName');
+                orientation = get_param(block, 'Orientation');
+                namePlacement = get_param(block, 'NamePlacement');
                 set_param(newBlock, 'ForegroundColor', foreColor)
                 set_param(newBlock, 'BackgroundColor', backColor)
+                set_param(newBlock, 'ShowName', showName)
+                set_param(newBlock, 'Orientation', orientation)
+                set_param(newBlock, 'NamePlacement', namePlacement);
                 
                 % If a SubSystem block is masked, then its background color
                 % will not use a gradient, otherwise it will. So if the 
