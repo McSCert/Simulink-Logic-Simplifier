@@ -111,10 +111,20 @@ else
 %                 newBlockHandle = add_block(block, newBlock);
 %                 Simulink.SubSystem.deleteContents(newBlockHandle)
                 add_block('built-in/SubSystem', newBlock);
+                
+                % Preserve block color
                 foreColor = get_param(block, 'ForegroundColor');
                 backColor = get_param(block, 'BackgroundColor');
                 set_param(newBlock, 'ForegroundColor', foreColor)
                 set_param(newBlock, 'BackgroundColor', backColor)
+                
+                % If a SubSystem block is masked, then its background color
+                % will not use a gradient, otherwise it will. So if the 
+                % SubSystem in the old model used a mask, this part of the
+                % appearance will not be maintained (because we don't want
+                % to create a new mask for the sole purpose of imitating
+                % appearance).
+                
                 atomics = copySystemInports(block, newBlock, atomics, predicates);
             catch ME
                 if (strcmp(ME.identifier,'Simulink:Commands:AddBlockCantAdd'))
