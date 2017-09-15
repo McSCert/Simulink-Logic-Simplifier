@@ -1,4 +1,4 @@
-function [newExpr, oldExpr] = SimplifyLogic2(blocks)
+function [newExpr, oldExpr] = SimplifyLogic(blocks)
 % SIMPLIFYLOGIC A function that takes a set of logic blocks and simplifies
 %   them.
 %
