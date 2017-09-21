@@ -44,7 +44,7 @@ end
 parentName = get_param(parent, 'Name');
 logicSysName = [parentName '_newLogic'];
 try
-logicSys = new_system_makenameunique(logicSysName);
+    logicSys = new_system_makenameunique(logicSysName);
 catch ME
     if strcmp(ME.identifier, 'Simulink:LoadSave:InvalidBlockDiagramName')
         % Name invalid so use some default
@@ -127,7 +127,7 @@ if verify
         catch ME
             if strcmp(ME.identifier, 'Simulink:LoadSave:InvalidBlockDiagramName')
                 % Name invalid so use some default
-                copySysName = ['DefaultModel'];
+                copySysName = 'DefaultModel';
                 copySys = new_system_makenameunique(copySysName, 'Model', parent);
                 copySysName = getfullname(copySys);
             else
