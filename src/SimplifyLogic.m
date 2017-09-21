@@ -36,38 +36,26 @@ end
 parent = get_param(blocks{1}, 'parent'); % Get name of system the blocks are in
 origModel = bdroot(blocks{1});
 
-%['The ' mfilename ' function only currently supports the ''UnderspecifiedInitializationDetection'' model parameter being set to ''Classic''.']);
 if ~(strcmp(get_param(origModel, 'UnderspecifiedInitializationDetection'), 'Classic'))
     disp(['Warning: The ' mfilename ' function may result in unexpected results if the ''UnderspecifiedInitializationDetection'' model parameter is not set to ''Classic'', please check the results carefully.'])
 end
 
-
-% Create a new system for the simplification
+% Create model for the simplification
 parentName = get_param(parent, 'Name');
-logicSys = [parentName '_newLogic'];
+logicSysName = [parentName '_newLogic'];
+if strcmp(REPLACE_EXISTING_MODEL, 'on')
+    close_system(logicSysName, 0);
+end
 try
-    if strcmp(REPLACE_EXISTING_MODEL, 'off')
-        logicSys = new_system(logicSys);
-    elseif strcmp(REPLACE_EXISTING_MODEL, 'on')
-        saveFlag = 0; % i.e. don't save
-        close_system(logicSys, saveFlag);
-        logicSys = new_system(logicSys);
-    else
-        error(['Error in ' mfilename ', REPLACE_EXISTING_MODEL should be ''on'' or ''off''.']);
-    end
+    logicSys = new_system(logicSysName);
 catch ME
-    if ~strcmp(ME.identifier, 'Simulink:LoadSave:InvalidBlockDiagramName')
+    if strcmp(ME.identifier, 'Simulink:LoadSave:InvalidBlockDiagramName')
         % Name invalid so use some default
-        logicSys = 'Default_SimplifiedSys';
-        if strcmp(REPLACE_EXISTING_MODEL, 'off')
-            logicSys = new_system(logicSys);
-        elseif strcmp(REPLACE_EXISTING_MODEL, 'on')
-            saveFlag = 0; % i.e. don't save
-            close_system(logicSys, saveFlag);
-            logicSys = new_system(logicSys);
-        else
-            error(['Error in ' mfilename ', REPLACE_EXISTING_MODEL should be ''on'' or ''off''.']);
+        logicSysName = ['Default' '_newLogic'];
+        if strcmp(REPLACE_EXISTING_MODEL, 'on')
+            close_system(logicSysName, 0);
         end
+        logicSys = new_system(logicSysName);
     else
         rethrow(ME)
     end
@@ -115,60 +103,63 @@ if ~strcmp(SUBSYSTEM_RULE, 'blackbox')
     end
 end
 
-% Save the resulting model
+% Save the resulting model - DO NOT MODIFY IT FURTHER
 startDir = pwd;
 resultsDir = 'Logic_Simplifier_Results';
 mkdir(resultsDir) % Where we'll save results
-cd([startDir '/' resultsDir])
-save_system(logicSys)
-cd(startDir)
+addpath(resultsDir) % So that the saved model(s) is/are still on the path
+try
+    cd([startDir '/' resultsDir])
+    save_system(logicSys)
+    cd(startDir)
+catch ME
+    cd(startDir)
+    rethrow(ME)
+end
 
+% Handle verification if needed
 if verify
     if strcmp(parent, bdroot(parent)) % parent is the whole model
-        %% TODO - Call verification function on logicSys and parent
+        % Call verification function on logicSys and parent
+        makeVerificationModel([bdroot(parent) '_Verify'], getfullname(logicSys), bdroot(parent));
     else
         % Extract subsystem to new model
 
-        copySys = parentName;
-        try
-            if strcmp(REPLACE_EXISTING_MODEL, 'off')
-                copySys = new_system(copySys, 'Model', parent);
-            elseif strcmp(REPLACE_EXISTING_MODEL, 'on')
-                saveFlag = 0; % i.e. don't save
-                close_system(copySys, saveFlag);
-                copySys = new_system(copySys, 'Model', parent);
-            else
-                error(['Error in ' mfilename ', REPLACE_EXISTING_MODEL should be ''on'' or ''off''.']);
-            end
+        copySysName = parentName;
+        if strcmp(REPLACE_EXISTING_MODEL, 'on')
+            close_system(copySysName, 0);
+        end
+        try            
+            copySys = new_system(copySysName, 'Model', parent);
         catch ME
-            if ~strcmp(ME.identifier, 'Simulink:LoadSave:InvalidBlockDiagramName')
+            if strcmp(ME.identifier, 'Simulink:LoadSave:InvalidBlockDiagramName')
                 % Name invalid so use some default
-                copySys = 'Deafult_CopiedSys';
-                if strcmp(REPLACE_EXISTING_MODEL, 'off')
-                    copySys = new_system(copySys, 'Model', parent);
-                elseif strcmp(REPLACE_EXISTING_MODEL, 'on')
-                    saveFlag = 0; % i.e. don't save
-                    close_system(copySys, saveFlag);
-                    copySys = new_system(copySys, 'Model', parent);
-                else
-                    error(['Error in ' mfilename ', REPLACE_EXISTING_MODEL should be ''on'' or ''off''.']);
+                copySysName = 'Deafult_CopiedSys';
+                if strcmp(REPLACE_EXISTING_MODEL, 'on')
+                    close_system(copySysName, 0);
                 end
+                copySys = new_system(copySysName, 'Model', parent);
             else
                 rethrow(ME)
             end
         end
         open_system(copySys)
-
         set_param(copySys, 'Solver', get_param(origModel, 'Solver'));
         set_param(copySys, 'SolverType', get_param(origModel, 'SolverType'));
         set_param(copySys, 'ProdHWDeviceType', get_param(origModel, 'ProdHWDeviceType'));
         set_param(copySys, 'UnderspecifiedInitializationDetection', get_param(origModel, 'UnderspecifiedInitializationDetection'));
         
-        cd([startDir '/' resultsDir])
-        save_system(copySys)
-        cd(startDir)
+        try
+            cd([startDir '/' resultsDir])
+            save_system(copySys)
+            cd(startDir)
+        catch ME
+            cd(startDir)
+            rethrow(ME)
+        end
 
-        %% TODO - Call verification function on logicSys and copySys
+        % Call verification function on logicSys and copySys
+        makeVerificationModel([getfullname(copySys) '_Verify'], getfullname(logicSys), getfullname(copySys));
     end
 end
 
