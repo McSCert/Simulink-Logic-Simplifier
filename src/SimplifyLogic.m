@@ -22,8 +22,6 @@ function [newExpr, oldExpr] = SimplifyLogic(blocks, varargin)
 % Constants:
 DELETE_UNUSED = getLogicSimplifierConfig('delete_unused', 'off'); % Indicates whether or not to delete blocks which are unused in the final model
 SUBSYSTEM_RULE = getLogicSimplifierConfig('subsystem_rule', 'blackbox'); % Indicates how to address subsystems in the simplification process
-% Non-config constant:
-REPLACE_EXISTING_MODEL = 'on'; % When creating the model for the simplification, it will replace a file with the same name if 'on' otherwise it will error
 
 if nargin == 1
     verify = false;
@@ -43,23 +41,18 @@ end
 % Create model for the simplification
 parentName = get_param(parent, 'Name');
 logicSysName = [parentName '_newLogic'];
-if strcmp(REPLACE_EXISTING_MODEL, 'on')
-    close_system(logicSysName, 0);
-end
 try
-    logicSys = new_system(logicSysName);
+logicSys = new_system_makenameunique(logicSysName);
 catch ME
     if strcmp(ME.identifier, 'Simulink:LoadSave:InvalidBlockDiagramName')
         % Name invalid so use some default
-        logicSysName = ['Default' '_newLogic'];
-        if strcmp(REPLACE_EXISTING_MODEL, 'on')
-            close_system(logicSysName, 0);
-        end
-        logicSys = new_system(logicSysName);
+        logicSysName = ['DefaultModel' '_newLogic'];
+        logicSys = new_system_makenameunique(logicSysName);
     else
         rethrow(ME)
     end
 end
+clear logicSysName % Use logicSys
 open_system(logicSys)
 set_param(logicSys, 'Solver', get_param(origModel, 'Solver'));
 set_param(logicSys, 'SolverType', get_param(origModel, 'SolverType'));
@@ -126,19 +119,15 @@ if verify
         % Extract subsystem to new model
 
         copySysName = parentName;
-        if strcmp(REPLACE_EXISTING_MODEL, 'on')
-            close_system(copySysName, 0);
-        end
-        try            
-            copySys = new_system(copySysName, 'Model', parent);
+        try
+            copySys = new_system_makenameunique(copySysName, 'Model', parent);
+            copySysName = getfullname(copySys);
         catch ME
             if strcmp(ME.identifier, 'Simulink:LoadSave:InvalidBlockDiagramName')
                 % Name invalid so use some default
-                copySysName = 'Deafult_CopiedSys';
-                if strcmp(REPLACE_EXISTING_MODEL, 'on')
-                    close_system(copySysName, 0);
-                end
-                copySys = new_system(copySysName, 'Model', parent);
+                copySysName = ['DefaultModel'];
+                copySys = new_system_makenameunique(copySysName, 'Model', parent);
+                copySysName = getfullname(copySys);
             else
                 rethrow(ME)
             end
@@ -157,9 +146,9 @@ if verify
             cd(startDir)
             rethrow(ME)
         end
-
+        
         % Call verification function on logicSys and copySys
-        makeVerificationModel([getfullname(copySys) '_Verify'], getfullname(logicSys), getfullname(copySys));
+        makeVerificationModel([copySysName '_Verify'], getfullname(logicSys), copySysName);
     end
 end
 
