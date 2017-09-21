@@ -31,7 +31,7 @@ else
     error(['Error in ' mfilename ', 1 or 2 input arguments expected.']);
 end
 
-assert(isempty(blocks), ['Error in ' mfilename ', 1st argument cannot be empty.'])
+assert(~isempty(blocks), ['Error in ' mfilename ', 1st argument cannot be empty.'])
 
 parent = get_param(blocks{1}, 'parent'); % Get name of system the blocks are in
 origModel = bdroot(blocks{1});
