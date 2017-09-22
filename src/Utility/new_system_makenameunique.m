@@ -1,5 +1,9 @@
 function h = new_system_makenameunique(baseName, varargin)
-% Use varargin to pass additional arguments to the new_system command
+% NEW_SYSTEM_MAKENAMEUNIQUE new_system command except that it appends a
+%   number to the name to ensure a file with the name does not exist.
+%
+%   For more information about new_system, type: "help new_system" at the
+%   command line.
 
 name = baseName;
 if exist(name, 'file') == 4
