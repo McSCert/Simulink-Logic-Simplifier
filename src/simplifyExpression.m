@@ -65,22 +65,22 @@ end
 function expr = swap4Symengine(expr)
 
 if ~isLsNewerVer()
-    expression = strrep(expression, '~=', '<>'); % This line must go before unary negation because otherwise the block could do
-    expression = strrep(expression, '~', ' not ');
-    expression = strrep(expression, '==', '=');
-    expression = strrep(expression, '&', ' and ');
-    expression = strrep(expression, '|', ' or ');
+    expr = strrep(expr, '~=', '<>'); % This line must go before unary negation because otherwise the block could do
+    expr = strrep(expr, '~', ' not ');
+    expr = strrep(expr, '==', '=');
+    expr = strrep(expr, '&', ' and ');
+    expr = strrep(expr, '|', ' or ');
 end
 end
 
 function expr = swap4Simulink(expr)
 
 if ~isLsNewerVer()
-    newExpression = strrep(newExpression, 'or', '|');
-    newExpression = strrep(newExpression, 'and', '&');
-    newExpression = strrep(newExpression, '=', '==');
-    newExpression = strrep(newExpression, 'not', '~');
-    newExpression = strrep(newExpression, '<>', '~=');
+    expr = strrep(expr, 'or', '|');
+    expr = strrep(expr, 'and', '&');
+    expr = strrep(expr, '=', '==');
+    expr = strrep(expr, 'not', '~');
+    expr = strrep(expr, '<>', '~=');
 end
 end
 
