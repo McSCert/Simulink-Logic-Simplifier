@@ -76,10 +76,10 @@ end
 function expr = swap4Simulink(expr)
 
 if ~isLsNewerVer()
-    expr = strrep(expr, 'or', '|');
-    expr = strrep(expr, 'and', '&');
+    expr = strrep(expr, ' or ', '|');
+    expr = strrep(expr, ' and ', '&');
     expr = strrep(expr, '=', '==');
-    expr = strrep(expr, 'not', '~');
+    expr = strrep(expr, ' not ', '~');
     expr = strrep(expr, '<>', '~=');
 end
 end
