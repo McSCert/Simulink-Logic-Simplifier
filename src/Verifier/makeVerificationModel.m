@@ -109,7 +109,18 @@ function makeVerificationModel(address, model1, model2)
     modelRef2OutHandles = modelRef2Handles.Outport;
     
     % Add equality blocks and proof blocks
-    numOutports = max(length(modelRef1OutHandles), length(modelRef2OutHandles));
+    numOut1 = length(modelRef1OutHandles);
+    numOut2 = length(modelRef2OutHandles);
+    if numOut1 >= numOut2
+        modelRefMostOuts = modelRef1OutHandles;
+        modelRefLeastOuts = modelRef2OutHandles;
+        numOutports = numOut1;
+    else
+        modelRefMostOuts = modelRef2OutHandles;
+        modelRefLeastOuts = modelRef1OutHandles;
+        numOutports = numOut2;
+    end
+    
     equalityBlocks = zeros(1, numOutports);
     proofBlocks = equalityBlocks;
     for i = 1:numOutports
@@ -118,10 +129,10 @@ function makeVerificationModel(address, model1, model2)
             [verifySubsystem '/Equality' num2str(i)], 'Operator', '==', 'ShowName', 'off');
         equalityBlocks(i) = newEquality;
         % Move equality blocks
-        moveToPort(newEquality, modelRef1OutHandles(1), 0);        
+        moveToPort(newEquality, modelRefMostOuts(1), 0);        
         newEqualityIn1 = get_param(newEquality, 'PortHandles');
         newEqualityIn1 = newEqualityIn1.Inport;
-        alignPorts(modelRef1OutHandles(i), newEqualityIn1(1)); % Vertically align first inport of equality with the port it is connected to 
+        alignPorts(modelRefMostOuts(i), newEqualityIn1(1)); % Vertically align first inport of equality with the port it is connected to 
         
         % Add proof blocks
         newProof = add_block('sldvlib/Objectives and Constraints/Proof Objective', ...
@@ -134,29 +145,45 @@ function makeVerificationModel(address, model1, model2)
     end
     
     % Add inports to reference models and connect
+    % - Get info on number of ports
+    numIn1 = length(modelRef1InHandles);
+    numIn2 = length(modelRef2InHandles);
+    if numIn1 >= numIn2
+        modelRefMostIns = modelRef1InHandles;
+        modelRefLeastIns = modelRef2InHandles;
+        numInports = numIn1;
+    else
+        modelRefMostIns = modelRef2InHandles;
+        modelRefLeastIns = modelRef1InHandles;
+        numInports = numIn2;
+    end
+    
     % - Get names so we can match them up
-    inportNames1 = strings(size(modelRef1InHandles));
-    inportNames2 = strings(size(modelRef2InHandles));
-    for i = 1:length(modelRef1InHandles)
-        temp =  subport2inoutblock(modelRef1InHandles(i));
+    inportNames1 = strings(size(modelRefMostIns));
+    inportNames2 = strings(size(modelRefLeastIns));
+    for i = 1:length(modelRefMostIns)
+        temp =  subport2inoutblock(modelRefMostIns(i));
         n = strfind(temp, '/');
         n = n(end)+1;
         inportNames1(i) = temp(n:end);
     end
-    for i = 1:length(modelRef2InHandles)
-        temp =  subport2inoutblock(modelRef2InHandles(i));
+    for i = 1:length(modelRefLeastIns)
+        temp =  subport2inoutblock(modelRefLeastIns(i));
         n = strfind(temp, '/');
         n = n(end)+1;
         inportNames2(i) = temp(n:end);
     end
-    
-    inportsToConnect = modelRef2InHandles; % Will be removing elements during matching, so need a copy
-    for i = 1:max(length(modelRef1InHandles), length(modelRef2InHandles))
+
+    inportsToConnect = modelRefLeastIns; % Will be removing elements during matching, so need a copy
+    for i = 1:numInports
         in = add_block('simulink/Ports & Subsystems/In1', [verifySubsystem '/In' num2str(i)]);
-        moveToPort(in, modelRef1InHandles(i));
+        moveToPort(in, modelRefMostIns(i));
         
         % Connect first model
-        newLine = connectBlocks(verifySubsystem, in, modelRef1Block); % Connects to first available inport
+        %newLine = connectBlocks(verifySubsystem, in, modelRefMostIns); % Connects to first available inport
+        outPort = get_param(in, 'PortHandles');
+        outPort = outPort.Outport;
+        newLine = connectPorts(verifySubsystem, outPort, modelRefMostIns(i), 'autorouting', 'on');
         
         % Find matching inport in second model reference and connect     
         % Note: Simplified models can have fewer inports  
@@ -189,30 +216,30 @@ function makeVerificationModel(address, model1, model2)
     
     % Connect equality and proof blocks
     % - Get names so we can match them up
-    outportNames1 = strings(size(modelRef1OutHandles));
-    outportNames2 = strings(size(modelRef2OutHandles));
-    for i = 1:length(modelRef1OutHandles)
-        temp =  subport2inoutblock(modelRef1OutHandles(i));
+    outportNames1 = strings(size(modelRefMostOuts));
+    outportNames2 = strings(size(modelRefLeastOuts));
+    for i = 1:length(modelRefMostOuts)
+        temp =  subport2inoutblock(modelRefMostOuts(i));
         n = strfind(temp, '/');
         n = n(end)+1;
         outportNames1(i) = temp(n:end);
     end
-    for i = 1:length(modelRef2OutHandles)
-        temp =  subport2inoutblock(modelRef2OutHandles(i));
+    for i = 1:length(modelRefLeastOuts)
+        temp =  subport2inoutblock(modelRefLeastOuts(i));
         n = strfind(temp, '/');
         n = n(end)+1;
         outportNames2(i) = temp(n:end);
     end
     
-    outportsToConnect = modelRef2OutHandles; % Will be removing elements during matching, so need a copy
+    outportsToConnect = modelRefLeastOuts; % Will be removing elements during matching, so need a copy
     for i = 1:length(equalityBlocks)       
         inHandlesEq = get_param(equalityBlocks(i), 'PortHandles');
         inHandlesEq = inHandlesEq.Inport;
         
-        % Connect model first reference to equality
-        connectPorts(verifySubsystem, modelRef1OutHandles(i), inHandlesEq(1));
+        % Connect model reference to equality
+        connectPorts(verifySubsystem, modelRefMostOuts(i), inHandlesEq(1));
         
-        % Find matching outport in second model reference and connect
+        % Find matching outport in other model reference and connect
         found = false;
         for j = 1:length(outportsToConnect)
             % If port names are the same
