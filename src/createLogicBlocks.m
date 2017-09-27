@@ -114,8 +114,7 @@ if ~isIfActionExpr
         % SubSystem.
         subPort = atomicExpr(predicates(handle));
         inoutBlock = subport2inoutblock(subPort);
-        assert(length(inoutBlock) == 1)
-        outportSubBlockHandle = get_param(inoutBlock{1}, 'Handle');
+        outportSubBlockHandle = get_param(inoutBlock, 'Handle');
         
         % Connect outport to expression
         logicOut = memo(outExpression);
