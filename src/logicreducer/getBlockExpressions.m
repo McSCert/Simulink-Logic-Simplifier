@@ -76,6 +76,8 @@ if strcmp(handleType, 'block')
     block = getfullname(handle);
 elseif strcmp(handleType, 'port')
     block = get_param(handle, 'Parent');
+else
+    error(['Something went wrong in ' mfilename '.'])
 end
 
 if ~predicates.isKey(handle)
@@ -91,114 +93,180 @@ if ~predicates.isKey(handle)
     predicates(handle) = handleID; % Now it's a key in predicates so we'll never try to get its expression again
     
     % Find the expression (structure of the expression depends on block type)
-    switch blockType
-        case 'Constant'
-            expr = [handleID ' = ' get_param(block, 'Value')];
-            newExprs = {expr};
-        case 'If'
-            [newExprs, ~] = getIfExpr(startSystem, handle, handleID, block, predicates, inExprs);
-        case 'Inport'
-            if ~strcmp(get_param(block, 'Parent'), startSystem)
-                srcHandle = getInportSrc(block);
-                [srcExprs, srcID] = getExpr(startSystem, srcHandle, predicates, inExprs);
+    if strcmp(get_param(block, 'Mask'), 'on')
+        maskType = get_param(block, 'MaskType');
+        
+        switch maskType
+            case {'Compare To Constant', 'Compare To Zero'}
+                [newExprs, ~] = getLogicExpr(startSystem, handle, handleID, handleType, block, predicates, inExprs);
+
+            otherwise
+                % Treat as blackbox
+                newExprs = getBlackBoxExpression(inExprs);
+        end
+    else
+        switch blockType
+            case 'Constant'
+                chrysler = true; % using Chrysler blocks
+                valIsNan = isnan(str2double(get_param(block,'Value'))); % constant is using a string value
+                valIsTorF = strcmp(get_param(block,'Value'), 'true') || strcmp(get_param(block,'Value'), 'false');
+                
+                % there may be a better way to identify Chrysler's constants
+                if chrysler && (valIsNan && ~valIsTorF)
+                    expr = [handleID ' =? ' get_param(block, 'Value')];
+                else
+                    expr = [handleID ' = ' get_param(block, 'Value')];
+                end
+                newExprs = {expr};
+            case 'If'
+                [newExprs, ~] = getIfExpr(startSystem, handle, handleID, block, predicates, inExprs);
+            case 'Inport'
+                if ~strcmp(get_param(block, 'Parent'), startSystem)
+                    srcHandle = getInportSrc(block);
+                    [srcExprs, srcID] = getExpr(startSystem, srcHandle, predicates, inExprs);
+                    
+                    expr = [handleID ' = ' srcID]; % This block/port's expression with respect to its sources
+                    newExprs = [{expr}, srcExprs]; % Expressions involved in this block's expressions
+                else
+                    newExprs = {}; % Expression is nothing since inport is atomic
+                end
+            case {'Logic', 'RelationalOperator'}
+                [newExprs, ~] = getLogicExpr(startSystem, handle, handleID, handleType, block, predicates, inExprs);
+            case {'Outport', 'Goto'}
+                % Get the source
+                srcPorts = getSrcPorts(block); % DstPort of a block which connects to this
+                assert(length(srcPorts) <= 1, 'Outport not expected to have multiple sources.')
+                assert(~isempty(srcPorts), 'Outport missing input.') % In the future these cases may be handled
+                
+                % Get the expression for the handle and its sources recursively
+                [srcExprs, srcID] = getExpr(startSystem, srcPorts(1), predicates, inExprs);
                 
                 expr = [handleID ' = ' srcID]; % This block/port's expression with respect to its sources
-                newExprs = {expr, srcExprs{1:end}}; % Expressions involved in this block's expressions
-            else
-                newExprs = {}; % Expression is nothing since inport is atomic
-            end
-        case {'Logic', 'RelationalOperator'}
-            [newExprs, ~] = getLogicExpr(startSystem, handle, handleID, handleType, block, predicates, inExprs);
-        case {'Outport', 'Goto'}
-            % Get the source
-            srcPorts = getSrcPorts(block); % DstPort of a block which connects to this
-            assert(length(srcPorts) <= 1, 'Outport not expected to have multiple sources.')
-            assert(~isempty(srcPorts), 'Outport missing input.') % In the future these cases may be handled
-            
-            % Get the expression for the handle and its sources recursively
-            [srcExprs, srcID] = getExpr(startSystem, srcPorts(1), predicates, inExprs);
-            
-            expr = [handleID ' = ' srcID]; % This block/port's expression with respect to its sources
-            newExprs = {expr, srcExprs{1:end}}; % Expressions involved in this block's expressions
-        case 'SubSystem'
-            [newExprs, ~] = getSubSystemExpr(startSystem, handle, handleID, handleType, block, predicates, inExprs);
-            
-        case 'UnitDelay'
-        case 'Delay'
-        case 'From'
-            % Get corresponding Goto block
-            %goto = getGoto4From(block);
-            gotoInfo = get_param(block,'GotoBlock');
-            srcHandle = gotoInfo.handle;
-            
-            % Get Goto expressions
-            [srcExprs, srcID] = getExpr(startSystem, srcHandle, predicates, inExprs);
-            
-            % Record this block's expressions
-            expr = [handleID ' = ' srcID]; % This block/port's expression with respect to its sources
-            newExprs = {expr, srcExprs{1:end}}; % Expressions involved in this block's expressions
-        case 'Switch'
-            % TODO make other symbols work with the simplifier or switch
-            % won't work as it requires * and + operators
-            
-            lines = get_param(block, 'LineHandles');
-            lines = lines.Inport;
-            assert(length(lines) == 3)
-            
-            % Get source expressions
-            srcHandle1 = get_param(lines(1), 'SrcPortHandle');
-            srcHandle2 = get_param(lines(2), 'SrcPortHandle');
-            srcHandle3 = get_param(lines(3), 'SrcPortHandle');
-            [srcExprs1, srcID1] = getExpr(startSystem, srcHandle1, predicates, inExprs);
-            [srcExprs2, srcID2] = getExpr(startSystem, srcHandle2, predicates, inExprs);
-            [srcExprs3, srcID3] = getExpr(startSystem, srcHandle3, predicates, inExprs);
-            
-            criteria_param = get_param(block, 'Criteria');
-            thresh = get_param(block, 'Threshold');
-            criteria = strrep(strrep(criteria_param, 'u2 ', ['(' srcID2 ')']), 'Threshold', thresh);
-
-            % Record source expressions
-            mult_add_available = false;
-            if mult_add_available
-                expr = [handleID ' = ' '(((' criteria ')*(' srcID1 '))+(~(' criteria ')*(' srcID3 ')))']; % This block/port's expression with respect to its 1st source
-            else
-                expr = [handleID ' = ' '(((' criteria ')&(' srcID1 '))|(~(' criteria ')&(' srcID3 ')))']; % srcID1 and 3 may not be logical so this doesn't work
-            end
-            newExprs = {expr, srcExprs1{1:end}, srcExprs2{1:end}, srcExprs3{1:end}}; % Expressions involved in this block's expressions
-            
-        case 'Deadzone'
-            % Treat as blackbox
-        case 'Merge'
-        case 'DataStoreRead'
-        case 'DataStoreWrite'
-        otherwise
-            % If there is one source, and no output, then we can view it
-            % like an outport.
-            %% TODO - consider other cases to implement; even if we can't 
-            % simplify the block, we might be able to simplify around it.
-            
-            % Get the source
-            srcPorts = getSrcPorts(block); % DstPort of a block which connects to this
-            
-            % Check dstports
-            ports = get_param(block, 'PortHandles');
-            dstPorts = ports.Outport;
-            
-            % Stop if the 1 inport, 0 outport assumption is wrong
-            unsupportError = ['Unsupported block type ' blockType '.'];
-            assert(length(srcPorts) == 1, unsupportError)
-            assert(isempty(dstPorts), unsupportError)
-            
-            % Get the expression for the handle and its sources recursively
-            [srcExprs, srcID] = getExpr(startSystem, srcPorts(1), predicates, inExprs);
-            
-            expr = [handleID ' = ' srcID]; % This block/port's expression with respect to its sources
-            newExprs = {expr, srcExprs{1:end}}; % Expressions involved in this block's expressions
+                newExprs = [{expr}, srcExprs]; % Expressions involved in this block's expressions
+            case 'SubSystem'
+                [newExprs, ~] = getSubSystemExpr(startSystem, handle, handleID, handleType, block, predicates, inExprs);
+            case 'From'
+                % Get corresponding Goto block
+                %goto = getGoto4From(block);
+                gotoInfo = get_param(block,'GotoBlock');
+                srcHandle = gotoInfo.handle;
+                if isempty(srcHandle)
+                    % Record this block's expressions
+                    expr = [handleID ' =? '];
+                    newExprs = {expr}; % Expressions involved in this block's expressions
+                else
+                    % Get Goto expressions
+                    [srcExprs, srcID] = getExpr(startSystem, srcHandle, predicates, inExprs);
+                    
+                    % Record this block's expressions
+                    expr = [handleID ' = ' srcID]; % This block/port's expression with respect to its sources
+                    newExprs = [{expr}, srcExprs]; % Expressions involved in this block's expressions
+                end
+            case 'Switch'
+                % TODO make other symbols work with the simplifier for switch
+                % won't work as it requires * and + operators
+                
+                lines = get_param(block, 'LineHandles');
+                lines = lines.Inport;
+                assert(length(lines) == 3)
+                
+                % Get source expressions
+                srcHandle1 = get_param(lines(1), 'SrcPortHandle');
+                srcHandle2 = get_param(lines(2), 'SrcPortHandle');
+                srcHandle3 = get_param(lines(3), 'SrcPortHandle');
+                [srcExprs1, srcID1] = getExpr(startSystem, srcHandle1, predicates, inExprs);
+                [srcExprs2, srcID2] = getExpr(startSystem, srcHandle2, predicates, inExprs);
+                [srcExprs3, srcID3] = getExpr(startSystem, srcHandle3, predicates, inExprs);
+                
+                criteria_param = get_param(block, 'Criteria');
+                thresh = get_param(block, 'Threshold');
+                criteria = strrep(strrep(criteria_param, 'u2 ', ['(' srcID2 ')']), 'Threshold', thresh);
+                
+                % Record source expressions
+                mult_add_available = false; % This will be made true/removed once * and + are accepted
+                if mult_add_available
+                    expr = [handleID ' = ' '(((' criteria ')*(' srcID1 '))+(~(' criteria ')*(' srcID3 ')))']; % This block/port's expression with respect to its 1st source
+                else
+                    expr = [handleID ' = ' '(((' criteria ')&(' srcID1 '))|(~(' criteria ')&(' srcID3 ')))']; % srcID1 and 3 may not be logical so this doesn't work
+                end
+                newExprs = [{expr}, srcExprs1, srcExprs2, srcExprs3]; % Expressions involved in this block's expressions
+                
+            case {'UnitDelay', 'Delay', 'Deadzone'}
+                % Treat as blackbox
+                newExprs = getBlackBoxExpression(inExprs);
+            case 'Merge'
+                srcPorts = getSrcPorts(block);
+                numInputs = length(srcPorts);
+                assert(numInputs > 1);
+                
+                newExprs = {}; % newExprs
+                
+                % Get the expression for the source port
+                [srcExprs, srcID] = getExpr(startSystem, srcPorts(1), predicates, inExprs);
+                newExprs = [newExprs, srcExprs]; % Add expressions for current source
+                expr = [handleID ' = ' '(' srcID ')']; % Expression for the block/port so far
+                
+                for j = 2:numInputs
+                    % Get the expression for the source port
+                    [srcExprs, srcID] = getExpr(startSystem, srcPorts(j), predicates, inExprs);
+                    newExprs = [newExprs, srcExprs]; % Expressions involved in this block's expressions
+                    sym = '|';
+                    expr = [expr ' ' sym ' (' srcID ')']; % This block/port's expression with respect to its sources
+                end
+                
+                newExprs = [{expr}, newExprs]; % Expressions involved in this block's expressions
+            case 'DataStoreRead'
+            case 'DataStoreWrite'
+            otherwise
+                % Treat as blackbox
+                newExprs = getBlackBoxExpression(inExprs);
+                
+%                 % Check dstports
+%                 ports = get_param(block, 'PortHandles');
+%                 dstPorts = ports.Outport;
+%                 
+%                 % Stop if the 1 inport, 0 outport assumption is wrong
+%                 unsupportError = ['Unsupported block type ' blockType '.'];
+%                 assert(length(srcPorts) == 1, unsupportError)
+%                 assert(isempty(dstPorts), unsupportError)
+%                 
+%                 % Get the expression for the handle and its sources recursively
+%                 [srcExprs, srcID] = getExpr(startSystem, srcPorts(1), predicates, inExprs);
+%                 
+%                 expr = [handleID ' = ' srcID]; % This block/port's expression with respect to its sources
+%                 newExprs = {expr, srcExprs{1:end}}; % Expressions involved in this block's expressions
+        end
     end
 else
     handleID = predicates(handle);
     newExprs = {};
 end
+
+    function nex = getBlackBoxExpression(inex)
+        % Get the sources
+        srcPorts = getSrcPorts(block); % DstPort(s) of block(s) which connect to this one
+        
+        % Get the expressions for the sources
+        nex = {};
+        expr = [handleID ' =? '];
+        for i = 1:length(srcPorts)
+            [srcExprs, srcID] = getExpr(startSystem, srcPorts(i), predicates, inex);
+            expr = [expr, srcID, ',']; % Note the notation '=?' being used for blackboxes
+            nex = [nex, srcExprs];
+            
+            if ~isKey(inex, srcID)
+                bbSrcInportID = [handleID '_u' num2str(i)];
+                inex(srcID) = bbSrcInportID; % Remember, this will be implicit output to the function
+                % This relates the input port with an arbitrary output port through
+                % predicates - the needed information is the block so this will
+                % suffice
+            end
+        end
+        if ~isempty(srcPorts)
+            expr = expr(1:end-1); % Remove trailing comma
+        end
+        nex = [nex, {expr}];
+    end
 end
 
 function uid = getUniqueId(type, existingIDs)
@@ -327,7 +395,7 @@ elseif strcmp(handleType, 'port')
     actionBlock = find_system(block, 'SearchDepth', 1, 'BlockType', 'ActionPort');
     if isempty(actionBlock)
         expr = [handleID ' = ' outID]; % This block/port's expression with respect to its sources
-        newExprs = {expr, outExprs{1:end}}; % Expressions involved in this block's expressions
+        newExprs = [{expr}, outExprs]; % Expressions involved in this block's expressions
     else
         ports = get_param(block, 'PortHandles');
         actionPort = ports.Ifaction;
@@ -341,7 +409,7 @@ elseif strcmp(handleType, 'port')
         % Anticipated Change: May want to AND the if expression with each
         % expression found inside subsystem.
         expr = [handleID ' = ' '(' ifID ' & ' outID ')']; % If the if condition is met, then the SubSystem expression determines the result, else it is false
-        newExprs = {expr, ifExprs{1:end}, outExprs{1:end}}; % Expressions involved in this block's expressions
+        newExprs = [{expr}, ifExprs, outExprs]; % Expressions involved in this block's expressions
     end
 else
     error('Error: Something went wrong, unexpected handle type.')
@@ -357,7 +425,7 @@ portNum = get_param(handle, 'PortNumber');
 expressions = get_param(block, 'ElseIfExpressions');
 if ~isempty(expressions)
     expressions = regexp(expressions, ',', 'split');
-    expressions = [{get_param(block, 'IfExpression')} expressions];
+    expressions = [{get_param(block, 'IfExpression')}, expressions];
 else
     expressions = {};
     expressions{end + 1} = get_param(block, 'IfExpression');
@@ -403,11 +471,11 @@ for i = 1:length(conditionIndices)
         % suffice
     end
     ifExpr = [ifExpr(1:end-backIndex-1) '(' srcID ')' ifExpr(end-backIndex+length(condition):end)]; % This block/port's expression with respect to its sources
-    newExprs = {newExprs{1:end}, srcExprs{1:end}}; % Expressions involved in this block's expressions
+    newExprs = [newExprs, srcExprs]; % Expressions involved in this block's expressions
 end
 
 expr = [handleID ' = ' ifExpr];
-newExprs = {expr, newExprs{1:end}}; % Expressions involved in this block's expressions
+newExprs = [{expr}, newExprs]; % Expressions involved in this block's expressions
 end
 
 function [newExprs, handleID] = getLogicExpr(startSystem, handle, handleID, handleType, block, predicates, inExprs)
@@ -425,54 +493,71 @@ catch
 end
 
 numInputs = length(srcPorts);
-operator = get_param(block, 'Operator');
-switch operator
-    case 'NOT'
-        assert(numInputs == 1);
-        
-        % Get the expression for the source
-        [srcExprs, srcID] = getExpr(startSystem, srcPorts(1), predicates, inExprs);
-        
-        expr = [handleID ' = ' '~' srcID]; % This block/port's expression with respect to its sources
-        newExprs = {expr, srcExprs{1:end}}; % Expressions involved in this block's expressions
-    case 'AND'
-        newExprs = binaryLogicExpr('&');
-%         assert(numInputs > 1);
-%         
-%         newExprs = {};
-%         
-%         % Get the expression for the source port
-%         [srcExprs, srcID] = getExpr(startSystem, srcPorts(1), predicates);
-%         newExprs = {newExprs{1:end}, srcExprs{1:end}}; % Add expressions for current source
-%         expr = [handleID ' = ' '(' srcID ')']; % Expression for the block/port so far
-%         
-%         for i=2:numInputs
-%             % Get the expression for the source port
-%             [srcExprs, srcID] = getExpr(startSystem, srcPorts(i), predicates);
-%             newExprs = {newExprs{1:end}, srcExprs{1:end}}; % Expressions involved in this block's expressions
-%             expr = [expr ' & (' srcID ')']; % This block/port's expression with respect to its sources
-%         end
-%         
-%         newExprs = {expr, newExprs{1:end}}; % Expressions involved in this block's expressions
-        
-    case 'OR'
-        newExprs = binaryLogicExpr('|');
-    case '~='
-        newExprs = binaryLogicExpr('<>');
-    case '=='
-        newExprs = binaryLogicExpr('==');
-    case '<='
-        newExprs = binaryLogicExpr('<=');
-    case '>='
-        newExprs = binaryLogicExpr('>=');
-    case '<'
-        newExprs = binaryLogicExpr('<');
-    case '>'
-        newExprs = binaryLogicExpr('>');
-        
-    otherwise
-        error(['Operator ' operator ' currently not supported...']);
+if strcmp(get_param(block, 'Mask'), 'on')
+    operator = get_param(block, 'RelOp');
+    
+    maskType = get_param(block, 'MaskType');
+    switch maskType
+            case 'Compare To Constant'
+                num = get_param(block, 'Const');
+            case 'Compare To Zero'
+                num = '0';
+        otherwise
+            error(['Something went wrong in ' mfilename ' MaskType is currently not supported...']);
+    end
+    
+    switch operator
+        case '~='
+            newExprs = binaryLogicExpr2('<>', num);
+        case '=='
+            newExprs = binaryLogicExpr2('==', num);
+        case '<='
+            newExprs = binaryLogicExpr2('<=', num);
+        case '>='
+            newExprs = binaryLogicExpr2('>=', num);
+        case '<'
+            newExprs = binaryLogicExpr2('<', num);
+        case '>'
+            newExprs = binaryLogicExpr2('>', num);
+            
+        otherwise
+            error(['Operator ' operator ' currently not supported...']);
+    end
+else % Mask off
+    operator = get_param(block, 'Operator');
+    
+    switch operator
+        case 'NOT'
+            assert(numInputs == 1);
+            
+            % Get the expression for the source
+            [srcExprs, srcID] = getExpr(startSystem, srcPorts(1), predicates, inExprs);
+            
+            expr = [handleID ' = ' '~' srcID]; % This block/port's expression with respect to its sources
+            newExprs = {expr, srcExprs{1:end}}; % Expressions involved in this block's expressions
+        case 'AND'
+            newExprs = binaryLogicExpr('&');
+        case 'OR'
+            newExprs = binaryLogicExpr('|');
+        case '~='
+            newExprs = binaryLogicExpr('<>');
+        case '=='
+            newExprs = binaryLogicExpr('==');
+        case '<='
+            newExprs = binaryLogicExpr('<=');
+        case '>='
+            newExprs = binaryLogicExpr('>=');
+        case '<'
+            newExprs = binaryLogicExpr('<');
+        case '>'
+            newExprs = binaryLogicExpr('>');
+            
+        otherwise
+            error(['Operator ' operator ' currently not supported...']);
+    end
 end
+
+    
     function nex = binaryLogicExpr(sym)
         assert(numInputs > 1);
         
@@ -486,10 +571,20 @@ end
         for j=2:numInputs
             % Get the expression for the source port
             [srcex, sID] = getExpr(startSystem, srcPorts(j), predicates, inExprs);
-            nex = {nex{1:end}, srcex{1:end}}; % Expressions involved in this block's expressions
+            nex = [nex, srcex]; % Expressions involved in this block's expressions
             ex = [ex ' ' sym ' (' sID ')']; % This block/port's expression with respect to its sources
         end
         
-        nex = {ex, nex{1:end}}; % Expressions involved in this block's expressions
+        nex = [{ex}, nex]; % Expressions involved in this block's expressions
+    end
+    function nex = binaryLogicExpr2(sym, var2)
+        assert(numInputs == 1);
+        
+        nex = {}; % newExprs
+        
+        % Get the expression for the source port
+        [srcex, sID] = getExpr(startSystem, srcPorts(1), predicates, inExprs);
+        nex = [nex, srcex]; % Expressions involved in this block's expressions
+        ex = [handleID ' = ' '(' sID ') ' sym ' (' var2 ')']; % Expression for the block/port so far
     end
 end
