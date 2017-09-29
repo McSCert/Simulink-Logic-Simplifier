@@ -10,8 +10,9 @@ function expr = simplifyExpression(expr)
 %   Outputs:
 %       expr    A simplified form of the original expression.
 
+%% TODO - test expr == '3' or some other number
+
 % Swap operators for MATLAB equivalents
-% TODO: check if the following needs to be done for other symbols
 expr = strrep(expr,'<>','~=');
 
 % Evaluate parts that MATLAB can already evaluate
