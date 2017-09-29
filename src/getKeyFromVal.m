@@ -18,5 +18,7 @@ for i = 1:length(keys)
     end
 end
 
-assert(strcmp(map(key), value), 'Something went wrong, the located key does not match the input value.');
+assert(exist('key', 'var') == 1, ['Error in ' mfilename ', no key found for given value.']);
+assert(strcmp(map(key), value), ['Error in ' mfilename ...
+    ', something went wrong, the located key does not match the input value.']);
 end
