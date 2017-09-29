@@ -18,6 +18,7 @@ function [subExprOut, outIndex] = createLogicBlocks(expression, atomicExpr, memo
 %       subExprOut
 %       outIndex
 
+
 % Get expression LHS and RHS
 [outBlockID, expressionRHS] = getExpressionLhsRhs(expression);
 
@@ -33,6 +34,7 @@ end
 blockType = get_param(block, 'BlockType');
 newBlock = regexprep(block,['^' startSys], endSys, 'ONCE');
 
+% Figure out in which (sub)system to generate the expression
 assert(~isempty(find_system(block)))
 isIfActionExpr = false; % Will update in the following if it should be true
 if strcmp(blockType, 'SubSystem')
@@ -50,8 +52,7 @@ elseif strcmp(blockType, 'Inport')
 else
     createSys = regexprep(get_param(block, 'Parent'),['^' startSys], endSys, 'ONCE'); % Create blocks for this expression in this system
 end
-    
-%% TODO look into the need for this
+
 % Make expression well formed
 expressionRHS = makeWellFormed(expressionRHS);
 
@@ -98,8 +99,8 @@ end
     
 % Create blocks for RHS of expression
 if ~isIfActionExpr
-    if strcmp(blockType, 'If')
-        return % The expression is encapsulated in the If block itself
+    if strcmp(blockType, 'If') || isBlackBoxExpression(expression)
+        return % The expression is encapsulated in the block itself
     else
         [outExpression, ~] = createExpression(expressionRHS, 1, 1, atomicExpr, memo, createSys, startSys);
     end
@@ -128,23 +129,7 @@ if ~isIfActionExpr
         outBlockInport = outBlockInport.Inport;
         
         add_line(createSys, logicOutport, outBlockInport);
-        
-        %     % Get port number of that outport
-        %     pNum = str2double(get_param(outportSubBlockHandle, 'Port'));
-        %
-        %     % Get SubSystem outport with the same port number and set logicOutport
-        %     %   to that.
-        %     logicOutport = subPort;
-        %     clear logicOutport
-        %     subOutports = get_param(outBlock, 'PortHandles');
-        %     subOutports = subOutports.Outport;
-        %     for i = 1:length(subOutports)
-        %         if get_param(subOutports(i), 'PortNumber') == pNum
-        %             logicOutport = subOutports(i);
-        %             break
-        %         end
-        %     end
-        %     assert(exist('logicOutport','var'));
+
     else
         % Create block for LHS of expression
         if ~isInExpr
@@ -159,11 +144,6 @@ if ~isIfActionExpr
                 end
             end
         end % else the block is already created
-        % origOutBlockHandle = getKeyFromVal(predicates, outBlockID);
-        % origOutBlock = getfullname(origOutBlockHandle);
-        % % origOutName = get_param(origOutBlockHandle, 'Name');
-        % outBlock = regexprep(origOutBlock,['^' startSys], endSys, 'ONCE');
-        % outBlockHandle = add_block(origOutBlock, outBlock);
         
         logicOut = memo(outExpression);
         
@@ -238,10 +218,6 @@ else % is an if action subsystem expression
     ifID = regexp(expressionRHS, ifPat, 'tokens');
     ifID = ifID{1}{2};
     ifPortHandle = atomicExpr(ifID);
-    
-%     pNum = get_param(handle, 'PortNumber');
-%     ifPortHandle = find_system(, 'FindAll', 'on', 'Type', 'port', 'PortType', 'outport', 'PortNumber', pNum);
-%     assert(length(ifPortHandle) == 1)
     
     add_line(createSys, ifPortHandle, ifActionPort);
 end
@@ -394,7 +370,7 @@ while (index <= length(expression))
                     %to the first block of this if statement. Recursively find the subexpr for the operand,
                     %and connect its output to the new logical operator block.
                     
-                    %Find the subexpression for the secnod operand
+                    %Find the subexpression for the second operand
                     nextIndex = index+length(connective);
                     [operand, newIndex] = createExpression(expression, nextIndex, nextIndex, atomicExpr, memo, sys, startSys);
                     
@@ -526,7 +502,61 @@ while (index <= length(expression))
             if isConstant && ~isKey(atomicExpr, val) && ~strcmp(startSys, sys)
                 atomicBlock = add_block('built-in/Constant', [sys '/generated_' val '_constant'], 'MakeNameUnique', 'on', 'Value', val);
                 % Don't save in atomicExpr because that's used at top level
-                % specifically
+                % specifically.
+                %% TODO extend atomicExpr to work beyond top-level
+            elseif isConstant && ~isKey(atomicExpr, val)
+                atomicBlock = add_block('built-in/Constant', [sys '/generated_' val '_constant'], 'Value', val);
+                atomicExpr(val) = atomicBlock;
+            else
+                atomicBlock = atomicExpr(atomic{1});
+            end
+            index = index + length(atomic{1});
+            subExpr = expression(startIndex:index);
+            memo(subExpr) = atomicBlock;
+    end
+    subExprOut = subExpr;
+    outIndex = index;
+end
+end
+
+function [subExprOut, outIndex] = createBBExpression(expression, startIndex, index, atomicExpr, memo, sys, startSys)
+% The rhs of a blackbox expression is of the form:
+%   atomic1,atomic2,...,atomicN
+%   where atomici is an atomic proposition (a variable or constant)
+
+while (index <= length(expression))
+    character = expression(index);
+    switch character
+        case '('
+            %recursively call the function to create blocks for the inside of expression
+            [subExpr, index] = createBBExpression(expression, index, index + 1, atomicExpr, memo, sys, startSys);
+            index = index + 1;
+        case ')'
+            subExprOut = subExpr;
+            outIndex = index;
+            return
+        case ','
+            index = index + 1;
+        otherwise
+            % Get leftmost atomic
+            atomic = regexp(expression(index:end), '^[\w]+', 'match');
+            
+            % Check if atomic is a constant, if it is, get its value
+            if strcmp(atomic{1},'TRUE') || strcmp(atomic{1},'FALSE')
+                atomic{1} = lower(atomic{1});
+                val = atomic{1};
+                isConstant = true;
+            elseif ~isempty(regexp(atomic{1}, '^[0-9]+\.?[0-9]*$', 'once'))
+                val = regexp(atomic{1}, '^[0-9]+\.?[0-9]*$', 'match', 'once');
+                isConstant = true;
+            else
+                isConstant = false;
+            end
+            
+            if isConstant && ~isKey(atomicExpr, val) && ~strcmp(startSys, sys)
+                atomicBlock = add_block('built-in/Constant', [sys '/generated_' val '_constant'], 'MakeNameUnique', 'on', 'Value', val);
+                % Don't save in atomicExpr because that's used at top level
+                % specifically.
                 %% TODO extend atomicExpr to work beyond top-level
             elseif isConstant && ~isKey(atomicExpr, val)
                 atomicBlock = add_block('built-in/Constant', [sys '/generated_' val '_constant'], 'Value', val);
