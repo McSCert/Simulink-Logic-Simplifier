@@ -519,60 +519,6 @@ while (index <= length(expression))
 end
 end
 
-function [subExprOut, outIndex] = createBBExpression(expression, startIndex, index, atomicExpr, memo, sys, startSys)
-% The rhs of a blackbox expression is of the form:
-%   atomic1,atomic2,...,atomicN
-%   where atomici is an atomic proposition (a variable or constant)
-
-while (index <= length(expression))
-    character = expression(index);
-    switch character
-        case '('
-            %recursively call the function to create blocks for the inside of expression
-            [subExpr, index] = createBBExpression(expression, index, index + 1, atomicExpr, memo, sys, startSys);
-            index = index + 1;
-        case ')'
-            subExprOut = subExpr;
-            outIndex = index;
-            return
-        case ','
-            index = index + 1;
-        otherwise
-            % Get leftmost atomic
-            atomic = regexp(expression(index:end), '^[\w]+', 'match');
-            
-            % Check if atomic is a constant, if it is, get its value
-            if strcmp(atomic{1},'TRUE') || strcmp(atomic{1},'FALSE')
-                atomic{1} = lower(atomic{1});
-                val = atomic{1};
-                isConstant = true;
-            elseif ~isempty(regexp(atomic{1}, '^[0-9]+\.?[0-9]*$', 'once'))
-                val = regexp(atomic{1}, '^[0-9]+\.?[0-9]*$', 'match', 'once');
-                isConstant = true;
-            else
-                isConstant = false;
-            end
-            
-            if isConstant && ~isKey(atomicExpr, val) && ~strcmp(startSys, sys)
-                atomicBlock = add_block('built-in/Constant', [sys '/generated_' val '_constant'], 'MakeNameUnique', 'on', 'Value', val);
-                % Don't save in atomicExpr because that's used at top level
-                % specifically.
-                %% TODO extend atomicExpr to work beyond top-level
-            elseif isConstant && ~isKey(atomicExpr, val)
-                atomicBlock = add_block('built-in/Constant', [sys '/generated_' val '_constant'], 'Value', val);
-                atomicExpr(val) = atomicBlock;
-            else
-                atomicBlock = atomicExpr(atomic{1});
-            end
-            index = index + length(atomic{1});
-            subExpr = expression(startIndex:index);
-            memo(subExpr) = atomicBlock;
-    end
-    subExprOut = subExpr;
-    outIndex = index;
-end
-end
-
 function outport = getBlockOutport(block)
 % Gets the outport handle of a given block.
 % Errors if there is less or more than one outport handle.
