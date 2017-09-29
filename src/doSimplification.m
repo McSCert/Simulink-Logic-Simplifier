@@ -18,48 +18,45 @@ SUBSYSTEM_RULE = getLogicSimplifierConfig('subsystem_rule', 'blackbox'); % Indic
 sysName = getfullname(sys);
 origSys = get_param(blocks{1}, 'Parent');
 
-% TODO - predicates will likely need to be passed around between functions
-% and this may not be where it should be defined (or even how it should be
-% defined.
-%predicates = BiMap('double','char'); % Keys: block handles; Values: name of predicate to use in expressions
-
 % Keep a list of blocks/ports that we have expressions for
 predicates = containers.Map('KeyType','double','ValueType','char');
-% Keep record of the inports that a source goes to for non obvious block
-% types (e.g. If blocks)
+% Keep record of the inports that a source goes to for non-obvious block types (e.g. If blocks)
 inExprs = containers.Map('KeyType','char','ValueType','char'); % Key is a value from predicates, Value is a char indicating another value from predicates as well as an inport
 
 % Get expression for each block in form:
-% 'blockID = expr', where expr is an expression which may involve other blockIDs
-% --getExps2Simp(blx)
-% ---output: cell array of expressions, 1 for each of blx, 1 for each subsystem input, 1 for each subsystem output
+%   'blockID = expr', where expr is an expression with contants, other blockIDs, and operators
 tempExpressions = getBlockExpressions(origSys, blocks, predicates, inExprs);
 
-% % Find which expressions should be subbed into others
-% subsIdx = whichExpressionsToSub(tempExpressions); % subsI is indices from tempExpressions
-% % Substitute expressions each other
-% startingExpressions = substituteExpressions(tempExpressions, subsIdx);
+% Find which expressions should be subbed into others
 startingExpressions = substituteExpressions(tempExpressions, blocks, predicates);
 
 % Simplify each expression
 endingExpressions = cell(1,length(startingExpressions));
 for i = 1:length(startingExpressions)
-    [lhs, rhs] = getExpressionLhsRhs(startingExpressions{i});
-    
-    %Do the simplification
-    simpleRhs = simplifyExpression(rhs);
-    
-    %Strip whitespace
-    simpleRhs = regexprep(simpleRhs, '\s', '');
-    endingExpressions{i} = [lhs, ' = ', simpleRhs];
+    if ~isBlackBoxExpression(startingExpressions{i})
+        [lhs, rhs] = getExpressionLhsRhs(startingExpressions{i});
+        
+        %Swap Chrysler's CbTRUE for symengine's TRUE
+%         rhs = strrep(rhs, 'CbTRUE', 'TRUE');
+%         rhs = strrep(rhs, 'CbFALSE', 'FALSE');
+        
+        %Do the simplification
+        simpleRhs = simplifyExpression(rhs);
+        
+        %Strip whitespace
+        simpleRhs = regexprep(simpleRhs, '\s', '');
+        endingExpressions{i} = [lhs, ' = ', simpleRhs];
+    else
+        endingExpressions{i} = startingExpressions{i};
+    end
 end
 
+% Reorder so that blocks can be connected where they need to be when the expressions are created.
 endingExpressions = reorderExpressions(origSys, endingExpressions, predicates);
 
 expressionsToGenerate = endingExpressions;
 if strcmp(SUBSYSTEM_RULE, 'blackbox')
-    % Remove expressions for SubSystems so that we don't try to produce
-    % their contents.
+    % Remove expressions for SubSystems so that we don't try to produce their contents.
     for i = length(expressionsToGenerate):-1:1
         [lhs, ~] = getExpressionLhsRhs(expressionsToGenerate{i});
         handle = getKeyFromVal(predicates, lhs);
@@ -104,25 +101,17 @@ else
         end
         blockType = get_param(block, 'BlockType');
         
-        if strcmp(blockType, 'SubSystem')
-            % Create SubSystem block in new system
+        % If SubSystem, create it in the new system, unless it's masked
+        % If masked SubSystem, we'll create it with the other blackboxes
+        if strcmp(blockType, 'SubSystem') && ~strcmp(get_param(block, 'Mask'), 'on')
             newBlock = regexprep(block,['^' origSys], sysName, 'ONCE');
             try
-%                 newBlockHandle = add_block(block, newBlock);
-%                 Simulink.SubSystem.deleteContents(newBlockHandle)
                 add_block('built-in/SubSystem', newBlock);
                 
                 % Preserve some block parameters from the original SubSystem
-                foreColor = get_param(block, 'ForegroundColor');
-                backColor = get_param(block, 'BackgroundColor');
-                showName = get_param(block, 'ShowName');
-                orientation = get_param(block, 'Orientation');
-                namePlacement = get_param(block, 'NamePlacement');
-                set_param(newBlock, 'ForegroundColor', foreColor)
-                set_param(newBlock, 'BackgroundColor', backColor)
-                set_param(newBlock, 'ShowName', showName)
-                set_param(newBlock, 'Orientation', orientation)
-                set_param(newBlock, 'NamePlacement', namePlacement);
+                for param = {'ForegroundColor', 'BackgroundColor', 'ShowName', 'Orientation', 'NamePlacement'}
+                    set_param(newBlock, param{1}, get_param(block, param{1}))
+                end
                 
                 % If a SubSystem block is masked, then its background color
                 % will not use a gradient, otherwise it will. So if the 
@@ -149,8 +138,6 @@ else
             
             newOutport = regexprep(outport,['^' origSys], sysName, 'ONCE');
             add_block(outport, newOutport);
-%             newOut = add_block(outport, newOutport);
-%             atomics(expressionID) = newOut;
             
             % Add SubSystem port to atomics
             expressionID = predicates(handle);
@@ -184,6 +171,29 @@ else
     end
 end
 
+% Create black boxes
+blackBoxes = {}; % Block names for blackboxes
+for i = 1:length(expressionsToGenerate)
+    isBB = isBlackBoxExpression(expressionsToGenerate{i});
+    if isBB
+        [lhs, ~] = getExpressionLhsRhs(expressionsToGenerate{i});
+        
+        % Get info about LHS
+        handle = getKeyFromVal(predicates, lhs);
+        handleType = get_param(handle,'Type');
+        % Get the block
+        if strcmp(handleType, 'block')
+            block = getfullname(handle);
+        elseif strcmp(handleType, 'port')
+            block = get_param(handle, 'Parent');
+        end
+
+        blackBoxes{end+1} = block;
+    end
+end
+blackBoxes = unique(blackBoxes);
+atomics = copyBlackBoxes(origSys, sysName, atomics, predicates, blackBoxes);
+
 memo = containers.Map();
 
 % Create blocks for each expression
@@ -191,10 +201,32 @@ for i = 1:length(expressionsToGenerate)
     createLogicBlocks(expressionsToGenerate{i}, atomics, memo, predicates, inExprs, origSys, sysName);
 end
 
-% Create blocks for each expression
-% for i = 1:length(expressionsToGenerate)
-%     createLogicBlocks3(expressionToGenerate{i});
-% end
+    %Remove old blocks and add new ones representing simplified logical
+    %expression
+%     [outExpression, ~] = createLogicBlocks(expressionToGenerate, 1, 1, atomics, memo, getfullname(logicSys));
+%     trueBlockGiven = false; falseBlockGiven = false; % Run without FCA blocks
+%     if strcmp(expressionToGenerate, '(TRUE)') || strcmp(expressionToGenerate, '(CbTRUE)')
+%         if trueBlockGiven
+%             constLoc = ['ChryslerLib/Parameters' char(10) '&' char(10) 'Constants/TRUE Constant'];
+%             memo('(TRUE)')=add_block(constLoc, [getfullname(demoSys) '/simplifier_generated_true'],'MAKENAMEUNIQUE','ON');
+%         else
+%             memo('(TRUE)')=add_block('built-in/Constant', ...
+%                 [getfullname(demoSys) '/simplifier_generated_true'],'MAKENAMEUNIQUE','ON','Value','true','OutDataTypeStr','boolean');
+%         end
+%         outExpression = '(TRUE)';
+%     elseif strcmp(expressionToGenerate, '(FALSE)') || strcmp(expressionToGenerate, '(CbFALSE)')
+%         if falseBlockGiven
+%             constLoc = ['ChryslerLib/Parameters' char(10) '&' char(10) 'Constants/FALSE Constant'];
+%             memo('(FALSE)') = add_block(constLoc, [getfullname(demoSys) '/simplifier_generated_false'],'MAKENAMEUNIQUE','ON');
+%         else
+%             memo('(FALSE)')=add_block('built-in/Constant', ...
+%                 [getfullname(demoSys) '/simplifier_generated_false'],'MAKENAMEUNIQUE','ON','Value','false','OutDataTypeStr','boolean');
+%         end
+%         outExpression = '(FALSE)';
+%     else
+%         [outExpression, ~] = createLogicBlocks(expressionToGenerate, 1, 1, atomics, memo, getfullname(demoSys));
+%     end
+
 
 %%
 %%
@@ -309,12 +341,10 @@ for i = 1:length(inports)
     newBlock = regexprep(inports{i},['^' startSys], endSys, 'ONCE');
     newIn = add_block(inports{i}, newBlock);
     
-    if ~isKey(predicates, dstPort)
-        % The inport isn't used
-    else
+    if isKey(predicates, dstPort)
         expressionID = predicates(dstPort); % ID used to refer to this block in expressions
         atomics(expressionID) = newIn;
-    end
+    end % else the inport isn't used
 end
 end
 
@@ -335,6 +365,27 @@ for i = 1:length(subsystems)
         if isKey(predicates, oldSubOutports(j))
             expressionID = predicates(oldSubOutports(j));
             atomics(expressionID) = subOutports(j);
+        end
+    end
+end
+end
+
+function atomics = copyBlackBoxes(startSys, endSys, atomics, predicates, blackBoxes)
+for i = 1:length(blackBoxes)
+    newBlock = regexprep(blackBoxes{i},['^' startSys], endSys, 'ONCE');
+    newBB = add_block(blackBoxes{i}, newBlock);
+    
+    oldBBOutports = get_param(blackBoxes{i}, 'PortHandles');
+    oldBBOutports = oldBBOutports.Outport;
+    
+    BBOutports = get_param(newBB, 'PortHandles');
+    BBOutports = BBOutports.Outport;
+    
+    assert(length(oldBBOutports) == length(BBOutports))
+    for j = 1:length(BBOutports)
+        if isKey(predicates, oldBBOutports(j))
+            expressionID = predicates(oldBBOutports(j));
+            atomics(expressionID) = BBOutports(j);
         end
     end
 end
