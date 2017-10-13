@@ -1,9 +1,11 @@
 function srcPorts = getSrcPorts(block)
+% GETSRCPORTS Gets the outports that act as sources for a given block
 %
-% block can be either the name or the handle
+%   Input:
+%       block   Can be either the name or the handle
 %
-% srcPorts is the handles of the ports which act as sources to the given
-%   block
+%   Output:
+%       srcPorts    Handles of ports acting as sources to block
 
     srcPorts = [];
     
