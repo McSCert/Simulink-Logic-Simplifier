@@ -498,10 +498,10 @@ if strcmp(get_param(block, 'Mask'), 'on')
     
     maskType = get_param(block, 'MaskType');
     switch maskType
-            case 'Compare To Constant'
-                num = get_param(block, 'Const');
-            case 'Compare To Zero'
-                num = '0';
+        case 'Compare To Constant'
+            num = get_param(block, 'Const');
+        case 'Compare To Zero'
+            num = '0';
         otherwise
             error(['Something went wrong in ' mfilename ' MaskType is currently not supported...']);
     end
@@ -586,5 +586,6 @@ end
         [srcex, sID] = getExpr(startSystem, srcPorts(1), predicates, inExprs);
         nex = [nex, srcex]; % Expressions involved in this block's expressions
         ex = [handleID ' = ' '(' sID ') ' sym ' (' var2 ')']; % Expression for the block/port so far
+        nex = [{ex}, nex]; % Expressions involved in this block's expressions
     end
 end
