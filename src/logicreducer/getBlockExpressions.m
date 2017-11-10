@@ -144,8 +144,8 @@ if ~predicates.isKey(handle)
             case {'Outport', 'Goto'}
                 % Get the source
                 srcPorts = getSrcPorts(block); % DstPort of a block which connects to this
-                assert(length(srcPorts) <= 1, 'Outport not expected to have multiple sources.')
-                assert(~isempty(srcPorts), 'Outport missing input.') % In the future these cases may be handled
+                assert(length(srcPorts) <= 1, 'A block was not expected to have multiple sources.')
+                assert(~isempty(srcPorts), 'A block is missing input.') % In the future these cases may be handled
                 
                 % Get the expression for the handle and its sources recursively
                 [srcExprs, srcID] = getExpr(startSystem, srcPorts(1), blocks, predicates, inExprs);
