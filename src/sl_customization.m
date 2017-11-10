@@ -6,19 +6,9 @@ end
 %% Define custom menu function
 function schemaFcns = getMcMasterTool(callbackInfo)
 
-    % Check that only Outports are selected
+    % Check that at least 1 block is selected
     if ~isempty(gcbs)
-        outports = true;
-        for i = 1:length(gcbs)
-            if ~strcmp(get_param(gcb, 'BlockType'), 'Outport')
-                outports = false;
-            end
-        end
-        if outports
-            schemaFcns = {@LogicSimplifier};
-        else
-            schemaFcns = {};
-        end
+        schemaFcns = {@LogicSimplifier};
     else
         schemaFcns = {};
     end
@@ -28,7 +18,7 @@ end
 function schema = LogicSimplifier(callbackInfo)
     schema = sl_container_schema;
     schema.label = 'Logic Simplifier';
-    schema.childrenFcns = {@getSimplify, @getSimplifyWithVerify};
+    schema.childrenFcns = {@getSimplify, @getSimplifyWithVerify, @simplifierConfigMenu};
 end
 
 %% Define Simplify Logic Option
@@ -47,6 +37,14 @@ function schema = getSimplifyWithVerify(callbackInfo)
     schema.callback = @SimplifyLogicWithVerifyCallback;
 end
 
+%% Define Open Logic Simplifier Config Option
+function schema = simplifierConfigMenu(callbackInfo)
+    schema = sl_action_schema;
+    schema.label = 'Configuration';
+    schema.userdata = 'simplifierConfig';
+    schema.callback = @simplifierConfigCallback;
+end
+
 function SimplifyLogicCallback(callbackInfo)
     SimplifyLogic(gcbs);
 end
@@ -54,4 +52,16 @@ end
 function SimplifyLogicWithVerifyCallback(callbackInfo)
     verify = true;
     SimplifyLogic(gcbs, verify);
+end
+
+function simplifierConfigCallback(callbackInfo)
+% % TODO Open GUI
+%     configGUI;
+
+% Open file
+    filePath = mfilename('fullpath');
+    name = mfilename;
+    filePath = filePath(1:end-length(name));
+    fileName = [filePath 'config.txt'];
+    open(fileName);
 end
