@@ -1,4 +1,4 @@
-function exprs = getBlockExpressions(startSystem, blocks, predicates, inExprs)
+function exprs = getBlockExpressions(startSystem, blocks, sysBlocks, predicates, inExprs)
 % GETBLOCKEXPRESSIONS Get expressions recursively for the outputs of the
 %   given set of blocks.
 %
@@ -8,6 +8,8 @@ function exprs = getBlockExpressions(startSystem, blocks, predicates, inExprs)
 %       blocks          List of blocks to find expressions for. These
 %                       blocks are expected to be from the same level of
 %                       the same system.
+%       sysBlocks       List of all blocks in the system. Blocks that
+%                       aren't in blocks will be treated as blackbox.
 %       predicates      containers.Map() of handles (the keys) and
 %                       predicate identifiers which are in use (the
 %                       values). The values should be unique (as well as
@@ -21,10 +23,10 @@ function exprs = getBlockExpressions(startSystem, blocks, predicates, inExprs)
 %       exprs   Expressions extracted from blocks.
 
 exprs = {};
-for i = 1:length(blocks)
-    bHandle = get_param(blocks{i}, 'Handle');
+for i = 1:length(sysBlocks)
+    bHandle = get_param(sysBlocks{i}, 'Handle');
     
-    ports = get_param(blocks{i}, 'PortHandles');
+    ports = get_param(sysBlocks{i}, 'PortHandles');
     dstPorts = ports.Outport;
     
     % Get exprHandles
@@ -39,14 +41,14 @@ for i = 1:length(blocks)
         % Get the expression for the given handle.
         % Also figure out the expressions for subsequent sources which affect
         % the original expression.
-        newExprs = getExpr(startSystem, exprHandles(j), predicates, inExprs);
+        newExprs = getExpr(startSystem, exprHandles(j), blocks, predicates, inExprs);
         exprs = {exprs{1:end}, newExprs{1:end}};
     end
 end
 
 end
 
-function [newExprs, handleID] = getExpr(startSystem, handle, predicates, inExprs)
+function [newExprs, handleID] = getExpr(startSystem, handle, blocks, predicates, inExprs)
 % GETEXPR Gets the expressions which define the expression of the given
 %   block/outport handle. Also returns the identifier used to refer to the
 %   given handle within expressions.
@@ -92,13 +94,20 @@ if ~predicates.isKey(handle)
     % Add to predicates
     predicates(handle) = handleID; % Now it's a key in predicates so we'll never try to get its expression again
     
+    inBlocks = any(strcmp(block, blocks));
+    if ~inBlocks
+        % Treat as blackbox
+        newExprs = getBlackBoxExpression(inExprs);
+        return
+    end
+    
     % Find the expression (structure of the expression depends on block type)
     if strcmp(get_param(block, 'Mask'), 'on')
         maskType = get_param(block, 'MaskType');
         
         switch maskType
             case {'Compare To Constant', 'Compare To Zero'}
-                [newExprs, ~] = getLogicExpr(startSystem, handle, handleID, handleType, block, predicates, inExprs);
+                [newExprs, ~] = getLogicExpr(startSystem, handle, handleID, handleType, block, blocks, predicates, inExprs);
 
             otherwise
                 % Treat as blackbox
@@ -119,11 +128,11 @@ if ~predicates.isKey(handle)
                 end
                 newExprs = {expr};
             case 'If'
-                [newExprs, ~] = getIfExpr(startSystem, handle, handleID, block, predicates, inExprs);
+                [newExprs, ~] = getIfExpr(startSystem, handle, handleID, block, blocks, predicates, inExprs);
             case 'Inport'
                 if ~strcmp(get_param(block, 'Parent'), startSystem)
                     srcHandle = getInportSrc(block);
-                    [srcExprs, srcID] = getExpr(startSystem, srcHandle, predicates, inExprs);
+                    [srcExprs, srcID] = getExpr(startSystem, srcHandle, blocks, predicates, inExprs);
                     
                     expr = [handleID ' = ' srcID]; % This block/port's expression with respect to its sources
                     newExprs = [{expr}, srcExprs]; % Expressions involved in this block's expressions
@@ -131,7 +140,7 @@ if ~predicates.isKey(handle)
                     newExprs = {}; % Expression is nothing since inport is atomic
                 end
             case {'Logic', 'RelationalOperator'}
-                [newExprs, ~] = getLogicExpr(startSystem, handle, handleID, handleType, block, predicates, inExprs);
+                [newExprs, ~] = getLogicExpr(startSystem, handle, handleID, handleType, block, blocks, predicates, inExprs);
             case {'Outport', 'Goto'}
                 % Get the source
                 srcPorts = getSrcPorts(block); % DstPort of a block which connects to this
@@ -139,12 +148,12 @@ if ~predicates.isKey(handle)
                 assert(~isempty(srcPorts), 'Outport missing input.') % In the future these cases may be handled
                 
                 % Get the expression for the handle and its sources recursively
-                [srcExprs, srcID] = getExpr(startSystem, srcPorts(1), predicates, inExprs);
+                [srcExprs, srcID] = getExpr(startSystem, srcPorts(1), blocks, predicates, inExprs);
                 
                 expr = [handleID ' = ' srcID]; % This block/port's expression with respect to its sources
                 newExprs = [{expr}, srcExprs]; % Expressions involved in this block's expressions
             case 'SubSystem'
-                [newExprs, ~] = getSubSystemExpr(startSystem, handle, handleID, handleType, block, predicates, inExprs);
+                [newExprs, ~] = getSubSystemExpr(startSystem, handle, handleID, handleType, block, blocks, predicates, inExprs);
             case 'From'
                 % Get corresponding Goto block
                 %goto = getGoto4From(block);
@@ -156,7 +165,7 @@ if ~predicates.isKey(handle)
                     newExprs = {expr}; % Expressions involved in this block's expressions
                 else
                     % Get Goto expressions
-                    [srcExprs, srcID] = getExpr(startSystem, srcHandle, predicates, inExprs);
+                    [srcExprs, srcID] = getExpr(startSystem, srcHandle, blocks, predicates, inExprs);
                     
                     % Record this block's expressions
                     expr = [handleID ' = ' srcID]; % This block/port's expression with respect to its sources
@@ -174,9 +183,9 @@ if ~predicates.isKey(handle)
                 srcHandle1 = get_param(lines(1), 'SrcPortHandle');
                 srcHandle2 = get_param(lines(2), 'SrcPortHandle');
                 srcHandle3 = get_param(lines(3), 'SrcPortHandle');
-                [srcExprs1, srcID1] = getExpr(startSystem, srcHandle1, predicates, inExprs);
-                [srcExprs2, srcID2] = getExpr(startSystem, srcHandle2, predicates, inExprs);
-                [srcExprs3, srcID3] = getExpr(startSystem, srcHandle3, predicates, inExprs);
+                [srcExprs1, srcID1] = getExpr(startSystem, srcHandle1, blocks, predicates, inExprs);
+                [srcExprs2, srcID2] = getExpr(startSystem, srcHandle2, blocks, predicates, inExprs);
+                [srcExprs3, srcID3] = getExpr(startSystem, srcHandle3, blocks, predicates, inExprs);
                 
                 criteria_param = get_param(block, 'Criteria');
                 thresh = get_param(block, 'Threshold');
@@ -202,13 +211,13 @@ if ~predicates.isKey(handle)
                 newExprs = {}; % newExprs
                 
                 % Get the expression for the source port
-                [srcExprs, srcID] = getExpr(startSystem, srcPorts(1), predicates, inExprs);
+                [srcExprs, srcID] = getExpr(startSystem, srcPorts(1), blocks, predicates, inExprs);
                 newExprs = [newExprs, srcExprs]; % Add expressions for current source
                 expr = [handleID ' = ' '(' srcID ')']; % Expression for the block/port so far
                 
                 for j = 2:numInputs
                     % Get the expression for the source port
-                    [srcExprs, srcID] = getExpr(startSystem, srcPorts(j), predicates, inExprs);
+                    [srcExprs, srcID] = getExpr(startSystem, srcPorts(j), blocks, predicates, inExprs);
                     newExprs = [newExprs, srcExprs]; % Expressions involved in this block's expressions
                     sym = '|';
                     expr = [expr ' ' sym ' (' srcID ')']; % This block/port's expression with respect to its sources
@@ -250,7 +259,7 @@ end
         nex = {};
         expr = [handleID ' =? '];
         for i = 1:length(srcPorts)
-            [srcExprs, srcID] = getExpr(startSystem, srcPorts(i), predicates, inex);
+            [srcExprs, srcID] = getExpr(startSystem, srcPorts(i), blocks, predicates, inex);
             expr = [expr, srcID, ',']; % Note the notation '=?' being used for blackboxes
             nex = [nex, srcExprs];
             
@@ -347,7 +356,7 @@ srcHandle = get_param(srcLine, 'SrcPortHandle');
 
 end
 
-function [newExprs, handleID] = getSubSystemExpr(startSystem, handle, handleID, handleType, block, predicates, inExprs)
+function [newExprs, handleID] = getSubSystemExpr(startSystem, handle, handleID, handleType, block, blocks, predicates, inExprs)
 
 %% TODO, consider other cases such as with triggers
 
@@ -363,7 +372,7 @@ if strcmp(handleType, 'block')
     % Get expressions for contents
     subBlocks = find_system(block, 'SearchDepth', 1);
     subBlocks = subBlocks(2:end); % Exclude subsystem itself from the set of blocks
-    subExprs = getBlockExpressions(startSystem, subBlocks, predicates, inExprs);
+    subExprs = getBlockExpressions(startSystem, blocks, subBlocks, predicates, inExprs);
     
     %% The commented chunk below should be handled through the call to getBlockExpressions above
     % Get expressions for the subsystem's sources
@@ -390,7 +399,7 @@ elseif strcmp(handleType, 'port')
     outHandle = get_param(portBlock, 'Handle');
     
     % Get the expression for the outport block
-    [outExprs, outID] = getExpr(startSystem, outHandle, predicates, inExprs);
+    [outExprs, outID] = getExpr(startSystem, outHandle, blocks, predicates, inExprs);
     
     actionBlock = find_system(block, 'SearchDepth', 1, 'BlockType', 'ActionPort');
     if isempty(actionBlock)
@@ -403,7 +412,7 @@ elseif strcmp(handleType, 'port')
         srcPort = get_param(line, 'SrcPortHandle');
         
         % Get the expression for the if block
-        [ifExprs, ifID] = getExpr(startSystem, srcPort, predicates, inExprs);
+        [ifExprs, ifID] = getExpr(startSystem, srcPort, blocks, predicates, inExprs);
         
         % Find the net expression
         % Anticipated Change: May want to AND the if expression with each
@@ -416,7 +425,7 @@ else
 end
 end
 
-function [newExprs, handleID] = getIfExpr(startSystem, handle, handleID, block, predicates, inExprs)
+function [newExprs, handleID] = getIfExpr(startSystem, handle, handleID, block, blocks, predicates, inExprs)
 %this function will parse the conditions of the if block
 %in order to produce a logical expression indicative of the if block
 
@@ -461,7 +470,7 @@ for i = 1:length(conditionIndices)
     srcPort = get_param(lineForCond, 'SrcPortHandle');
     
     % Get the expression for the source
-    [srcExprs, srcID] = getExpr(startSystem, srcPort, predicates, inExprs);
+    [srcExprs, srcID] = getExpr(startSystem, srcPort, blocks, predicates, inExprs);
     
     if ~isKey(inExprs, srcID)
         ifInportID = [handleID '_' condition];
@@ -478,7 +487,7 @@ expr = [handleID ' = ' ifExpr];
 newExprs = [{expr}, newExprs]; % Expressions involved in this block's expressions
 end
 
-function [newExprs, handleID] = getLogicExpr(startSystem, handle, handleID, handleType, block, predicates, inExprs)
+function [newExprs, handleID] = getLogicExpr(startSystem, handle, handleID, handleType, block, blocks, predicates, inExprs)
 % In theory you could do: get_param(block, 'Inputs')
 %But I found in practice it returned the wrong number...
 
@@ -531,7 +540,7 @@ else % Mask off
             assert(numInputs == 1);
             
             % Get the expression for the source
-            [srcExprs, srcID] = getExpr(startSystem, srcPorts(1), predicates, inExprs);
+            [srcExprs, srcID] = getExpr(startSystem, srcPorts(1), blocks, predicates, inExprs);
             
             expr = [handleID ' = ' '~' srcID]; % This block/port's expression with respect to its sources
             newExprs = {expr, srcExprs{1:end}}; % Expressions involved in this block's expressions
@@ -564,13 +573,13 @@ end
         nex = {}; % newExprs
         
         % Get the expression for the source port
-        [srcex, sID] = getExpr(startSystem, srcPorts(1), predicates, inExprs);
+        [srcex, sID] = getExpr(startSystem, srcPorts(1), blocks, predicates, inExprs);
         nex = {nex{1:end}, srcex{1:end}}; % Add expressions for current source
         ex = [handleID ' = ' '(' sID ')']; % Expression for the block/port so far
         
         for j=2:numInputs
             % Get the expression for the source port
-            [srcex, sID] = getExpr(startSystem, srcPorts(j), predicates, inExprs);
+            [srcex, sID] = getExpr(startSystem, srcPorts(j), blocks, predicates, inExprs);
             nex = [nex, srcex]; % Expressions involved in this block's expressions
             ex = [ex ' ' sym ' (' sID ')']; % This block/port's expression with respect to its sources
         end
@@ -583,7 +592,7 @@ end
         nex = {}; % newExprs
         
         % Get the expression for the source port
-        [srcex, sID] = getExpr(startSystem, srcPorts(1), predicates, inExprs);
+        [srcex, sID] = getExpr(startSystem, srcPorts(1), blocks, predicates, inExprs);
         nex = [nex, srcex]; % Expressions involved in this block's expressions
         ex = [handleID ' = ' '(' sID ') ' sym ' (' var2 ')']; % Expression for the block/port so far
         nex = [{ex}, nex]; % Expressions involved in this block's expressions
