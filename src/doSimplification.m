@@ -25,7 +25,14 @@ inExprs = containers.Map('KeyType','char','ValueType','char'); % Key is a value 
 
 % Get expression for each block in form:
 %   'blockID = expr', where expr is an expression with contants, other blockIDs, and operators
-tempExpressions = getBlockExpressions(origSys, blocks, predicates, inExprs);
+
+if strcmp(SUBSYSTEM_RULE, 'blackbox')
+    sysBlocks = setdiff(find_system(origSys, 'SearchDepth', '1'), origSys);
+else
+    sysBlocks = setdiff(find_system(origSys), origSys);
+end
+
+tempExpressions = getBlockExpressions(origSys, blocks, sysBlocks, predicates, inExprs);
 
 % Find which expressions should be subbed into others
 startingExpressions = substituteExpressions(tempExpressions, blocks, predicates);
@@ -199,6 +206,7 @@ memo = containers.Map();
 % Create blocks for each expression
 for i = 1:length(expressionsToGenerate)
     createLogicBlocks(expressionsToGenerate{i}, atomics, memo, predicates, inExprs, origSys, sysName);
+%     createLogicBlocks2(expressionsToGenerate{i}, atomics, memo, predicates, inExprs, origSys, sysName);
 end
 
     %Remove old blocks and add new ones representing simplified logical
@@ -373,19 +381,22 @@ end
 function atomics = copyBlackBoxes(startSys, endSys, atomics, predicates, blackBoxes)
 for i = 1:length(blackBoxes)
     newBlock = regexprep(blackBoxes{i},['^' startSys], endSys, 'ONCE');
-    newBB = add_block(blackBoxes{i}, newBlock);
-    
-    oldBBOutports = get_param(blackBoxes{i}, 'PortHandles');
-    oldBBOutports = oldBBOutports.Outport;
-    
-    BBOutports = get_param(newBB, 'PortHandles');
-    BBOutports = BBOutports.Outport;
-    
-    assert(length(oldBBOutports) == length(BBOutports))
-    for j = 1:length(BBOutports)
-        if isKey(predicates, oldBBOutports(j))
-            expressionID = predicates(oldBBOutports(j));
-            atomics(expressionID) = BBOutports(j);
+    try find_system(newBlock); blockExists = 1; catch blockExists = 0; end % Check if block already exists
+    if ~blockExists
+        newBB = add_block(blackBoxes{i}, newBlock);
+        
+        oldBBOutports = get_param(blackBoxes{i}, 'PortHandles');
+        oldBBOutports = oldBBOutports.Outport;
+        
+        BBOutports = get_param(newBB, 'PortHandles');
+        BBOutports = BBOutports.Outport;
+        
+        assert(length(oldBBOutports) == length(BBOutports))
+        for j = 1:length(BBOutports)
+            if isKey(predicates, oldBBOutports(j))
+                expressionID = predicates(oldBBOutports(j));
+                atomics(expressionID) = BBOutports(j);
+            end
         end
     end
 end
