@@ -250,9 +250,9 @@ end
 
     function nex = getSuppMaskOutExpression()
         % Get expression for masked handles with eType of 'out'
-        switch mtype
+        switch mType
             case {'Compare To Constant', 'Compare To Zero'}
-                % TODO
+                [nex, ~] = getLogicExpression(startSys, h, handleID, blocks, lhsTable, subsystem_rule);
             otherwise
                 error('Error, unsupported MaskType when supported type expected.')
         end

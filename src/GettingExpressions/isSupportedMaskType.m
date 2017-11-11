@@ -1,6 +1,6 @@
 function bool = isSupportedMaskType(maskType)
 %
 
-supportedMaskTypes = {};
+supportedMaskTypes = {'Compare To Constant', 'Compare To Zero'};
 bool = any(strcmp(maskType, supportedMaskTypes));
 end
