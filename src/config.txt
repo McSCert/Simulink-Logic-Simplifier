@@ -1,0 +1,31 @@
+#DELETE_UNUSED Indicates whether or not to delete blocks which are unused in the
+#	final model.
+#Default is off.
+#
+#Acceptable parameter values are:
+#	on (blocks will be deleted if not a SubSystem and all of its outports are 
+#		unused, one way this could occur is if the original system has an Inport
+#		which feeds its signal into an if block that doesn't depend on that signal), 
+#	off (blocks that would have been deleted are left in the system for the user to
+#		decide what to do)
+delete_unused: off
+
+#SUBSYSTEM_RULE Indicates how to address subsystems in the simplification process.
+#Default is blackbox.
+#
+#Acceptable parameter values are:
+#	full-simplify (contents of subsystems will be integrated into the simplification
+#		of other blocks),
+#	part-simplify (contents of subsystems will be simplified, but other blocks will
+#		see them as a black box for the sake of their simplification), 
+#	blackbox (subsystems will not be modified during simplification and there 
+#		output will not be assumed)
+subsystem_rule: part-simplify
+
+#GENERATED_BLOCK_REUSE_RULE
+#Default is reuse.
+#
+#Acceptable parameter values are:
+#	reuse (involves using branching connections if generated blocks are to be used more than once)
+#	single-use (involves generating additional blocks with the same signal as other generated blocks)
+generated_block_reuse_rule: reuse
