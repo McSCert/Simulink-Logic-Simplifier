@@ -116,7 +116,7 @@ end
 if verify
     if strcmp(parent, bdroot(parent)) % parent is the whole model
         % Call verification function on logicSys and parent
-        makeVerificationModel([bdroot(parent) '_Verify'], getfullname(logicSys), bdroot(parent));
+        makeVerificationModel([bdroot(parent) '_Verify'], bdroot(parent), getfullname(logicSys));
     else
         % Extract subsystem to new model
 
@@ -150,7 +150,7 @@ if verify
         end
         
         % Call verification function on logicSys and copySys
-        makeVerificationModel([copySysName '_Verify'], getfullname(logicSys), copySysName);
+        makeVerificationModel([copySysName '_Verify'], copySysName, getfullname(logicSys));
     end
 end
 
