@@ -1,4 +1,4 @@
-function makeVerificationModel(address, model1, model2)
+function verificationModel = makeVerificationModel(address, model1, model2, saveDir)
 % MAKEVERIFICATIONMODEL Construct a model (.mdl) which can be used to verify 
 %   equivalence between two models using Simulink Design Verifier.
 
@@ -6,15 +6,17 @@ function makeVerificationModel(address, model1, model2)
 %       address     Verification model name.
 %       model1      First model to verify.
 %       model2      Second model to verify.
+%       saveDir     Fullpath of directory to save the constructed model in.
 %
 %   Outputs:
-%       N/A
+%       verificationModel   Fullpath of location and name of the constructed
+%                           model.
 %
 %   Example:
 %       makeVerificationModel('mdl_verify', 'mdl_original', 'mdl_newDesign');
 
     % Check number of arguments
-     assert(nargin == 3, 'Wrong number of arguments provided.')
+     assert(nargin == 4, 'Wrong number of arguments provided.')
     
     % Check that SDV is present
     v = ver;
@@ -268,8 +270,18 @@ function makeVerificationModel(address, model1, model2)
         % 2) Equality to proof
         connectBlocks(verifySubsystem, equalityBlocks(i), proofBlocks(i));
     end
-
-    save_system([verifyModel '.mdl']);
+    
+    startDir = pwd;
+    try
+        cd(saveDir)
+        save_system([verifyModel '.mdl'])
+        cd(startDir)
+    catch ME
+        cd(startDir)
+        rethrow(ME)
+    end
+    
+    verificationModel = [saveDir '/' verifyModel '.mdl'];
     
     % Set SDV options and auto-run proving
     % Downside of auto-run is that it will still name a replacement model
