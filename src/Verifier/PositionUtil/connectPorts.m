@@ -18,7 +18,7 @@ function lineHandle = connectPorts(address, port1, port2, varargin)
     assert(get_param(port1, 'Line') == -1, ...
         'Input port1 already has a line connection.');
     assert(get_param(port2, 'Line') == -1, ...
-        'Input port1 already has a line connection.');
+        'Input port2 already has a line connection.');
        
     port1Type = get_param(port1, 'PortType');           
     port2Type = get_param(port2, 'PortType');
