@@ -67,7 +67,7 @@ while (idx <= length(rhs))
                     connectDsts = ports.Inport;
                     
                     for i = 1:numInputs
-                        connectPorts(sys, connectSrcs(i), connectDsts(i))
+                        connectPorts(sys, connectSrcs(i), connectDsts(i));
                     end
                     
                     % Set outputs for the recursion.

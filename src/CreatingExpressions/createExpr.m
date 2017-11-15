@@ -46,7 +46,7 @@ if isBlackBoxExpression(expr)
         end
         
         assert(length(bbSrcs) == 1, 'Error: Expression should have only 1 outgoing connection.')
-        connectPorts(createIn, bbSrcs, connectDst)
+        connectPorts(createIn, bbSrcs, connectDst);
     end
     
     % connectSrcs should be a matrix of the outputs of the blackbox

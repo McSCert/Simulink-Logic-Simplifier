@@ -86,7 +86,7 @@ for i = find(notDepByMat) % When notDepByMat is 1
             assert(length(ph.Inport) == 1, 'Error: Terminator expected to have 1 input port.')
             connectDst = ph.Inport(1);
             % Connect the blackbox to the Terminator
-            connectPorts(createIn, connectSrcs(j), connectDst)
+            connectPorts(createIn, connectSrcs(j), connectDst);
         end
     else
         % TODO make a function to return this so that it's easier to
@@ -117,7 +117,7 @@ for i = find(notDepByMat) % When notDepByMat is 1
         
         % Connect RHS to LHS
         assert(length(connectSrcs) == 1, 'Error: Non-blackbox expression expected to just have one outgoing port.')
-        connectPorts(createIn, connectSrcs, connectDst)
+        connectPorts(createIn, connectSrcs, connectDst);
     end
 end
 end
