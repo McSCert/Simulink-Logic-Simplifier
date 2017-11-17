@@ -1,12 +1,12 @@
 function inoutBlock = subport2inoutblock(subPort)
-% SUBPORT2INOUTBLOCK Get the Inport/Outport block name corresponding to a SubSystem 
-%   or ModelReference Inport/Outport.
+% SUBPORT2INOUTBLOCK Get the Inport/Outport block name corresponding to a 
+%   SubSystem or ModelReference Inport/Outport (i.e. the inport within it).
 %
 %   Inputs:
 %       subPort         Port handle.
 %
 %   Outputs:
-%       inoutBlock      Cell array of names (path).
+%       inoutBlock      Fullname of corresponding block (path).
 %
 %   Example:
 %       ports = get_param(gcb, 'PortHandles');
