@@ -93,7 +93,7 @@ for i = 1:length(preSimpleExprs)
 end
 
 %% Create blocks for each expression
-createExpressions(postSimpleExprs, lhsTable, startSys, endSys);
+createExpressions(postSimpleExprs, lhsTable, startSys, endSys, subsystem_rule);
 
 finalExprs = postSimpleExprs;
 
