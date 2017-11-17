@@ -61,6 +61,8 @@ expr = swap4Simulink(expr);
 
 % Swap out 'in {...}':
 expr = swapIn(expr);
+
+expr = bracketForPrecedence(expr, true);
 end
 
 function expr = swap4Symengine(expr)
