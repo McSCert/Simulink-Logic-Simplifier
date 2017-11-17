@@ -98,7 +98,7 @@ if ~strcmp(SUBSYSTEM_RULE, 'blackbox')
     end
 end
 
-% Save the resulting model - DO NOT MODIFY IT FURTHER
+% Save the resulting model - DO NOT MODIFY IT BELOW THIS
 startDir = pwd;
 resultsDir = 'Logic_Simplifier_Results';
 mkdir(resultsDir) % Where we'll save results
@@ -116,7 +116,7 @@ end
 if verify
     if strcmp(parent, bdroot(parent)) % parent is the whole model
         % Call verification function on logicSys and parent
-        makeVerificationModel([bdroot(parent) '_Verify'], bdroot(parent), getfullname(logicSys));
+        makeVerificationModel([bdroot(parent) '_Verify'], bdroot(parent), getfullname(logicSys), [startDir '/' resultsDir]);
     else
         % Extract subsystem to new model
 
@@ -150,7 +150,7 @@ if verify
         end
         
         % Call verification function on logicSys and copySys
-        makeVerificationModel([copySysName '_Verify'], copySysName, getfullname(logicSys));
+        makeVerificationModel([copySysName '_Verify'], copySysName, getfullname(logicSys), [startDir '/' resultsDir]);
     end
 end
 
