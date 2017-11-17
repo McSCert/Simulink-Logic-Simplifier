@@ -166,14 +166,26 @@ end
                     
                     % Get the immediate source of the output port (i.e. the outport block within the subsystem)
                     outBlock = subport2inoutblock(h);
-%                     outBlock = outBlock{1};
                     srcHandle = get_param(outBlock, 'Handle');
                     
                     % Get the expressions for the sources
                     [srcExprs, srcID] = getExprs(startSys, srcHandle, blocks, lhsTable, subsystem_rule);
                     
                     expr = [handleID ' = ' srcID];
-                    nex = [{expr}, srcExprs];
+                    nex = srcExprs;
+                    
+                    ifPort = getPorts(blk, 'Ifaction');
+                    assert(length(ifPort) <= 1, 'Error: Expected 0 or 1 if action port on a subsystem.')
+                    
+                    if ~isempty(ifPort)
+                        % Get the expressions for the Ifaction port
+                        [srcExprs, srcID] = getExprs(startSys, ifPort, blocks, lhsTable, subsystem_rule);
+                        
+                        expr = [expr ' & ' srcID];
+                        nex = [{expr}, srcExprs, nex];
+                    else
+                        nex = [{expr}, nex];
+                    end
                 else
                     error('Error, invalid subsystem_rule')
                 end
