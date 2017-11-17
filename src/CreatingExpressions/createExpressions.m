@@ -1,5 +1,5 @@
-function createExpressions(exprs, s_lhsTable, startSys, endSys)
-% CREATEEXPRESSIONS Generate blocks to represent an expression.
+function createExpressions(exprs, s_lhsTable, startSys, endSys, subsystem_rule)
+% CREATEEXPRESSIONS Generate blocks to represent a set of expressions.
 %
 %   Inputs:
 %       exprs       Cell array of expressions (strings) to generate.
@@ -10,39 +10,41 @@ function createExpressions(exprs, s_lhsTable, startSys, endSys)
 %       startSys    System from which blocks in lhsTable can be found (the 
 %                   expression should have been made from analysis of this 
 %                   system).
+%       endSys      System in which to create the expressions.
+%       subsystem_rule  Rule about how to treat subsystems, see the logic
+%                       simplifier config file for details.
 %
 
 % Note: Some variables will be prefixed with "s_" or "e_" to indicate what 
 % system the variable relates to. "s_": for startSys, "e_": for endSys.
 
-%% Init
-% TODO: use e_lhsTable instead of running findsystem every time (forgot to
-% do during implementation)
-e_lhsTable = BiMap('double','char'); % Add the corresponding elements from s_lhsTable as they are created
+%% Initializations
+
+% e_lhs2handle: For the LHS of an expression, gives the associated handle
+%   in the final system. If the expression hasn't been generated yet, then
+%   the LHS will not be a key.
+e_lhs2handle = containers.Map('KeyType', 'char', 'ValueType', 'double');
+
+% s2e_blockHandles: Mapping block handles between start and end system (only
+%   add an item if it gets copied into the end system (endSys).
+s2e_blockHandles = containers.Map('KeyType', 'double', 'ValueType', 'double');
+
+% lefts: List of LHS's in exprs
+% rights: List of RHS's in exprs
 [lefts, rights] = getAllLhsRhs(exprs);
 
-%% Reorder expressions 
-%   Essentially this will allow blocks to be connected where they need to be 
-%   when the expressions are created.
-
-% TODO figure out best way to reorder
-% postSimpleExprs = reorderExpressions(startSys, exprs, lhsTable); -- old method, might still be fine
-
-% TODO consider alternate approach (if others don't work)
-% Find expressions with no dependencies, build those, then build ones which
-% only depend on it, ...
+%% Find the 'right-most' expressions
+%   By this we mean expressions which are not depended on. Expressions
+%   which are not depended on will correspond with blocks further in the
+%   data flow of the Simulink diagram. Thus these expressions are
+%   'right-most' assuming the Simulink diagram has left-to-right flow.
 %
-% exprDeps = getExprDependencies(exprs);
-% noDepsMat = zeros(1,length(exprDeps));
-% for i = 1:length(exprDeps)
-%     noDepsMat(i) = ~isempty(exprDeps{i,2});
-% end
-
-% TODO: alternate approach (currently preferred approach):
-% Find expressions which are independ
-% Find expressions with no dependencies, create them and recursively create
-% the expressions that depend on them
-% Watch out for loops
+% TODO: Account for loops in the Simulink diagram
+% TODO: Check if need to account for expressions within subsystems
+%
+% Old approach was able to simply reorder expressions to be made in a
+% suitable order, however this approach was less intuitive and was not easy
+% to maintain during certain code modifications
 depMat = getExprDepMat(exprs);
 notDepByMat = zeros(1,size(depMat,1)); % notDepBy: not depended on by anything
 for i = 1:size(depMat,1)
@@ -51,12 +53,7 @@ end
 
 %% Generate Expressions
 % TODO - account for loops / subsystems / other things that aren't handled yet / at all by this method
-%
-% TODO fix this to account for current implementation
-% for each unused expr
-%   createL(LHS(expr_i))
-%   createR(RHS(expr_i))
-%   connect(LHS,RHS)
+% TODO - Describe what's going on in the for loop overall
 for i = find(notDepByMat) % When notDepByMat is 1
     %% Get info about the expression
     expr = exprs{i};
@@ -67,13 +64,27 @@ for i = find(notDepByMat) % When notDepByMat is 1
     s_h = s_lhsTable.lookdown(lhs); % Expression handle
     s_blk = getBlock(s_h); % Block corresponding to the handle (i.e. parent of port else same as handle)
     bType = get_param(s_blk, 'BlockType');
+    
+    if strcmp(bType, 'ActionPort') && strcmp(subsystem_rule, 'full-simplify')
+        % Expression isn't desired; skip
+        continue
+    end
 
     %% Figure out in which (sub)system to generate the expression
-    % TODO
-    createIn = endSys; % Temp: assume no subsystems being kept
+    if any(strcmp(subsystem_rule, {'blackbox', 'part-simplify'}))
+        % Create expression in the (sub)system it comes from, but in the
+        % new model
+        createIn = regexprep(get_param(s_blk, 'Parent'),['^' startSys], endSys, 'ONCE');
+    elseif strcmp(subsystem_rule, 'full-simplify')
+        % Create expression at the highest level (subsystems will be 
+        % 'flattened')
+        createIn = endSys;
+    else
+        error('Error, invalid subsystem_rule')
+    end
     
     %%
-    connectSrcs = createExpr(lhs, exprs, startSys, createIn, s_lhsTable);
+    connectSrcs = createExpr(lhs, exprs, startSys, createIn, s_lhsTable, e_lhs2handle, s2e_blockHandles);
     
     if isBlackBoxExpression(expr)
         % Note: The corresponding block would have been made in createExpr
@@ -95,8 +106,8 @@ for i = find(notDepByMat) % When notDepByMat is 1
         
         % Get connectDst
         if any(strcmp(bType,supportedStartBlocks))
-            e_blk = regexprep(s_blk,['^' startSys], createIn, 'ONCE'); % Name of the block in endSys
-            if isempty(find_system(createIn, 'Name', get_param(s_blk, 'Name'))) % block not made yet
+            e_blk = regexprep(s_blk,['^' startSys], endSys, 'ONCE'); % Name of the block in endSys
+            if isempty(find_system(createIn, 'SearchDepth', 1, 'Name', get_param(s_blk, 'Name'))) % block not made yet
                 % Create block
                 e_bh = add_block(s_blk, e_blk);
             else
