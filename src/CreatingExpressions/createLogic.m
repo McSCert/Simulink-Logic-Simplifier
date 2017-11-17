@@ -1,12 +1,20 @@
-function [connectSrc, idx] = createLogic(rhs, exprs, startSys, sys, idx, s_lhsTable)
+function [connectSrc, idx] = createLogic(rhs, exprs, startSys, sys, idx, s_lhsTable, e_lhs2handle, s2e_blockHandles)
 % CREATELOGIC Places blocks with appropriate connections into an
 %   empty model to represent a logical expression.
 %
 %   Input:
-%       sys         System in which to create blocks/signals to represent rhs
 %       rhs         Right-hand side of an expression. rhs should be a valid
 %                   logical expression.
+%       exprs       Cell array of expressions.
+%       startSys    System from which the original blocks come from.
+%       sys         System in which to create blocks/signals to represent rhs
 %       idx         Index of the 'current position' in rhs.
+%       s_lhsTable      Map from block/port handle in the original system
+%                       to lhs in exprs and vice versa. (2-way map)
+%       e_lhs2handle    Map from lhs in exprs to block/port handle in the 
+%                       final system. (1-way map)
+%       s2e_blockHandles    Map of block handles from the start system to the
+%                           end system.
 %
 %   Output:
 %       connectSrc  The final output port which will will have a signal
@@ -24,7 +32,7 @@ while (idx <= length(rhs))
     switch character
         case '('
             % Recurse to create blocks for the subformula between brackets
-            [connectSrc, idx] = createLogic(rhs, exprs, startSys, sys, idx+1, s_lhsTable);
+            [connectSrc, idx] = createLogic(rhs, exprs, startSys, sys, idx+1, s_lhsTable, e_lhs2handle, s2e_blockHandles);
             idx = idx + 1;
         case ')'
             % connectSrc and idx already set
@@ -55,7 +63,7 @@ while (idx <= length(rhs))
                         % TODO: why did the old version pass nextIdx + 1
                         % for the idx? did it work because it
                         % coincidentally cropped whitespace?
-                        [connectSrcs(end+1), newIdx] = createLogic(rhs, exprs, startSys, sys, nextIdx, s_lhsTable);
+                        [connectSrcs(end+1), newIdx] = createLogic(rhs, exprs, startSys, sys, nextIdx, s_lhsTable, e_lhs2handle, s2e_blockHandles);
                         
                         tempIdx = newIdx + 1;
                     end
@@ -83,7 +91,7 @@ while (idx <= length(rhs))
                     
                     % Get the outport of the second operand connectSrc is
                     % the 1st operand.
-                    [operand2, newIdx] = createLogic(rhs, exprs, startSys, sys, nextIdx, s_lhsTable);
+                    [operand2, newIdx] = createLogic(rhs, exprs, startSys, sys, nextIdx, s_lhsTable, e_lhs2handle, s2e_blockHandles);
                     
                     % Add new relational block and get its ports
                     addedBlock = addRelationalBlock(opType, sys);
@@ -98,7 +106,7 @@ while (idx <= length(rhs))
                     connectSrc = ports.Outport(1); % Outport of the full expression from the connective
                     idx = newIdx + 1;
                 case 2 % Unary operator, '~'
-                    [notSrc, newIdx] = createLogic(rhs, exprs, startSys, sys, idx+1, s_lhsTable);
+                    [notSrc, newIdx] = createLogic(rhs, exprs, startSys, sys, idx+1, s_lhsTable, e_lhs2handle, s2e_blockHandles);
                     
                     % TODO: If expression has already been made in the current
                     %   system, then use that. Currently makes a new one
@@ -153,7 +161,7 @@ while (idx <= length(rhs))
                 assert(length(ports.Outport) == 1, 'Error: Constant expected to have 1 output.')
                 connectSrc = ports.Outport(1);
             else
-                connectSrc = createExpr(atomic, exprs, startSys, sys, s_lhsTable);
+                connectSrc = createExpr(atomic, exprs, startSys, sys, s_lhsTable, e_lhs2handle, s2e_blockHandles);
             end
 
             idx = idx + length(atomic);
