@@ -15,12 +15,14 @@ function lineHandle = connectPorts(address, port1, port2, varargin)
         'Input port1 is expected to be a port handle.')
     assert(strcmp(get_param(port2, 'Type'), 'port'), ...
         'Input port2 is expected to be a port handle.')
-    assert(get_param(port1, 'Line') == -1, ...
+    assert(get_param(port1, 'Line') == -1 || ...
+        strcmp(get_param(port1, 'PortType'), 'outport'), ...
         'Input port1 already has a line connection.');
-    assert(get_param(port2, 'Line') == -1, ...
+    assert(get_param(port2, 'Line') == -1 || ...
+        strcmp(get_param(port2, 'PortType'), 'outport'), ...
         'Input port2 already has a line connection.');
-       
-    port1Type = get_param(port1, 'PortType');           
+    
+    port1Type = get_param(port1, 'PortType');
     port2Type = get_param(port2, 'PortType');
     
     % Future: Support Trigger, Enable, State, LConn, RConn, Ifaction, Reset
@@ -30,7 +32,20 @@ function lineHandle = connectPorts(address, port1, port2, varargin)
         'At least one port must be an inport and one must be an outport');
     
     if strcmp(port1Type, 'outport')
-        lineHandle = add_line(address, port1, port2, varargin{:});
+        lineHandle = makeLine(port1, port2);
     else
-        lineHandle = add_line(address, port2, port1, varargin{:});
+        lineHandle = makeLine(port2, port1);
     end
+    
+    function lineH = makeLine(out, in)
+        % Connect out to in even if a segmented line needs to be created
+        lh = get_param(out, 'Line');
+        if lh == -1
+            lineH = add_line(address, out, in, varargin{:});
+        else
+            % Need to make a segmented/branched line
+            points = get_param(lh, 'Points');
+            lineH = add_line(address, [points(1,:); get_param(in, 'Position')], varargin{:});
+        end
+    end
+end
