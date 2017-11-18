@@ -1,4 +1,4 @@
-function connectSrcs = createExpr(lhs, exprs, startSys, createIn, s_lhsTable, e_lhs2handle, s2e_blockHandles)
+function connectSrcs = createExpr(lhs, exprs, startSys, createIn, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule)
 % CREATEEXPR Create an expression and all of the subexpressions that go
 %   into it.
 %
@@ -18,6 +18,7 @@ function connectSrcs = createExpr(lhs, exprs, startSys, createIn, s_lhsTable, e_
 %       connectSrcs     If blackbox: A list of the outports of the expression's
 %                       LHS. Else: Single outport from the generated expression.
 
+%% Set up
 % just getting some values that will be useful
 [lefts, ~] = getAllLhsRhs(exprs);
 idx = find(strcmp(lhs, lefts));
@@ -28,15 +29,52 @@ s_blk = getBlock(s_h);
 
 [~, rhs] = getExpressionLhsRhs(expr);
 
+%% Create the expressions
+% If blackbox: essentially make the block and connect the inputs (call this
+%   function recursively to get the inputs)
+% Else: create a logical expression and then connect the inputs (call this
+%   function recursively to get the inputs)
 if isBlackBoxExpression(expr)
     
+    %% Create block if needed
     if ~e_lhs2handle.isKey(lhs)
         s_bh = get_param(s_blk, 'Handle');
         if ~s2e_blockHandles.isKey(s_bh)
-            [~, e_blk] = createBlockCopy(s_blk, startSys, createIn, s2e_blockHandles);
+            if strcmp(get_param(s_blk, 'BlockType'), 'Inport') && ~strcmp(createIn, bdroot(createIn))
+                inports = find_system(createIn, 'SearchDepth', '1', 'BlockType', 'Inport');
+                pNums = cellfun(@(x) get_param(x, 'Port'), inports);
+                s_pNum = get_param(s_blk, 'Port');
+                index = find(arrayfun(@(x) strcmp(x, s_pNum), pNums));
+                
+                e_blk = inports{index};
+                e_bh = get_param(e_blk, 'Handle');
+            else
+                [e_bh, e_blk] = createBlockCopy(s_blk, startSys, createIn, s2e_blockHandles);
+            end
+            
+            if strcmp(get_param(e_blk,'BlockType'), 'SubSystem') && strcmp(get_param(e_blk,'Mask'), 'off') && ...
+                    ~strcmp(subsystem_rule, 'blackbox') && ~strcmp(subsystem_rule, 'full-simplify')
+                % For blackbox subsystems we can't just copy because we'll be
+                % generating the contents
+                
+                % Delete contents of SubSystem excluding inports and outports
+                copiedSubBlocks = find_system(e_blk, 'SearchDepth', '1');
+                copiedSubBlocks = copiedSubBlocks(2:end);
+                
+                for i = length(copiedSubBlocks):-1:1
+                    if any(strcmp(get_param(copiedSubBlocks(i), 'BlockType'), {'Outport', 'Inport'}))
+                        copiedSubBlocks(i) = []; % Remove in/outport from list
+                    end
+                end
+                
+                delete_block(copiedSubBlocks)
+                copiedSubLines = find_system(e_blk, 'SearchDepth', '1', 'FindAll', 'On', 'Type', 'line');
+                delete_line(copiedSubLines)
+            end
         else
-           % block already created 
-           e_blk = getfullname(s2e_blockHandles(s_bh));
+           % block already created
+           e_bh = s2e_blockHandles(s_bh);
+           e_blk = getfullname(e_bh);
         end
         
         % Record that lhs has been added
@@ -54,10 +92,35 @@ if isBlackBoxExpression(expr)
             otherwise
                 error('Error: Unexpected eType')
         end
+        
+        if strcmp(get_param(e_blk,'BlockType'), 'SubSystem') && strcmp(get_param(e_blk,'Mask'), 'off') && ...
+                ~strcmp(subsystem_rule, 'blackbox') && ~strcmp(subsystem_rule, 'full-simplify')
+            % For blackbox subsystems, create the expressions for the
+            % corresponding outports at this point
+            
+            % Get the immediate source of the output port (i.e. the outport block within the subsystem)
+            s_outBlock = subport2inoutblock(s_h);
+            srcHandle = get_param(s_outBlock, 'Handle');
+            
+            outLhs = s_lhsTable.lookup(srcHandle);
+            connectSrcs = createExpr(outLhs, exprs, startSys, e_blk, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
+            assert(length(connectSrcs) == 1, 'Error: Current expression should have only 1 outgoing connection.')
+            
+            % Don't need to create the outport since we did not to delete
+            % them from the original model
+            
+            % Find the handle to connect to
+            e_outBlock = subport2inoutblock(e_h);
+            e_outInport = getPorts(e_outBlock, 'Inport');
+            connectDst = get_param(e_outInport, 'Handle');
+            
+            connectPorts(e_blk, connectSrcs, connectDst);
+        end
     else
         e_blk = getBlock(e_lhs2handle(lhs));
     end
-    
+
+    %%
     % For each inport, create the corresponding expression, then connect to the 
     % inport.
     rhsTokens = regexp(rhs, '([^,]*),|([^,]*)', 'tokens');
@@ -70,14 +133,14 @@ if isBlackBoxExpression(expr)
         exprIdx = find(strcmp(rhsTokens{j}{1}, lefts));
         assert(length(exprIdx) == 1, 'Error: Expected subexpression to match the LHS of 1 expression.')
         
-        if true % ~e_lhs2handle.isKey(rhsTokens{j})
-            bbSrcs = createExpr(rhsTokens{j}{1}, exprs, startSys, createIn, s_lhsTable, e_lhs2handle, s2e_blockHandles);
+        if ~e_lhs2handle.isKey(rhsTokens{j}{1})
+            bbSrcs = createExpr(rhsTokens{j}{1}, exprs, startSys, createIn, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
         else
-            % TODO: Branch needed probably
+            % TODO: Probably need to create a branch
             error('Error: Something went wrong because functionality isn''t fully implemented yet...')
         end
         
-        assert(length(bbSrcs) == 1, 'Error: Expression should have only 1 outgoing connection.')
+        assert(length(bbSrcs) == 1, 'Error: Current expression should have only 1 outgoing connection.')
         connectPorts(createIn, bbSrcs, connectDst);
     end
     
@@ -96,35 +159,9 @@ else
     % Expression is a logical one that we can create
     % Create blocks based on the RHS to later connect to the LHS (outside
     % of this function)
-    connectSrcs = createLogic(rhs, exprs, startSys, createIn, 1, s_lhsTable, e_lhs2handle, s2e_blockHandles);
+    connectSrcs = createLogic(rhs, exprs, startSys, createIn, 1, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
     
     assert(length(connectSrcs) == 1, 'Error: Non-blackbox expression didn''t have 1 output.')
     e_lhs2handle(lhs) = connectSrcs;
 end
 end
-
-function [e_bh, e_blk] = createBlockCopy(s_blk, startSys, createIn, s2e_blockHandles)
-
-e_blk = [createIn '/' get_param(s_blk, 'Name')]; % Default name of the block to put in endSys
-
-% Create block
-e_bh = add_block(s_blk, e_blk, 'MakeNameUnique', 'On');
-e_blk = getfullname(e_bh);
-
-% Record that the created block is related to s_blk
-s_bh = get_param(s_blk, 'Handle');
-s2e_blockHandles(s_bh) = e_bh; % This is a map object so it will be updated
-
-end
-
-% function [e_bh, e_blk] = createBlockCopy(s_blk, startSys, createIn)
-% % Doesn't create if the block already exists
-% 
-% e_blk = regexprep(s_blk,['^' startSys], createIn, 'ONCE'); % Name of the block to put in endSys
-% if isempty(find_system(createIn, 'Name', get_param(s_blk, 'Name'))) % block not made yet
-%     % Create block
-%     e_bh = add_block(s_blk, e_blk);
-% else
-%     e_bh = get_param(e_blk, 'Handle');
-% end
-% end

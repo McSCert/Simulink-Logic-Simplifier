@@ -64,11 +64,6 @@ for i = find(notDepByMat) % When notDepByMat is 1
     s_h = s_lhsTable.lookdown(lhs); % Expression handle
     s_blk = getBlock(s_h); % Block corresponding to the handle (i.e. parent of port else same as handle)
     bType = get_param(s_blk, 'BlockType');
-    
-    if strcmp(bType, 'ActionPort') && strcmp(subsystem_rule, 'full-simplify')
-        % Expression isn't desired; skip
-        continue
-    end
 
     %% Figure out in which (sub)system to generate the expression
     if any(strcmp(subsystem_rule, {'blackbox', 'part-simplify'}))
@@ -84,7 +79,17 @@ for i = find(notDepByMat) % When notDepByMat is 1
     end
     
     %%
-    connectSrcs = createExpr(lhs, exprs, startSys, createIn, s_lhsTable, e_lhs2handle, s2e_blockHandles);
+    if strcmp(bType, 'ActionPort') && strcmp(subsystem_rule, 'full-simplify')
+        % Expression isn't desired; skip
+        continue
+    elseif ~strcmp(createIn, endSys)
+        % Expression will be handled through other iterations of this loop via
+        % the recursive nature of createExpr; skip
+        continue
+    end
+    
+    %%
+    connectSrcs = createExpr(lhs, exprs, startSys, createIn, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
     
     if isBlackBoxExpression(expr)
         % Note: The corresponding block would have been made in createExpr
@@ -100,33 +105,74 @@ for i = find(notDepByMat) % When notDepByMat is 1
             connectPorts(createIn, connectSrcs(j), connectDst);
         end
     else
-        % TODO make a function to return this so that it's easier to
-        % change/find later if needed
+        % TODO make a function to return these supported blocks so that it's
+        % easier to change/find later if needed
         supportedStartBlocks = {'Outport','DataStoreWrite','Goto'};
         
-        % Get connectDst
+        %% Get connectDst & Create block for the lhs if needed
         if any(strcmp(bType,supportedStartBlocks))
-            e_blk = regexprep(s_blk,['^' startSys], endSys, 'ONCE'); % Name of the block in endSys
-            if isempty(find_system(createIn, 'SearchDepth', 1, 'Name', get_param(s_blk, 'Name'))) % block not made yet
-                % Create block
-                e_bh = add_block(s_blk, e_blk);
-            else
-                e_bh = get_param(e_blk, 'Handle');
-            end
-            % Find the handle to connect to 
-            ph = get_param(e_bh, 'PortHandles');
-            assert(length(ph.Inport) == 1, 'Error: Block expected to have 1 input port.')
-            connectDst = ph.Inport(1);
+            e_blk = [createIn '/' get_param(s_blk, 'Name')]; % Default name of the block to put in endSys
+            
+            % Create block
+            e_bh = add_block(s_blk, e_blk, 'MakeNameUnique', 'On');
+            e_blk = getfullname(e_bh);
         else
+            % I don't think this can ever happen so I'm just going to
+            % leave the error here to check for now
+            error('Error: Unexpected case.')
+            
             % Create Terminator
-            term_h = add_block('built-in/Terminator', [createIn '/gen_' 'Terminator'], 'MAKENAMEUNIQUE', 'ON');
-            % Get Terminator input port
-            ph = get_param(term_h, 'PortHandles');
-            assert(length(ph.Inport) == 1, 'Error: Terminator expected to have 1 input port.')
-            connectDst = ph.Inport(1);
+            e_bh = add_block('built-in/Terminator', [createIn '/gen_' 'Terminator'], 'MAKENAMEUNIQUE', 'ON');
+            e_blk = getfullname(e_bh);
         end
         
-        % Connect RHS to LHS
+%         %% Get connectDst & Create block for the lhs if needed
+%         % This uses similar code to some used in createExpr
+%         % In this case, expressionType(s_h) will probably be guaranteed to
+%         % be 'blk', but this assumption wasn't made below
+%         if ~e_lhs2handle.isKey(lhs)
+%             s_bh = get_param(s_blk, 'Handle');
+%             if ~s2e_blockHandles.isKey(s_bh)
+%                 if any(strcmp(bType,supportedStartBlocks))
+%                     [e_bh, e_blk] = createBlockCopy(s_blk, startSys, createIn, s2e_blockHandles);
+%                 else
+%                     % I don't think this can ever happen so I'm just going to
+%                     % leave the error here to check for now
+%                     error('Error: Unexpected case.')
+%                     
+%                     % Create Terminator
+%                     e_bh = add_block('built-in/Terminator', [createIn '/gen_' 'Terminator'], 'MAKENAMEUNIQUE', 'ON');
+%                     e_blk = getfullname(e_bh);
+%                     s2e_blockHandles(s_bh) = e_bh;
+%                 end
+%             else
+%                 % block already created
+%                 e_bh = s2e_blockHandles(s_bh);
+%                 e_blk = getfullname(e_bh);
+%             end
+%             
+%             % Record that lhs has been added
+%             switch expressionType(s_h)
+%                 case 'out'
+%                     error('Error: Something went wrong, if expression type is ''out'', then it should depend on another expression.')
+%                 case 'blk'
+%                     e_h = e_bh;
+%                     e_lhs2handle(lhs) = e_h;
+%                 case 'in'
+%                     error('Error: Something went wrong, if expression type is ''in'', then it should depend on another expression.')
+%                 otherwise
+%                     error('Error: Unexpected eType')
+%             end
+%         else
+%             e_blk = getBlock(e_lhs2handle(lhs));
+%         end
+        
+        % Find the handle to connect to
+        ph = get_param(e_blk, 'PortHandles');
+        assert(length(ph.Inport) == 1, 'Error: Block expected to have 1 input port.')
+        connectDst = ph.Inport(1);
+        
+        %% Connect RHS to LHS
         assert(length(connectSrcs) == 1, 'Error: Non-blackbox expression expected to just have one outgoing port.')
         connectPorts(createIn, connectSrcs, connectDst);
     end
