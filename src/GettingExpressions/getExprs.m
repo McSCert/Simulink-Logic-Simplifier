@@ -237,8 +237,11 @@ end
                 %goto = getGoto4From(block);
                 gotoInfo = get_param(blk, 'GotoBlock');
                 srcHandle = gotoInfo.handle;
-                if isempty(srcHandle)
-                    % Record this block's expressions
+                if isempty(srcHandle) || ~any(strcmp(getBlock(srcHandle), blocks))
+                    % Goto not found or should not be linked because it is
+                    % blackbox
+                    
+                    % Record as a blackbox expression
                     expr = [handleID ' =? '];
                     nex = {expr};
                 else
@@ -250,6 +253,7 @@ end
                     nex = [{expr}, srcExprs]; % Expressions involved in this block's expressions
                 end
             case 'DataStoreRead'
+                nex = getBlackBoxExpression();
             case 'Merge'
             
             otherwise
