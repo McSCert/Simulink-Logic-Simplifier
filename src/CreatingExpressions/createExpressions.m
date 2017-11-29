@@ -177,4 +177,27 @@ for i = find(notDepByMat) % When notDepByMat is 1
         connectPorts(createIn, connectSrcs, connectDst);
     end
 end
+
+%% Fix port numbers - they weren't added in a particular order so the 
+
+% s_inports = find_system(startSys, 'SearchDepth', '1', 'BlockType', 'Inport');
+e_inports = find_system(endSys, 'SearchDepth', '1', 'BlockType', 'Inport');
+% assert(length(s_inports) == length(e_inports), 'Error: Expected same number of inports in the resulting system as the starting system.')
+for i = 1:length(e_inports)
+    name = get_param(e_inports{i}, 'Name');
+    s_inport = find_system(startSys, 'SearchDepth', '1', 'BlockType', 'Inport', 'Name', name);
+    assert(length(s_inport) == 1, 'Error: All inports in the resulting system should have a match in the starting system.')
+    pNum = get_param(s_inport{1}, 'Port');
+    set_param(e_inports{i}, 'Port', num2str(pNum));
+end
+% s_outports = find_system(startSys, 'SearchDepth', '1', 'BlockType', 'Outport');
+e_outports = find_system(endSys, 'SearchDepth', '1', 'BlockType', 'Outport');
+% assert(length(s_outports) == length(e_outports), 'Error: Expected same number of outports in the resulting system as the starting system.')
+for i = 1:length(e_outports)
+    name = get_param(e_outports{i}, 'Name');
+    s_outport = find_system(startSys, 'SearchDepth', '1', 'BlockType', 'Outport', 'Name', name);
+    assert(length(s_outport) == 1, 'Error: All outports in the resulting system should have a match in the starting system.')
+    pNum = get_param(s_outport{1}, 'Port');
+    set_param(e_outports{i}, 'Port', num2str(pNum));
+end
 end
