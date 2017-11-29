@@ -36,6 +36,8 @@ while (idx <= length(rhs))
             idx = idx + 1;
         case ')'
             % connectSrc and idx already set
+            assert(logical(exist('connectSrc', 'var')) && logical(exist('idx', 'var')), ...
+                'Error: Something went wrong, end bracket reached before setting outputs.')
             return % End of subformula
         case connectives
             connective = getFullConnective(rhs,idx);
@@ -46,42 +48,105 @@ while (idx <= length(rhs))
             
             switch type
                 case 0 % Binary logical operator - Simulink can use these operators with n > 1 inputs
-                    
-                    tempIdx = idx;
-                    
-                    connectSrcs = [];
-                    % TODO check the next line
-                    connectSrcs(end+1) = connectSrc; % connectSrc should have been set in an earlier iteration of the loop
-                    while strcmp(connective, getFullConnective(rhs, tempIdx)) % While the operator is the same as the preceding one
-                        
-                        % Get the start of next operand
-                        % idx is the start of the connective and we want the 
-                        % point after the connective
-                        nextIdx = tempIdx+length(connective);
-                        
-                        % Get the sub expression of the second operand
-                        % TODO: why did the old version pass nextIdx + 1
-                        % for the idx? did it work because it
-                        % coincidentally cropped whitespace?
-                        [connectSrcs(end+1), newIdx] = createLogic(rhs, exprs, startSys, sys, nextIdx, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
-                        
-                        tempIdx = newIdx + 1;
-                    end
-                    numInputs = length(connectSrcs);
-                    
-                    % Add new logical block and get its ports
-                    addedBlock = addLogicalBlock(opType, sys, 'Inputs', num2str(numInputs));
-                    ports = get_param(addedBlock, 'PortHandles');
-                    connectDsts = ports.Inport;
-                    
-                    for i = 1:numInputs
-                        connectPorts(sys, connectSrcs(i), connectDsts(i));
+                    opBlock = get_param(connectSrc, 'Parent');
+                    if strcmp(get_param(opBlock, 'BlockType'), 'Logic')
+                        operator = get_param(opBlock, 'Operator');
+                    else
+                        operator = '';
                     end
                     
-                    % Set outputs for the recursion.
-                    assert(length(ports.Outport) == 1, 'Error: Logical block expected to have 1 output.')
-                    connectSrc = ports.Outport(1);
-                    idx = newIdx + 1;
+                    % Set the source for the next operand
+                    nextIdx = idx + length(connective);
+                    [operandRight, newIdx] = createLogic(rhs, exprs, startSys, sys, nextIdx, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
+                    
+                    if ~strcmp(opType, operator)
+                        % If connectSrc does not belong to the same operator as 
+                        % the current operator, we need to create a new block 
+                        % for the operator.
+                        
+                        % Set the source for the first operand
+                        operandLeft = connectSrc;
+                    
+                        % Add new logical block and get its ports
+                        addedBlock = addLogicalBlock(opType, sys, 'Inputs', '2');
+                        ports = get_param(addedBlock, 'PortHandles');
+                        connectDsts = ports.Inport;
+                        
+                        % Add line from first operand to Logic block
+                        connectPorts(sys, operandLeft, connectDsts(1));
+                        % Add line from second operand to Logic block
+                        connectPorts(sys, operandRight, connectDsts(2));
+                        
+                        % Set outputs for the recursion.
+                        assert(length(ports.Outport) == 1, 'Error: Logical block expected to have 1 output.')
+                        connectSrc = ports.Outport(1);
+                        idx = newIdx + 1;
+                    else
+                        % If connectSrc belongs to the same operator as the 
+                        % current operator, simply add another port to the
+                        % existing operator block and connect the next
+                        % operand.
+                        
+                        % Add a port to the Logic block
+                        numInputs = get_param(opBlock, 'Inputs');
+                        numInputs = num2str(str2num(numInputs) + 1);
+                        set_param(opBlock, 'Inputs', numInputs);
+                        ports = get_param(opBlock, 'PortHandles');
+                        connectDsts = ports.Inport;
+                        
+                        % Add line from second operand to Logic block
+                        connectPorts(sys, operandRight, connectDsts(end));
+                        
+                        % Set outputs for the recursion.
+                        %   connectSrc is left as the outport of the 'Logic'
+                        %   block.
+                        idx = newIdx + 1;
+                    end
+                        
+%                     if ~logical(exist('oldConnective', 'var')) || ~strcmp(oldConnective, connective)
+%                         % Create new connective block
+%                         
+%                         oldConnective = connective;
+%                         
+%                         tempIdx = idx;
+% 
+%                         connectSrcs = [];
+%                         assert(logical(exist('connectSrc', 'var')), 'Error: Something went wrong, connectSrc not set.') % Should have been set in an earlier iteration of the loop.
+%                         connectSrcs(end+1) = connectSrc;
+%                         while strcmp(connective, getFullConnective(rhs, tempIdx)) % While the operator is the same as the preceding one
+% 
+%                             % Get the start of next operand
+%                             % idx is the start of the connective and we want the 
+%                             % point after the connective
+%                             nextIdx = tempIdx+length(connective);
+% 
+%                             % Get the sub expression of the second operand
+%                             % TODO: why did the old version pass nextIdx + 1
+%                             % for the idx? did it work because it
+%                             % coincidentally cropped whitespace?
+%                             [connectSrcs(end+1), newIdx] = createLogic(rhs, exprs, startSys, sys, nextIdx, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
+% 
+%                             tempIdx = newIdx + 1;
+%                         end
+%                         numInputs = length(connectSrcs);
+% 
+%                         % Add new logical block and get its ports
+%                         addedBlock = addLogicalBlock(opType, sys, 'Inputs', num2str(numInputs));
+%                         ports = get_param(addedBlock, 'PortHandles');
+%                         connectDsts = ports.Inport;
+% 
+%                         for i = 1:numInputs
+%                             connectPorts(sys, connectSrcs(i), connectDsts(i));
+%                         end
+% 
+%                         % Set outputs for the recursion.
+%                         assert(length(ports.Outport) == 1, 'Error: Logical block expected to have 1 output.')
+%                         connectSrc = ports.Outport(1);
+%                         idx = newIdx + 1;
+%                         
+%                     else
+%                         
+%                     end
                 case 1 % Binary relational operator
                     % Relational operators only have two operands, we don't
                     % need to worry about the number of inputs unlike for
@@ -167,4 +232,6 @@ while (idx <= length(rhs))
             idx = idx + length(atomic);
     end
 end
+assert(logical(exist('connectSrc', 'var')) && logical(exist('idx', 'var')), ...
+    'Error: End of expression reached before setting outputs.')
 end
