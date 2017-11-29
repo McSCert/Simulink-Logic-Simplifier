@@ -186,6 +186,7 @@ else
     % Expression is a logical one that we can create
     % Create blocks based on the RHS to later connect to the LHS (outside
     % of this function)
+    rhs = makeWellFormed(rhs);
     connectSrcs = createLogic(rhs, exprs, startSys, createIn, 1, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
     
     assert(length(connectSrcs) == 1, 'Error: Logic expression had 0 outputs.')
