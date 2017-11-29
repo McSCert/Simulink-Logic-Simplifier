@@ -1,4 +1,4 @@
-function exprs = getExprsForBlocks(startSys, blocks, sysBlocks, lhsTable, subsystem_rule)
+function exprs = getExprsForBlocks(startSys, blocks, sysBlocks, lhsTable, subsystem_rule, extraSupport)
 % GETEXPRSFORBLOCKS Create a list of expressions which represent the
 %   logical values of a port/block within startSys based on their inputs.
 %   Together these expressions can be used to represent the whole system.
@@ -39,11 +39,11 @@ for i = 1:length(sysBlocks)
     dstPorts = ports.Outport;
     
     if isempty(dstPorts)
-        [newExprs, ~] = getExprs(startSys, get_param(sysBlocks{i}, 'Handle'), blocks, lhsTable, subsystem_rule);
+        [newExprs, ~] = getExprs(startSys, get_param(sysBlocks{i}, 'Handle'), blocks, lhsTable, subsystem_rule, extraSupport);
         exprs = [exprs, newExprs];
     else
         for j = 1:length(dstPorts)
-            [newExprs, ~] = getExprs(startSys, dstPorts(j), blocks, lhsTable, subsystem_rule);
+            [newExprs, ~] = getExprs(startSys, dstPorts(j), blocks, lhsTable, subsystem_rule, extraSupport);
             exprs = [exprs, newExprs];
         end
     end

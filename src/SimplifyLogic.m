@@ -22,6 +22,7 @@ function [newExpr, oldExpr] = SimplifyLogic(blocks, varargin)
 % Constants:
 DELETE_UNUSED = getLogicSimplifierConfig('delete_unused', 'off'); % Indicates whether or not to delete blocks which are unused in the final model
 SUBSYSTEM_RULE = getLogicSimplifierConfig('subsystem_rule', 'blackbox'); % Indicates how to address subsystems in the simplification process
+EXTRA_SUPPORT_FUNCTION = getLogicSimplifierConfig('extra_support_function', '');
 
 if nargin == 1
     verify = false;
@@ -62,7 +63,11 @@ set_param(logicSys, 'ProdHWDeviceType', get_param(origModel, 'ProdHWDeviceType')
 set_param(logicSys, 'UnderspecifiedInitializationDetection', get_param(origModel, 'UnderspecifiedInitializationDetection'));
 
 % Perform the simplification and generate the simplification in logicSys
-[newExpr, oldExpr] = doSimplification(logicSys, blocks, 'subsystem_rule', SUBSYSTEM_RULE);
+if strcmp('', EXTRA_SUPPORT_FUNCTION)
+    [newExpr, oldExpr] = doSimplification(logicSys, blocks, 'subsystem_rule', SUBSYSTEM_RULE);
+else
+    [newExpr, oldExpr] = doSimplification(logicSys, blocks, 'subsystem_rule', SUBSYSTEM_RULE, 'extra_support_function', EXTRA_SUPPORT_FUNCTION);
+end
 
 
 if strcmp(DELETE_UNUSED,'on')

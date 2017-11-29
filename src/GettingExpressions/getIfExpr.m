@@ -1,4 +1,4 @@
-function [newExprs, handleID] = getIfExpr(startSys, h, handleID, blocks, lhsTable, subsystem_rule)
+function [newExprs, handleID] = getIfExpr(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport)
 %this function will parse the conditions of the if block
 %in order to produce a logical expression indicative of the if block
 
@@ -47,7 +47,7 @@ for i = 1:length(conditionIndices)
     srcHandle = inPorts(str2double(condNum));
     
     % Get the expression for the source
-    [srcExprs, srcID] = getExprs(startSys, srcHandle, blocks, lhsTable, subsystem_rule);
+    [srcExprs, srcID] = getExprs(startSys, srcHandle, blocks, lhsTable, subsystem_rule, extraSupport);
     
     ifExpr = [ifExpr(1:end-backIndex-1) '(' srcID ')' ifExpr(end-backIndex+length(condition):end)]; % This block/port's expression with respect to its sources
     newExprs = [newExprs, srcExprs]; % Expressions involved in this block's expressions

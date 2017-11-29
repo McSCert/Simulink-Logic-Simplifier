@@ -1,15 +1,3 @@
-#DELETE_UNUSED Indicates whether or not to delete blocks which are unused in the
-#	final model.
-#Default is off.
-#
-#Acceptable parameter values are:
-#	on (blocks will be deleted if not a SubSystem and all of its outports are 
-#		unused, one way this could occur is if the original system has an Inport
-#		which feeds its signal into an if block that doesn't depend on that signal), 
-#	off (blocks that would have been deleted are left in the system for the user to
-#		decide what to do)
-delete_unused: off
-
 #SUBSYSTEM_RULE Indicates how to address subsystems in the simplification process.
 #Default is blackbox.
 #
@@ -21,6 +9,31 @@ delete_unused: off
 #	blackbox (subsystems will not be modified during simplification and there 
 #		output will not be assumed)
 subsystem_rule: part-simplify
+
+#EXTRA_SUPPORT_FUNCTION Indicates a function to use to generate expressions for 
+#	cases beyond what is supported by the default tool. Certain companies with a 
+#	wide variety of custom blocks may desire this functionality.
+#Default is nothing (leave the space blank)
+#
+#Acceptable parameter values:
+#	The value should either be left blank or be a valid function on the MATLAB 
+#	search path. When left blank defaultExtraSupport.m will be used and this
+#	corresponds with no added support from the main tool.
+extra_support_function:
+
+## THE REMAINING RULES NEED TO BE TESTED AGAIN, MAJOR CHANGES HAVE OCCURRED TO THE TOOL
+
+#DELETE_UNUSED Indicates whether or not to delete blocks which are unused in the
+#	final model.
+#Default is off.
+#
+#Acceptable parameter values are:
+#	on (blocks will be deleted if not a SubSystem and all of its outports are 
+#		unused, one way this could occur is if the original system has an Inport
+#		which feeds its signal into an if block that doesn't depend on that signal), 
+#	off (blocks that would have been deleted are left in the system for the user to
+#		decide what to do)
+delete_unused: off
 
 #GENERATED_BLOCK_REUSE_RULE
 #Default is reuse.

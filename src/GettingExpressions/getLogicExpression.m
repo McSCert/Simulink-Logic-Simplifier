@@ -1,4 +1,4 @@
-function [newExprs, handleID] = getLogicExpression(startSys, h, handleID, blocks, lhsTable, subsystem_rule)
+function [newExprs, handleID] = getLogicExpression(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport)
 % In theory you could do: get_param(block, 'Inputs')
 %But I found in practice it returned the wrong number...
 
@@ -86,13 +86,13 @@ end
         nex = {}; % newExprs
                 
         % Get the expression for the source port
-        [srcex, sID] = getExprs(startSys, srcHandles(1), blocks, lhsTable, subsystem_rule);
+        [srcex, sID] = getExprs(startSys, srcHandles(1), blocks, lhsTable, subsystem_rule, extraSupport);
         nex = [nex, srcex]; % Add expressions for current source
         ex = [handleID ' = ' '(' sID ')']; % Expression for the block/port so far
         
         for j=2:numInputs
             % Get the expression for the source port
-            [srcex, sID] = getExprs(startSys, srcHandles(j), blocks, lhsTable, subsystem_rule);
+            [srcex, sID] = getExprs(startSys, srcHandles(j), blocks, lhsTable, subsystem_rule, extraSupport);
             nex = [nex, srcex]; % Expressions involved in this block's expressions
             ex = [ex ' ' sym ' (' sID ')']; % This block/port's expression with respect to its sources
         end
@@ -105,7 +105,7 @@ end
         nex = {}; % newExprs
         
         % Get the expression for the source port
-        [srcex, sID] = getExprs(startSys, srcHandles(1), blocks, lhsTable, subsystem_rule);
+        [srcex, sID] = getExprs(startSys, srcHandles(1), blocks, lhsTable, subsystem_rule, extraSupport);
         nex = [nex, srcex]; % Expressions involved in this block's expressions
         ex = [handleID ' = ' '(' sID ') ' sym ' (' var2 ')']; % Expression for the block/port so far
         nex = [{ex}, nex]; % Expressions involved in this block's expressions

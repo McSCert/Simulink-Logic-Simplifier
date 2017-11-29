@@ -14,11 +14,14 @@ function [finalExprs, baseExprs] = doSimplification(sys, blocks, varargin)
 
 %% Initializations
 subsystem_rule = 'blackbox'; % Default
+extraSupportFun = @defaultExtraSupport;
 assert(mod(length(varargin),2) == 0, 'Even number of varargin arguments expected.')
 for i = 1:2:length(varargin)
     switch varargin{i}
         case 'subsystem_rule'
             subsystem_rule = varargin{i+1};
+        case 'extra_support_function'
+            extraSupportFun = eval(['@' varargin{i+1}]);
         otherwise
             error(['Error in ' mfilename ' unexpected Name for Name-Value pair input argument.'])
     end
@@ -64,7 +67,7 @@ end
 %   Expected form: 'handleID = expr' or 'handleID =? expr'
 %   'handleID' is a char used to identify a Simulink object
 %   '=?' indicates the expression is blackbox; only the interface is known
-baseExprs = getExprsForBlocks(startSys, blocks, sysBlocks, lhsTable, subsystem_rule);
+baseExprs = getExprsForBlocks(startSys, blocks, sysBlocks, lhsTable, subsystem_rule, extraSupportFun);
 
 %% Substitute expressions 
 %   Substitute to get rid of extranneous expressions before simplification

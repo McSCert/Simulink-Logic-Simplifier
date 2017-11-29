@@ -1,4 +1,4 @@
-function [newExprs, handleID] = getExprs(startSys, h, blocks, lhsTable, subsystem_rule)
+function [newExprs, handleID] = getExprs(startSys, h, blocks, lhsTable, subsystem_rule, extraSupport)
 % GETEXPRS Get a list of expressions to represent the value of h. If an
 % expression has previously been done (indicated by lhsTable), then that
 % expression won't be generated again and won't be included in the output.
@@ -49,29 +49,35 @@ if ~lhsTable.lookup.isKey(h)
     inBlx = any(strcmp(blk, blocks));
     switch eType
         case 'blk'
-            if inBlx && isMask && isSupp
-                newExprs = getSuppMaskBlkExpression();
-            elseif inBlx && isSupp
-                newExprs = getSuppBlkExpression();
-            else
-                % Block is not supported or it isn't in blocks (blocks
-                % designates the set of blocks we want to simplify)
-                
-                % Treat as blackbox
-                newExprs = getBlackBoxExpression();
+            [inExtraSupp, newExprs] = extraSupport(startSys, h, blocks, lhsTable, subsystem_rule, extraSupport);
+            if ~inExtraSupp
+                if inBlx && isMask && isSupp
+                    newExprs = getSuppMaskBlkExpression();
+                elseif inBlx && isSupp
+                    newExprs = getSuppBlkExpression();
+                else
+                    % Block is not supported or it isn't in blocks (blocks
+                    % designates the set of blocks we want to simplify)
+                    
+                    % Treat as blackbox
+                    newExprs = getBlackBoxExpression();
+                end
             end
         case 'out'
-            if ~inBlx || (isMask && ~isSupp) || (~isMask && ~isSupp)
-                % Block is not supported or it isn't in blocks (blocks
-                % designates the set of blocks we want to simplify)
-                
-                % Treat as blackbox
-                newExprs = getBlackBoxExpression();
-            else
-                if isMask
-                    newExprs = getSuppMaskOutExpression();
+            [inExtraSupp, newExprs] = extraSupport();
+            if ~inExtraSupp
+                if ~inBlx || (isMask && ~isSupp) || (~isMask && ~isSupp)
+                    % Block is not supported or it isn't in blocks (blocks
+                    % designates the set of blocks we want to simplify)
+                    
+                    % Treat as blackbox
+                    newExprs = getBlackBoxExpression();
                 else
-                    newExprs = getSuppOutExpression();
+                    if isMask
+                        newExprs = getSuppMaskOutExpression();
+                    else
+                        newExprs = getSuppOutExpression();
+                    end
                 end
             end
         case 'in'
@@ -80,7 +86,7 @@ if ~lhsTable.lookup.isKey(h)
             assert(length(srch) == 1, 'Error, an input port is expected to have a single source.')
             
             % Get the expression for the handle and its sources recursively
-            [srcExprs, srcID] = getExprs(startSys, srch, blocks, lhsTable, subsystem_rule);
+            [srcExprs, srcID] = getExprs(startSys, srch, blocks, lhsTable, subsystem_rule, extraSupport);
             
             expr = [handleID ' = ' srcID]; % This block/port's expression with respect to its sources
             newExprs = [{expr}, srcExprs]; % Expressions involved in this block/port's expression
@@ -101,7 +107,7 @@ end
         nex = {};
         expr = [handleID ' =? ']; % Note the notation '=?' being used for blackboxes
         for i = 1:length(srcHandles)
-            [srcExprs, srcID] = getExprs(startSys, srcHandles(i), blocks, lhsTable, subsystem_rule);
+            [srcExprs, srcID] = getExprs(startSys, srcHandles(i), blocks, lhsTable, subsystem_rule, extraSupport);
             nex = [nex, srcExprs];
             expr = [expr, srcID, ','];
         end
@@ -122,7 +128,7 @@ end
                 assert(length(srch) == 1, 'Error, a block was expected to have a single source port.')
                 
                 % Get the expression for the handle and its sources recursively
-                [srcExprs, srcID] = getExprs(startSys, srch, blocks, lhsTable, subsystem_rule);
+                [srcExprs, srcID] = getExprs(startSys, srch, blocks, lhsTable, subsystem_rule, extraSupport);
                 
                 expr = [handleID ' = ' srcID]; % This block/port's expression with respect to its sources
                 nex = [{expr}, srcExprs]; % Expressions involved in this block/port's expression
@@ -169,7 +175,7 @@ end
                     srcHandle = get_param(outBlock, 'Handle');
                     
                     % Get the expressions for the sources
-                    [srcExprs, srcID] = getExprs(startSys, srcHandle, blocks, lhsTable, subsystem_rule);
+                    [srcExprs, srcID] = getExprs(startSys, srcHandle, blocks, lhsTable, subsystem_rule, extraSupport);
                     
                     expr = [handleID ' = ' srcID];
                     nex = srcExprs;
@@ -179,7 +185,7 @@ end
                     
                     if ~isempty(ifPort)
                         % Get the expressions for the Ifaction port
-                        [srcExprs, srcID] = getExprs(startSys, ifPort, blocks, lhsTable, subsystem_rule);
+                        [srcExprs, srcID] = getExprs(startSys, ifPort, blocks, lhsTable, subsystem_rule, extraSupport);
                         
                         expr = [expr ' & ' srcID];
                         nex = [{expr}, srcExprs, nex];
@@ -199,7 +205,7 @@ end
                     srcHandle = inoutblock2subport(blk);
                     
                     % Get the expressions for the sources
-                    [srcExprs, srcID] = getExprs(startSys, srcHandle, blocks, lhsTable, subsystem_rule);
+                    [srcExprs, srcID] = getExprs(startSys, srcHandle, blocks, lhsTable, subsystem_rule, extraSupport);
                     
                     expr = [handleID ' = ' srcID];
                     nex = [{expr}, srcExprs];
@@ -210,18 +216,18 @@ end
                     error('Error, invalid subsystem_rule')
                 end
             case 'Constant'
-                % TODO - fix chrysler stuff
-                
-                chrysler = false; % using Chrysler blocks
+                value = get_param(blk, 'Value');
                 valIsNan = isnan(str2double(get_param(blk,'Value'))); % constant is using a string value
                 valIsTorF = any(strcmp(get_param(blk,'Value'), {'true','false'}));
                 
-                % there may be a better way to identify Chrysler's constants
-                if chrysler || (valIsNan && ~valIsTorF)
-                    expr = [handleID ' =? ']; % get_param(blk, 'Value')];
+                if valIsTorF
+                    expr = [handleID ' = ' value];
+                elseif valIsNan
+                    expr = [handleID ' =? '];
                 else
-                    expr = [handleID ' = ' get_param(blk, 'Value')];
+                    expr = [handleID ' = ' value];
                 end
+                
                 nex = {expr};
             case {'Logic', 'RelationalOperator'}
                 [nex, ~] = getLogicExpression(startSys, h, handleID, blocks, lhsTable, subsystem_rule);
@@ -234,6 +240,32 @@ end
                     error('Error, invalid subsystem_rule')
                 end
             case 'Switch'
+                % TODO make other symbols work with the simplifier for switch
+                % won't work as it requires * and + operators
+                
+                % Get the source ports of the blk (i.e. inports)
+                ph = get_param(blk, 'PortHandles');
+                srcHandles = ph.Inport;
+            
+                assert(length(srcHandles) == 3) % IfElseif requires condition, then case, and else case
+                
+                % Get source expressions
+                [srcExprs1, srcID1] = getExpr(startSys, srcHandles(1), blocks, lhsTable, subsystem_rule, extraSupport);
+                [srcExprs2, srcID2] = getExpr(startSys, srcHandles(2), blocks, lhsTable, subsystem_rule, extraSupport);
+                [srcExprs3, srcID3] = getExpr(startSys, srcHandles(3), blocks, lhsTable, subsystem_rule, extraSupport);
+                
+                criteria_param = get_param(block, 'Criteria');
+                thresh = get_param(block, 'Threshold');
+                criteria = strrep(strrep(criteria_param, 'u2 ', ['(' srcID2 ')']), 'Threshold', thresh); % Replace 'u2 ' and 'Threshold'
+                
+                % Record source expressions
+                mult_add_available = false; % This will be made true/removed once * and + are accepted
+                if mult_add_available
+                    expr = [handleID ' = ' '(((' criteria ')*(' srcID1 '))+(~(' criteria ')*(' srcID3 ')))']; % This block/port's expression with respect to its 1st source
+                else
+                    expr = [handleID ' = ' '(((' criteria ')&(' srcID1 '))|(~(' criteria ')&(' srcID3 ')))']; % srcID1 and 3 may not be logical so this doesn't work
+                end
+                newExprs = [{expr}, srcExprs1, srcExprs2, srcExprs3]; % Expressions involved in this block's expressions
             case 'From'
                 % Get corresponding Goto block
                 %goto = getGoto4From(block);
@@ -248,7 +280,7 @@ end
                     nex = {expr};
                 else
                     % Get Goto expressions
-                    [srcExprs, srcID] = getExprs(startSys, srcHandle, blocks, lhsTable, subsystem_rule);
+                    [srcExprs, srcID] = getExprs(startSys, srcHandle, blocks, lhsTable, subsystem_rule, extraSupport);
                     
                     % Record this block's expressions
                     expr = [handleID ' = ' srcID]; % The expression for this handle
@@ -267,7 +299,7 @@ end
         % Get expression for masked handles with eType of 'out'
         switch mType
             case {'Compare To Constant', 'Compare To Zero'}
-                [nex, ~] = getLogicExpression(startSys, h, handleID, blocks, lhsTable, subsystem_rule);
+                [nex, ~] = getLogicExpression(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
             otherwise
                 error('Error, unsupported MaskType when supported type expected.')
         end
