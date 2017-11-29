@@ -210,13 +210,15 @@ end
                     error('Error, invalid subsystem_rule')
                 end
             case 'Constant'
+                % TODO - fix chrysler stuff
+                
                 chrysler = false; % using Chrysler blocks
                 valIsNan = isnan(str2double(get_param(blk,'Value'))); % constant is using a string value
                 valIsTorF = any(strcmp(get_param(blk,'Value'), {'true','false'}));
                 
                 % there may be a better way to identify Chrysler's constants
-                if chrysler && (valIsNan && ~valIsTorF)
-                    expr = [handleID ' =? ' get_param(blk, 'Value')];
+                if chrysler || (valIsNan && ~valIsTorF)
+                    expr = [handleID ' =? ']; % get_param(blk, 'Value')];
                 else
                     expr = [handleID ' = ' get_param(blk, 'Value')];
                 end
