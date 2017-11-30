@@ -230,12 +230,12 @@ end
                 
                 nex = {expr};
             case {'Logic', 'RelationalOperator'}
-                [nex, ~] = getLogicExpression(startSys, h, handleID, blocks, lhsTable, subsystem_rule);
+                [nex, ~] = getLogicExpression(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
             case 'If'
                 if any(strcmp(subsystem_rule, {'blackbox', 'part-simplify'}))
                     nex = getBlackBoxExpression();
                 elseif strcmp(subsystem_rule, 'full-simplify')
-                    [nex, ~] = getIfExpr(startSys, h, handleID, blocks, lhsTable, subsystem_rule);
+                    [nex, ~] = getIfExpr(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
                 else
                     error('Error, invalid subsystem_rule')
                 end
