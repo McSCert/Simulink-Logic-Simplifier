@@ -51,7 +51,7 @@ expr = char(expr); % Convert from symbolic type to string
 
 %Swap symbols back
 expr = swap4Simulink(expr);
-% newExpression = strrep(newExpression, '=', '=='); % is this needed for newer versions for some reason?
+% newExpression = strrep(newExpression, '=', '=='); % is this needed for newer versions for some reason? % should have to use the same regexprep line that the older version uses at least
 
 % Swap out special MuPAD operations
 % References:
@@ -79,10 +79,12 @@ end
 function expr = swap4Simulink(expr)
 
 if ~isLsNewerVer()
-    expr = strrep(expr, ' or ', '|');
+    expr = regexprep(expr, '(^|\s) not \s', '~');
+    expr = strrep(expr, ' or ', '|'); % Without the spaces 'or' could be part of a variable name
     expr = strrep(expr, ' and ', '&');
-    expr = strrep(expr, '=', '==');
-    expr = strrep(expr, ' not ', '~');
+    expr = regexprep(expr, '(^|[^<>~=])(=)([^=]|$)', '$1$2$2$3'); % if it's not <=, >=, ~=, ==, then replace = with == (also copies the character before and after)
+    expr = regexprep(expr, '(^|[^A-Za-z_])not\s', '$1~'); % This replaces not with ~ and makes sure not isn't a part of a variable name
+%     expr = strrep(expr, ' not ', '~');
     expr = strrep(expr, '<>', '~=');
 end
 end
