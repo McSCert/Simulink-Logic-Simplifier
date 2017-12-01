@@ -1,4 +1,4 @@
-function [isSupported, newExpressions] = fcaSupport(sys, h, blx, table, rule, extraSupport)
+function [isSupported, newExpressions] = fcaSupport(sys, h, hID, blx, table, rule, extraSupport)
 % Inputs:
 %       h   Handle of a block or port to make an expression for.
 %
@@ -32,16 +32,16 @@ if isMask
             assert(length(srcHandles) == 3) % IfElseif requires condition, then case, and else case
             
             % Get source expressions
-            [srcExprs1, srcID1] = getExpr(sys, srcHandles(1), blx, table, rule, extraSupport);
-            [srcExprs2, srcID2] = getExpr(sys, srcHandles(2), blx, table, rule, extraSupport);
-            [srcExprs3, srcID3] = getExpr(sys, srcHandles(3), blx, table, rule, extraSupport);
+            [srcExprs1, srcID1] = getExprs(sys, srcHandles(1), blx, table, rule, extraSupport);
+            [srcExprs2, srcID2] = getExprs(sys, srcHandles(2), blx, table, rule, extraSupport);
+            [srcExprs3, srcID3] = getExprs(sys, srcHandles(3), blx, table, rule, extraSupport);
 
             % Record source expressions
             mult_add_available = false; % This can be made true/removed once * and + are accepted
             if mult_add_available
-                expr = [handleID ' = ' '(((' srcID1 ')*(' srcID2 '))+(~(' srcID1 ')*(' srcID3 ')))']; % This block/port's expression with respect to its 1st source
+                expr = [hID ' = ' '(((' srcID1 ')*(' srcID2 '))+(~(' srcID1 ')*(' srcID3 ')))']; % This block/port's expression with respect to its 1st source
             else
-                expr = [handleID ' = ' '(((' srcID1 ')&(' srcID2 '))|(~(' srcID1 ')&(' srcID3 ')))']; % srcID2 and 3 may not be logical so this doesn't work
+                expr = [hID ' = ' '(((' srcID1 ')&(' srcID2 '))|(~(' srcID1 ')&(' srcID3 ')))']; % srcID2 and 3 may not be logical so this doesn't work
             end
             newExpressions = [{expr}, srcExprs1, srcExprs2, srcExprs3]; % Expressions involved in this block's expressions
         case 'Set' 
@@ -58,7 +58,7 @@ if isMask
             % Get the expression for the source
             [srcExpressions, srcID] = getExprs(sys, srcHandles, blx, table, rule, extraSupport);
             
-            expression = [handleID ' = ' srcID];
+            expression = [hID ' = ' srcID];
             newExpressions = [{expression}, srcExpressions];
         otherwise
             isSupported = false;
@@ -77,13 +77,13 @@ if ~isMask || strcmp(mType, '')
             
             if valIsNan && any(strcmp(value, {'CbTrue', 'CbFalse'})) % Using FCA notation for true/false
                 value = lower(value(3:end)); % E.g. 'CbTrue' -> 'true'
-                expression = [handleID ' = ' value];
-            elseif valIsNan && valueIsTorF % Normal constant true/false
-                expression = [handleID ' = ' value];
+                expression = [hID ' = ' value];
+            elseif valIsNan && valIsTorF % Normal constant true/false
+                expression = [hID ' = ' value];
             elseif valIsNan % Something unknown, potentially a calibration
-                expression = [handleID ' =? '];
+                expression = [hID ' =? '];
             else % Normal constant
-                expression = [handleID ' = ' value];
+                expression = [hID ' = ' value];
             end
             
             newExpressions = {expression};
