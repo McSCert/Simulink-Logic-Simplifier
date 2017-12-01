@@ -1,4 +1,4 @@
-function [newExprs, handleID] = getLogicExpression(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport)
+function newExprs = getLogicExpression(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport)
 % In theory you could do: get_param(block, 'Inputs')
 %But I found in practice it returned the wrong number...
 
@@ -54,7 +54,7 @@ else % Mask off
             assert(numInputs == 1);
             
             % Get the expression for the source
-            [srcExprs, srcID] = getExprs(startSys, srcHandles(1), blocks, lhsTable, subsystem_rule);
+            [srcExprs, srcID] = getExprs(startSys, srcHandles(1), blocks, lhsTable, subsystem_rule, extraSupport);
             
             expr = [handleID ' = ' '~' srcID]; % This block/port's expression with respect to its sources
             newExprs = {expr, srcExprs{1:end}}; % Expressions involved in this block's expressions
