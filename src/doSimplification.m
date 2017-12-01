@@ -21,6 +21,7 @@ for i = 1:2:length(varargin)
         case 'subsystem_rule'
             subsystem_rule = varargin{i+1};
         case 'extra_support_function'
+            assert(exist(varargin{i+1}, 'file') == 2, 'Error: extra_support_function in the config is expected to be a file on the MATLAB path.')
             extraSupportFun = eval(['@' varargin{i+1}]);
         otherwise
             error(['Error in ' mfilename ' unexpected Name for Name-Value pair input argument.'])
