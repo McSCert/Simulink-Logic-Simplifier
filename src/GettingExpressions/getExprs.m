@@ -49,7 +49,7 @@ if ~lhsTable.lookup.isKey(h)
     inBlx = any(strcmp(blk, blocks));
     switch eType
         case 'blk'
-            [inExtraSupp, newExprs] = extraSupport(startSys, h, blocks, lhsTable, subsystem_rule, extraSupport);
+            [inExtraSupp, newExprs] = extraSupport(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
             if ~inExtraSupp
                 if inBlx && isMask && isSupp
                     newExprs = getSuppMaskBlkExpression();
@@ -64,7 +64,7 @@ if ~lhsTable.lookup.isKey(h)
                 end
             end
         case 'out'
-            [inExtraSupp, newExprs] = extraSupport();
+            [inExtraSupp, newExprs] = extraSupport(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
             if ~inExtraSupp
                 if ~inBlx || (isMask && ~isSupp) || (~isMask && ~isSupp)
                     % Block is not supported or it isn't in blocks (blocks
@@ -230,7 +230,7 @@ end
                 
                 nex = {expr};
             case {'Logic', 'RelationalOperator'}
-                [nex, ~] = getLogicExpression(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
+                nex = getLogicExpression(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
             case 'If'
                 if any(strcmp(subsystem_rule, {'blackbox', 'part-simplify'}))
                     nex = getBlackBoxExpression();
@@ -250,12 +250,12 @@ end
                 assert(length(srcHandles) == 3) % IfElseif requires condition, then case, and else case
                 
                 % Get source expressions
-                [srcExprs1, srcID1] = getExpr(startSys, srcHandles(1), blocks, lhsTable, subsystem_rule, extraSupport);
-                [srcExprs2, srcID2] = getExpr(startSys, srcHandles(2), blocks, lhsTable, subsystem_rule, extraSupport);
-                [srcExprs3, srcID3] = getExpr(startSys, srcHandles(3), blocks, lhsTable, subsystem_rule, extraSupport);
+                [srcExprs1, srcID1] = getExprs(startSys, srcHandles(1), blocks, lhsTable, subsystem_rule, extraSupport);
+                [srcExprs2, srcID2] = getExprs(startSys, srcHandles(2), blocks, lhsTable, subsystem_rule, extraSupport);
+                [srcExprs3, srcID3] = getExprs(startSys, srcHandles(3), blocks, lhsTable, subsystem_rule, extraSupport);
                 
-                criteria_param = get_param(block, 'Criteria');
-                thresh = get_param(block, 'Threshold');
+                criteria_param = get_param(blk, 'Criteria');
+                thresh = get_param(blk, 'Threshold');
                 criteria = strrep(strrep(criteria_param, 'u2 ', ['(' srcID2 ')']), 'Threshold', thresh); % Replace 'u2 ' and 'Threshold'
                 
                 % Record source expressions
@@ -265,7 +265,7 @@ end
                 else
                     expr = [handleID ' = ' '(((' criteria ')&(' srcID1 '))|(~(' criteria ')&(' srcID3 ')))']; % srcID1 and 3 may not be logical so this doesn't work
                 end
-                newExprs = [{expr}, srcExprs1, srcExprs2, srcExprs3]; % Expressions involved in this block's expressions
+                nex = [{expr}, srcExprs1, srcExprs2, srcExprs3]; % Expressions involved in this block's expressions
             case 'From'
                 % Get corresponding Goto block
                 %goto = getGoto4From(block);
@@ -299,7 +299,7 @@ end
         % Get expression for masked handles with eType of 'out'
         switch mType
             case {'Compare To Constant', 'Compare To Zero'}
-                [nex, ~] = getLogicExpression(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
+                nex = getLogicExpression(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
             otherwise
                 error('Error, unsupported MaskType when supported type expected.')
         end
