@@ -16,13 +16,13 @@ function val = getLogicSimplifierConfig(parameter, default)
     file = fopen(fileName);
     line = fgetl(file);
 
-    paramPattern = ['^' parameter  ':.*'];
+    paramPattern = ['^' parameter ':\s*(.*)'];
 
     while ischar(line)
-        match = regexp(line, paramPattern, 'match');
-        if ~isempty(match)
-            val = match{1}; % Get first occurrance
-            val = num2str(strrep(val, [parameter ': '], '')); % Strip parameter
+        token = regexp(line, paramPattern, 'tokens');
+        if ~isempty(token)
+            val = token{1}{1}; % Get value with parameter stripped
+            val = num2str(val);
             if isempty(val) % No value specified
                 val = default;
             end
