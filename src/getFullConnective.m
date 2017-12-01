@@ -15,5 +15,5 @@ function connective = getFullConnective(str, idx)
 % connective will be set to '<=' not '<'
 
 conPat = '[><]=?|[~=]=|~|\-|&|\|';
-connective = regexp(str(idx:end), ['^' conPat], 'match', 'once');
+connective = regexp(str(idx:end), ['^(' conPat ')'], 'match', 'once');
 end
