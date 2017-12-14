@@ -178,7 +178,10 @@ for i = find(notDepByMat) % When notDepByMat is 1
     end
 end
 
-%% Fix port numbers - they weren't added in a particular order so the 
+%% Fix port numbers 
+%   Inports and Outports weren't added in a particular order so they were 
+%   automatically given port numbers different from what they were in the 
+%   original system so they need to be corrected
 
 % s_inports = find_system(startSys, 'SearchDepth', '1', 'BlockType', 'Inport');
 e_inports = find_system(endSys, 'SearchDepth', '1', 'BlockType', 'Inport');
