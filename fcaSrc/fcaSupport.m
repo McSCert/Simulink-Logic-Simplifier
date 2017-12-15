@@ -44,22 +44,22 @@ if isMask
                 expr = [hID ' = ' '(((' srcID1 ')&(' srcID2 '))|(~(' srcID1 ')&(' srcID3 ')))']; % srcID2 and 3 may not be logical so this doesn't work
             end
             newExpressions = [{expr}, srcExprs1, srcExprs2, srcExprs3]; % Expressions involved in this block's expressions
-        case 'Set' 
-            % Set is a pass through so it's expression is essentially just
-            % 'x = y'. This can be modified to be blackbox by simply
-            % commenting out the case.
-            
-            % Get the source port of the blk (i.e. inport)
-            ph = get_param(blk, 'PortHandles');
-            srcHandles = ph.Inport;
-            
-            assert(length(srcHandles) == 1) % Set passes only one input
-            
-            % Get the expression for the source
-            [srcExpressions, srcID] = getExprs(sys, srcHandles, blx, table, rule, extraSupport);
-            
-            expression = [hID ' = ' srcID];
-            newExpressions = [{expression}, srcExpressions];
+%         case 'Set' 
+%             % Set is a pass through so it's expression is essentially just
+%             % 'x = y'. This can be modified to be blackbox by simply
+%             % commenting out the case.
+%             
+%             % Get the source port of the blk (i.e. inport)
+%             ph = get_param(blk, 'PortHandles');
+%             srcHandles = ph.Inport;
+%             
+%             assert(length(srcHandles) == 1) % Set passes only one input
+%             
+%             % Get the expression for the source
+%             [srcExpressions, srcID] = getExprs(sys, srcHandles, blx, table, rule, extraSupport);
+%             
+%             expression = [hID ' = ' srcID];
+%             newExpressions = [{expression}, srcExpressions];
         otherwise
             isSupported = false;
             newExpressions = {};
