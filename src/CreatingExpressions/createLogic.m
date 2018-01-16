@@ -179,7 +179,7 @@ while (idx <= length(rhs))
                     % Add the block for the operator
                     if strcmp(opType, 'NOT')
                         addedBlock = addLogicalBlock('NOT', sys);
-                    elseif strcmp(opType, 'NEGATIVE')
+                    elseif strcmp(opType, 'UnaryMinus')
                         addedBlock = add_block(['built-in/' opType], getGenBlockName(sys, opType), 'MAKENAMEUNIQUE','ON');
                     else
                         error('Error: Unsupported operator detected.')

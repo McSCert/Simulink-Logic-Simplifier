@@ -73,8 +73,8 @@ function finalDeps = getAllFinalDependencies(baseDeps)
 
 % For each identifier, Ai, add its dependencies to dependencies of other
 % identifiers, Bj, that include Ai as a dependency.
-for i = 1:length(baseDeps)
-    for j = setdiff(1:length(baseDeps),i)
+for i = 1:size(baseDeps, 1)
+    for j = setdiff(1:size(baseDeps, 1),i)
         if ismember(baseDeps{i,1},baseDeps{j,2})
             % Then add baseDeps{i,2} to baseDeps{j,2}
             baseDeps{j,2} = unique([baseDeps{j,2}, baseDeps{i,2}]);
