@@ -18,6 +18,8 @@ function exprs = getExprsForBlocks(startSys, blocks, sysBlocks, lhsTable, subsys
 %                   subsystems (depends on subsystem_rule).
 %       subsystem_rule  Rule about how to treat subsystems, see the logic
 %                       simplifier config file for details.
+%       extraSupport    A function which is checked to provide support for
+%                       extra block types.
 %
 %   Updates: (input and output)
 %       lhsTable    Records object handles and their representation within 
