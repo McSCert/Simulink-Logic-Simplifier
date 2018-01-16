@@ -24,7 +24,7 @@ function newExpr = evaluateConstOps(expression)
 % Remove whitespace
 newExpr = regexprep(expression,'\s','');
 
-% Apply brackets appropriately
+% Apply brackets appropriately for the precedence
 newExpr = bracketForPrecedence(newExpr, true);
 
 [~, newExpr] = reduceR(newExpr);

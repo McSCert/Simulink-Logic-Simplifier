@@ -10,7 +10,7 @@ function expr = simplifyExpression(expr)
 %   Outputs:
 %       expr    A simplified form of the original expression.
 
-%% TODO - test expr == '3' or some other number
+%% TODO - test: expr == '3' or some other number
 
 % Swap operators for MATLAB equivalents
 expr = strrep(expr,'<>','~=');
@@ -32,12 +32,11 @@ expr = makeBoolsTorF(expr,'upper');
 % Swap out MATLAB symbols for ones that symengine uses
 expr = swap4Symengine(expr);
 
-% Let MATLAB simplify the expression as a condition
-prev = expr; % Can use this to check equivalence between steps
-expr = evalin(symengine, ['simplify(' prev ', condition)']);
-expr = char(expr); % Convert from symbolic type to string
-% Note the above converts 'X == 1 | X == 2' to 'X in {1, 2}' <- at the moment
-% this causes errors
+% % Let MATLAB simplify the expression as a condition
+% prev = expr; % Can use this to check equivalence between steps
+% expr = evalin(symengine, ['simplify(' prev ', condition)']);
+% expr = char(expr); % Convert from symbolic type to string
+% % Note the above converts 'X == 1 | X == 2' to 'X in {1, 2}'
 
 % Let MATLAB simplify the expression as a logical expression
 %prev = expr; % Can use this to check equivalence between steps
@@ -63,6 +62,7 @@ expr = swap4Simulink(expr);
 expr = swapIn(expr);
 
 expr = bracketForPrecedence(expr, true);
+expr = removeSpareBrackets(expr);
 end
 
 function expr = swap4Symengine(expr)
