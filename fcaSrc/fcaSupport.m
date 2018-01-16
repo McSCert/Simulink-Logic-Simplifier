@@ -1,9 +1,23 @@
 function [isSupported, newExpressions] = fcaSupport(sys, h, hID, blx, table, rule, extraSupport)
-% Inputs:
+% FCASUPPORT Provides additional support for blocks used at FCA.
+%   Custom blocks used at FCA may perform basic logical operations which
+%   can be represented and simplified by the logic simplifier, these blocks
+%   can only be handled on a case by case basis; this function addresses
+%   those cases. The purpose of this function is to separate code which
+%   relates specifically to FCA out of the main program because the Logic
+%   Simplifier is not strictly for use at FCA.
+%
+%   Inputs:
 %       h   Handle of a block or port to make an expression for.
 %
-%   Other inputs come from and are simply returned to getExprs (so they
-%   shouldn't be worried about).
+%       Other inputs come from and are simply returned to getExprs (so they
+%       shouldn't be worried about).
+%
+%   Outputs:
+%       isSupported     Logical true if the block associated with h is
+%                       supported through this function else false.
+%       newExpressions  Cell array of expressions that define h.
+%
 
 isSupported = true; % This will change to false if the block/mask type isn't 
                     % identified in the switch cases.
