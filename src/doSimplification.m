@@ -4,6 +4,7 @@ function [finalExprs, baseExprs] = doSimplification(sys, blocks, varargin)
 %   Inputs:
 %       sys     Handle of empty system to place the simplified blocks in.
 %       blocks  List of blocks to perform simplification on.
+%       varargin    Ctrl+f "Initializations" in the code
 %
 %   Outputs:
 %       baseExprs               Expressions extracted from blocks for
@@ -38,7 +39,7 @@ lhsTable = BiMap('double','char');
 
 %% Get block lists
 % blocks - blocks to simplify 
-% syBlocks - blocks to simplify and blocks to simplify around
+% sysBlocks - blocks to simplify and blocks to simplify around
 
 sysBlocks = find_system(startSys, 'SearchDepth', '1');
 sysBlocks = sysBlocks(2:end); % Remove startSys
@@ -70,7 +71,7 @@ end
 %   '=?' indicates the expression is blackbox; only the interface is known
 baseExprs = getExprsForBlocks(startSys, blocks, sysBlocks, lhsTable, subsystem_rule, extraSupportFun);
 
-%% Substitute expressions 
+%% Substitute expressions
 %   Substitute to get rid of extranneous expressions before simplification
 preSimpleExprs = substituteExprs(baseExprs, blocks, lhsTable, subsystem_rule);
 
@@ -98,6 +99,8 @@ end
 
 %% Create blocks for each expression
 createExpressions(postSimpleExprs, lhsTable, startSys, endSys, subsystem_rule);
+
+swapBlockPattern(endSys, extraSupportFun);
 
 finalExprs = postSimpleExprs;
 
