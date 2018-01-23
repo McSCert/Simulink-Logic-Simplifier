@@ -1,5 +1,5 @@
-function srcPorts = getSrcPorts(object)
-    % GETSRCPORTS Gets the outports that act as sources for a given block or
+function dstPorts = getDstPorts(object)
+    % GETDSTPORTS Gets the inports that act as sources for a given block or
     %   dst port.
     %
     %   Input:
@@ -7,12 +7,12 @@ function srcPorts = getSrcPorts(object)
     %                   port handle.
     %
     %   Output:
-    %       srcPorts    Handles of ports acting as sources to the object
+    %       dstPorts    Handles of ports acting as next destinations to the object
     
     if strcmp(get_param(object, 'Type'), 'block')
         block = object;
         lines = get_param(block, 'LineHandles');
-        lines = lines.Inport;
+        lines = lines.Outport;
     elseif strcmp(get_param(object, 'Type'), 'port')
         port = object;
         lines = get_param(port, 'Line');
@@ -20,10 +20,10 @@ function srcPorts = getSrcPorts(object)
         error(['Error: ' mfilename 'expected object type to be ''block'' or ''port'''])
     end
     
-    srcPorts = [];
+    dstPorts = [];
     for i = 1:length(lines)
-        if lines(i) ~= -1
-            srcPorts(end+1) = get_param(lines(i), 'SrcPortHandle');
+        if lines ~= -1
+            dstPorts = [dstPorts; get_param(lines(i), 'DstPortHandle')];
         end
     end
     
