@@ -14,11 +14,11 @@ function swapBlockPattern(sys, extraSupport)
 %   Output:
 %       N/A
 
-%TODO
-%% Swap Constant -> Unary Minus -> X for -1*Constant -> X
-%   i.e. Constant followed by Unary Minus block will be replaced with a
-%       single constant.
-
+% % TODO
+% %% Swap Constant -> Unary Minus -> X for -1*Constant -> X
+% %   i.e. Constant followed by Unary Minus block will be replaced with a
+% %       single constant.
+% 
 % unMinus = find_system(sys, 'BlockType', 'UnaryMinus');
 % for i = 1:length(unMinus)
 %     ph = getSrcPorts(unMinus{i});
@@ -27,7 +27,7 @@ function swapBlockPattern(sys, extraSupport)
 %     if strcmp(get_param(parent, 'BlockType'), 'Constant')
 %         outType = get_param(parent, 'OutDataTypeStr');
 %         
-%         TODO
+% %         TODO
 %         if strcmp(outType, 'boolean')
 %             val = logical(get_param(parent, 'Value'));
 %         else
@@ -46,7 +46,7 @@ orBlock = find_system(sys, 'BlockType', 'Logic', 'Operator', 'OR');
 for z = 1:length(orBlock)
     try
         get_param(orBlock{z}, 'Name');
-        %make sure it still exists
+        %making sure orBlock{z} still exists
     catch
         continue
     end
@@ -58,7 +58,19 @@ for z = 1:length(orBlock)
     sysBlocks = find_system(sys, 'SearchDepth', '1');
     sysBlocks = sysBlocks(2:end); % Remove sys
     
-    andBlocks = get_param(ph, 'Parent');
+    andBlocks = {};
+    for i = 1:length(ph)
+        parent = get_param(ph(i), 'Parent');
+        if strcmp(get_param(parent, 'BlockType'), 'Logic') ...
+                && strcmp(get_param(parent, 'Operator'), 'AND')
+            andIn = get_param(parent, 'PortHandles');
+            andIn = andIn.Inport;
+            if length(andIn) <= 2 % TODO: temp condition to remove
+                andBlocks{end+1} = parent;
+            end
+        end
+    end
+    andBlocks = unique(andBlocks);
     
     % Get expressions for the AND blocks
     % subsystem_rule is passed as 'blackbox' because we don't want to
@@ -67,10 +79,7 @@ for z = 1:length(orBlock)
     exprs = getExprsForBlocks(sys, setdiff(sysBlocks, andBlocks), sysBlocks, lhsTable, 'blackbox', extraSupport);
     subExprs = substituteExprs(exprs, andBlocks, lhsTable, 'blackbox'); % Substitute expressions
     
-    andExprs = {};
-    for i = 1:length(andBlocks)
-        andExprs{end+1} = {};
-    end
+    andExprs = cell(1,length(andBlocks));
     for i = 1:length(subExprs)
         [lhs, rhs] = getExpressionLhsRhs(subExprs{i});
         if strcmp('port', get_param(lhsTable.lookdown(lhs), 'Type')) ...
@@ -79,15 +88,12 @@ for z = 1:length(orBlock)
             
             andi = find(strcmp(get_param(lhsTable.lookdown(lhs), 'Parent'), andBlocks),1);
             andExprs{andi}{end+1} = subExprs{i};
-            
-            % TODO: The following is a temporary restriction
-            assert(length(andExprs{andi}) <= 2, 'Logic simplifier cannot currently handle this.')
         end
     end
     idx = -1;
-    for i = 1:length(andExprs)
-        for j = 1:length(andExprs{i})
-            for k = i+1:length(andExprs)
+    for i = 1:length(andExprs) % for each AND
+        for j = 1:length(andExprs{i}) % for each input
+            for k = i+1:length(andExprs) 
                 idx = findExprComplement(andExprs{i}{j}, andExprs{k});
                 if idx ~= -1
                     % Add switch
