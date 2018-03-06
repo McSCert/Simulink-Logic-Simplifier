@@ -47,7 +47,9 @@ logicSysName = [parentName '_newLogic'];
 try
     logicSys = new_system_makenameunique(logicSysName);
 catch ME
-    if strcmp(ME.identifier, 'Simulink:LoadSave:InvalidBlockDiagramName')
+    if any(strcmp(ME.identifier, ...
+            {'Simulink:LoadSave:InvalidBlockDiagramName', ...
+            'Simulink:LoadSave:NameTooLong'}))
         % Name invalid so use some default
         logicSysName = ['DefaultModel' '_newLogic'];
         logicSys = new_system_makenameunique(logicSysName);
