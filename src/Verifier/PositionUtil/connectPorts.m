@@ -56,15 +56,22 @@ function lineH = makeLine(address, out, in, varargin)
 % Connect out to in even if a segmented line needs to be created
 lh = get_param(out, 'Line');
 if lh == -1
+    % Ports are not in use, add line normally.
     lineH = add_line(address, out, in, varargin{:});
 else
-    % Need to make a segmented/branched line
+    % Need to make a segmented/branched line.
     
-    % It's possible that MathWorks bug report 1585586 can occur here, but 
-    % failed duplicate the bug.
+    if ~isempty(varargin)
+        warning([mfilename ' cannot use the options for add_line since a segmented line is being added.'])
+    end
     
+    % It's possible that MathWorks bug report 1585586 can occur in here,
+    % but I failed to duplicate the bug.
+    
+    % Add line from a point on the existing line of out to the position of
+    % the inport.
     points = get_param(lh, 'Points');
-    lineH = add_line(address, [points(1,:); get_param(in, 'Position')], varargin{:});
+    lineH = add_line(address, [points(1,:); get_param(in, 'Position')]);
 
     if ~isSuccess(lineH, out, in)
         % Line was created between different ports.
@@ -94,7 +101,11 @@ else
         set_param(inBlock, 'Position', [a+s a a+s+w a+hIn])
         
         points = get_param(lh, 'Points');
-        lineH = add_line(address, [points(1,:); get_param(in, 'Position')], varargin{:});
+        if isempty(varargin)
+            lineH = add_line(address, [points(1,:); get_param(in, 'Position')]);
+        else
+            lineH = add_line(address, [points(1,:); get_param(in, 'Position')]);
+        end
         
         % Put things back
         set_param(outBlock, 'Position', posOut)
