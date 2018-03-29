@@ -26,7 +26,7 @@ function lineHandle = connectPorts(address, port1, port2, varargin)
     port2Type = get_param(port2, 'PortType');
     
     errMsg = ['Connecting a line to an Ifaction port of a block with an ' ...
-            'unresolved link status may crash MATLAB.'];
+            'unresolved link status may crash MATLAB (due to a MATLAB bug.'];
     if strcmp(port1Type, 'Ifaction')
         ls1 = get_param(get_param(port1, 'Parent'), 'LinkStatus');
         assert(~strcmp(ls1, 'unresolved'), errMsg);
