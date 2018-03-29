@@ -4,15 +4,16 @@ function handle = branchToPort(address, lineHandle, portHandle)
 %   Inputs:
 %       address     Model name.
 %       lineHandle  Handle of the line to branch.
-%       portHandle  Handle o port to connect the branch to.
+%       portHandle  Handle of port to connect the branch to.
 %
 %   Outputs:
-%       N/A
+%       handle      Handle of the new line.
 
     % Determine source point to start the line segment
     points = get_param(lineHandle, 'Points');
     srcPoint = points(1,:);
     dstPoint = points(end,:);
+    
     segmentSrcX = round((dstPoint(1) - srcPoint(1))/2 + srcPoint(1));
     segmentSrcY = round(dstPoint(2));
     
