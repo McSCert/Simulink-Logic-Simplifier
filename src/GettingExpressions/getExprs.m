@@ -322,8 +322,8 @@ function uid = getUniqueId(type, existingIDs)
 %               keep it different from existing identifiers.
 
 assert(ischar(type), '''type'' variable expected to be char.')
-assert(~isempty(regexp(type,'^[0-9A-Za-z_]*$', 'ONCE')), ...
-    'Expression identifiers are required to only use characters from ''[0-9A-Za-z_]''.')
+assert(~isempty(regexp(type,'^\w*$', 'ONCE')), ...
+    'Expression identifiers only use digits, letters, and underscores.')
 
 count = 1;
 while true
