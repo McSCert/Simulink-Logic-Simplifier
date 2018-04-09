@@ -26,6 +26,7 @@ function expr = simplifyExpression(expr)
     
     % TODO - get rid of this
     % When does this trigger? should the input ever have this?
+	%	Consider different versions of MATLAB (esp. 2011b)
     assert(isempty(strfind(expr, '<>')), 'Assertion triggered for debugging')
     
     % Swap operators for MATLAB equivalents
@@ -85,7 +86,7 @@ function newExpr = lsSimplifyAux(expr, idMap)
             match = findMatchingParen(expr, 1);
             if strcmp(match, length(expr))
                 % expr is of form "(subexpr)", so run lsSimplify(subexpr)
-                lsSimplifyAux(expr(2:end-1), idMap)
+                newExpr = lsSimplifyAux(expr(2:end-1), idMap)
             else
                 % expr is of form "(subexpr1)op(subexpr2)"
                 % if op is relational {<,>,<=,>=,==,~=}:
@@ -117,9 +118,10 @@ function newExpr = lsSimplifyAux(expr, idMap)
         otherwise
             % expr is an identifier or value - no simplification available
             
-            % Do Nothing
-            
-            % TODO: assert that it's just an identifier/value
+			% Assert that expr is just an identifier/value
+			assert(~isempty(regexp(expr, '^\s*\w*\s*$', 'once')), 'Expression of unexpected form.');
+			
+			newExpr = expr;
     end
     
     % % Let MATLAB simplify the expression as a condition
