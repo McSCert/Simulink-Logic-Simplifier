@@ -48,6 +48,7 @@ while (idx <= length(rhs))
             
             switch type
                 case 0 % Binary logical operator - Simulink can use these operators with n > 1 inputs
+                    assert(~isempty(connectSrc))
                     opBlock = get_param(connectSrc, 'Parent');
                     if strcmp(get_param(opBlock, 'BlockType'), 'Logic')
                         operator = get_param(opBlock, 'Operator');
@@ -225,7 +226,7 @@ while (idx <= length(rhs))
                 ports = get_param(atomicBlock, 'PortHandles');
                 assert(length(ports.Outport) == 1, 'Error: Constant expected to have 1 output.')
                 connectSrc = ports.Outport(1);
-            else
+            else              
                 connectSrc = createExpr(atomic, exprs, startSys, sys, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
             end
 

@@ -120,62 +120,66 @@ if isBlackBoxExpression(expr)
                 e_outBlock = subport2inoutblock(e_h);
                 e_outInport = getPorts(e_outBlock, 'Inport');
                 connectDst = get_param(e_outInport, 'Handle');
-
+                
                 connectPorts(e_blk, connectSrcs, connectDst);
             end
         end
-%     else
-%         e_blk = getBlock(e_lhs2handle(lhs));
-%     end
-
-    %%
-    % For each inport, create the corresponding expression, then connect to the 
-    % inport.
-    rhsTokens = regexp(rhs, '([^,]*),|([^,]*)', 'tokens');
-    inPorts = getPorts(e_blk, 'In');
-    assert(length(rhsTokens) == length(inPorts), 'Error: Blackbox expression expected to have the same # of terms as the corresponding block has inports.')
-    for j = 1:length(rhsTokens) % Note: j is also the port number of the input to s_blk
-        % Find the handle to connect to
-        connectDst  = inPorts(j);
+        %     else
+        %         e_blk = getBlock(e_lhs2handle(lhs));
+        %     end
         
-        exprIdx = find(strcmp(rhsTokens{j}{1}, lefts));
-        assert(length(exprIdx) == 1, 'Error: Expected subexpression to match the LHS of 1 expression.')
+        %%
+        % For each inport, create the corresponding expression, then connect to the
+        % inport.
+        rhsTokens = regexp(rhs, '([^,]*),|([^,]*)', 'tokens');
+        inPorts = getPorts(e_blk, 'In');
+        assert(length(rhsTokens) == length(inPorts), 'Error: Blackbox expression expected to have the same # of terms as the corresponding block has inports.')
+        for j = 1:length(rhsTokens) % Note: j is also the port number of the input to s_blk
+            % Find the handle to connect to
+            connectDst  = inPorts(j);
+            
+            exprIdx = find(strcmp(rhsTokens{j}{1}, lefts));
+            assert(length(exprIdx) == 1, 'Error: Expected subexpression to match the LHS of 1 expression.')
+            
+            if ~e_lhs2handle.isKey(rhsTokens{j}{1})
+                bbSrcs = createExpr(rhsTokens{j}{1}, exprs, startSys, createIn, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
+                assert(length(bbSrcs) == 1, 'Error: Current expression should have only 1 outgoing connection.')
+                connectPorts(createIn, bbSrcs, connectDst);
+                %         else
+                %             bbSrcs = e_lhs2handle(rhsTokens{j}{1});
+                %             % TODO: Probably need to create a branch
+                %             error('Error: Something went wrong.')
+            end % else do nothing, connections already made
+            
+            %         assert(length(bbSrcs) == 1, 'Error: Current expression should have only 1 outgoing connection.')
+            %         connectPorts(createIn, bbSrcs, connectDst);
+        end
+                
+        switch expressionType(s_h)
+            case 'out'
+                connectSrcs = e_lhs2handle(lhs);
+                assert(~isempty(connectSrcs))
+            case 'blk'
+                % connectSrcs should be a matrix of the outputs of the blackbox
+                connectSrcs = getPorts(e_blk, 'Outport');
+                assert(~isempty(connectSrcs))
+            case 'in'
+                error('Error: Expression type should not be ''in'' as well as blackbox.')
+            otherwise
+                error('Error: Unexpected eType')
+        end
         
-        if ~e_lhs2handle.isKey(rhsTokens{j}{1})
-            bbSrcs = createExpr(rhsTokens{j}{1}, exprs, startSys, createIn, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
-            assert(length(bbSrcs) == 1, 'Error: Current expression should have only 1 outgoing connection.')
-            connectPorts(createIn, bbSrcs, connectDst);
-%         else
-%             bbSrcs = e_lhs2handle(rhsTokens{j}{1});
-%             % TODO: Probably need to create a branch
-%             error('Error: Something went wrong.')
-        end % else do nothing, connections already made
-        
-%         assert(length(bbSrcs) == 1, 'Error: Current expression should have only 1 outgoing connection.')
-%         connectPorts(createIn, bbSrcs, connectDst);
-    end
-    
-    switch expressionType(s_h)
-        case 'out'
-            connectSrcs = e_lhs2handle(lhs);
-        case 'blk'
-            % connectSrcs should be a matrix of the outputs of the blackbox
-            connectSrcs = getPorts(e_blk, 'Outport');
-        case 'in'
-            error('Error: Expression type should not be ''in'' as well as blackbox.')
-        otherwise
-            error('Error: Unexpected eType')
-    end
-    
     else
         e_blk = getBlock(e_lhs2handle(lhs));
         
         switch expressionType(s_h)
             case 'out'
                 connectSrcs = e_lhs2handle(lhs);
+                assert(~isempty(connectSrcs))
             case 'blk'
                 % connectSrcs should be a matrix of the outputs of the blackbox
                 connectSrcs = getPorts(e_blk, 'Outport');
+                assert(~isempty(connectSrcs))
             case 'in'
                 error('Error: Expression type should not be ''in'' as well as blackbox.')
             otherwise
@@ -189,7 +193,7 @@ else
     rhs = makeWellFormed(rhs);
     connectSrcs = createLogic(rhs, exprs, startSys, createIn, 1, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
     
-    assert(length(connectSrcs) == 1, 'Error: Logic expression had 0 outputs.')
+    assert(length(connectSrcs) > 0, 'Error: Logic expression had 0 outputs.')
     assert(length(connectSrcs) == 1, 'Error: Logic expression had more than 1 output.')
     e_lhs2handle(lhs) = connectSrcs;
 end
