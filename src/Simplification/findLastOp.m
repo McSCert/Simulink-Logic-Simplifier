@@ -104,6 +104,8 @@ function [startIdx, endIdx] = findLastOp(expr)
         end
     end
     
+    assert((startIdx == 0 && endIdx == 0) || (startIdx ~= 0 && endIdx ~= 0))
+    
     function idxs = getOdIdxs(idxs)
         idxs = [idxs, idx - 1 + regexp(expr(idx:idx2), pat)];
     end
