@@ -13,14 +13,14 @@ function expr = simplifyExpression(expr)
     %       expr    A simplified form of the original expression.
     
     % Tests:
-    %   simplifyExpr('3')
-    %   simplifyExpr('true')
-    %   simplifyExpr('TRUE')
-    %   simplifyExpr('true == 1')
-    %   simplifyExpr('true == TRUE')
-    %   simplifyExpr('x')
-    %   simplifyExpr('A&~A')
-    %   simplifyExpr('~(A <= 1)')
+    %   simplifyExpression('3')
+    %   simplifyExpression('true')
+    %   simplifyExpression('TRUE')
+    %   simplifyExpression('true == 1')
+    %   simplifyExpression('true == TRUE')
+    %   simplifyExpression('x')
+    %   simplifyExpression('A&~A')
+    %   simplifyExpression('~(A <= 1)')
     
     %% Modify the form of expr for the actual simplification
     
@@ -57,9 +57,11 @@ function expr = simplifyExpression(expr)
 end
 
 function newExpr = lsSimplify(expr)
-    [~ ids] = getIdentifiers(expr);
-    idMap = containers.Map();
-    addCells2Map(idMap,ids,cell(1,length(ids))); % Update idMap, initial mappings aren't important
+    [~, ids] = getIdentifiers(expr);
+    idMap = containers.Map(); % idMap maps from identifiers to expressions they represent
+    initMappings = cell(1,length(ids)); initMappings(:) = {''};
+    % Add ids to idMap with empty values to indicate that an id doesn't represent anything
+    addCells2Map(idMap,ids,initMappings);
     
     % Simplify and when new ids are added to idMap, also add the simplified
     % expression they represent.
@@ -67,9 +69,9 @@ function newExpr = lsSimplify(expr)
     
     % Swap ids in idMap for the expression they represent
     for i = 1:length(idMap.keys)
-        key = idMap.keys{i};
+        key = idMap.keys; key = key{i}; % key = ith key
         value = idMap(key);
-        if strcmp(value, '')
+        if ~strcmp(value, '')
             newExpr = regexprep(newExpr, ['(^|\W)' key '(\W|$)'], ['(' value ')']); % match identifier when the character before and after isn't valid in an identifier
         end
     end
@@ -81,12 +83,46 @@ function newExpr = lsSimplifyAux(expr, idMap)
     % (X>Y) == ((X~=Y) & (~(Y>X))) or equivalently ((X>Y)&(Y>X))==False
     % (X<2)&(1>X) -> X<1
     
+%     if strcmp(expr(1), '(') && findMatchingParen(expr, 1) == length(expr)
+%         % expr is of form "(subexpr)", so run lsSimplify(subexpr)
+%         newExpr = lsSimplifyAux(expr(2:end-1), idMap);
+%     elseif strcmp(expr(1), '~')
+%         % expr is of form "~subexpr"
+%         % (due to bracketing, "~subexpr op subexpr" should not be possible)
+%         %   mSimplify(~lsSimplify(subexpr))
+%         subexpr = lsSimplifyAux(expr(2:end), idMap);
+%         newExpr = mSimplify(~subexpr, idMap);
+%     else
+%         % expr is of form "subexpr1 op subexpr2"
+%         % if op is relational {<,>,<=,>=,==,~=}:
+%         %   relSimplify(lsSimplify(subexpr1) op lsSimplify(subexpr2))
+%         % else op is not relational {&,|}:
+%         %   mSimplify(lsSimplify(subexpr1) op lsSimplify(subexpr2))
+%         
+%         startIdx = getNextOp(expr);
+%         
+%         rhsIdx = match + regexp(expr(match+1:end), '(^[\s~=><&\|]*)', 'end'); % Index before the right-hand side subexpression starts
+%         tok = regexp(expr(match+1:rhsIdx), '([~=><&\|]*)', 'tokens'); % Captures operators (and other cases using the same symbols)
+%         assert(length(tok)==1, 'Pattern match failed; unexpected expression pattern.')
+%         assert(length(tok{1})==1, 'Pattern match failed; unexpected expression pattern.')
+%         op = tok{1}{1};
+%         isRelOp = ~isempty(regexp(op, '^(>|>=|<|<=|==|~=)$', 'once')); % Checks if op is a relational operator
+%         
+%         lhs = lsSimplifyAux(expr(2:match-1), idMap); % Might be more efficient to do this in the simplification functions in case these don't need to be computed
+%         rhs = lsSimplifyAux(expr(rhsIdx+1:end), idMap);
+%         if isRelOp
+%             newExpr = relSimplify(lhs, op, rhs, idMap);
+%         else
+%             newExpr = mSimplify([lhs op rhs], idMap);
+%         end
+%     end
+    
     switch expr(1)
         case '('
             match = findMatchingParen(expr, 1);
-            if strcmp(match, length(expr))
+            if match == length(expr)
                 % expr is of form "(subexpr)", so run lsSimplify(subexpr)
-                newExpr = lsSimplifyAux(expr(2:end-1), idMap)
+                newExpr = lsSimplifyAux(expr(2:end-1), idMap);
             else
                 % expr is of form "(subexpr1)op(subexpr2)"
                 % if op is relational {<,>,<=,>=,==,~=}:
@@ -94,15 +130,16 @@ function newExpr = lsSimplifyAux(expr, idMap)
                 % else op is not relational {&,|}:
                 %   mSimplify(lsSimplify(subexpr1) op lsSimplify(subexpr2))
                 
-                rhsIdx = regexp(expr(match+1:end), '(^[\s~=><&\|]*)', 'end'); % Index before the right-hand side subexpression starts
-                tok = regexp(expr(match+1:rhsIdx), '([~=><&\|]*)', 'tokens'); % Captures operators (and other cases using the same symbols)
-                assert(length(tok)==1, 'Pattern match failed; unexpected expression pattern.')
-                assert(length(tok{1})==1, 'Pattern match failed; unexpected expression pattern.')
-                op = tok{1}{1};
+                [startIdx, endIdx] = findNextOp(expr);
+                assert(startIdx ~= 0 && endIdx ~= 0)
+                op = expr(startIdx:endIdx);
+                assert(~strcmp(op,'~'))
                 isRelOp = ~isempty(regexp(op, '^(>|>=|<|<=|==|~=)$', 'once')); % Checks if op is a relational operator
                 
-                lhs = lsSimplifyAux(expr(2:match-1), idMap); % Might be more efficient to do this in the simplification functions in case these don't need to be computed
-                rhs = lsSimplifyAux(expr(rhsIdx+1:end), idMap);
+                rhsIdx = endIdx + 1; % Index where the right-hand side subexpression starts
+                
+                lhs = lsSimplifyAux(expr(2:startIdx-1), idMap); % Might be more efficient to do this in the simplification functions in case these don't need to be computed
+                rhs = lsSimplifyAux(expr(rhsIdx:end), idMap);
                 if isRelOp
                     newExpr = relSimplify(lhs, op, rhs, idMap);
                 else
@@ -182,6 +219,7 @@ function newExpr = mSimplify(expr, idMap)
     eval(['syms ' identifiers]);
     try
         newExpr = eval(['simplify( ', newExpr, ', ''Steps'', 100 )']);
+        newExpr = char(newExpr);
     catch ME
         if ~strcmp(ME.identifier, 'MATLAB:UndefinedFunction')
             rethrow(ME);
@@ -201,7 +239,7 @@ function newExpr = mSimplify(expr, idMap)
     % Swap out 'in {...}':
     newExpr = swapIn(newExpr);
     
-    newExpr = ['(' expr ')'];
+    newExpr = ['(' newExpr ')'];
 end
 
 function expr = swapIn(expr)
