@@ -83,82 +83,39 @@ function newExpr = lsSimplifyAux(expr, idMap)
     % (X>Y) == ((X~=Y) & (~(Y>X))) or equivalently ((X>Y)&(Y>X))==False
     % (X<2)&(1>X) -> X<1
     
-%     if strcmp(expr(1), '(') && findMatchingParen(expr, 1) == length(expr)
-%         % expr is of form "(subexpr)", so run lsSimplify(subexpr)
-%         newExpr = lsSimplifyAux(expr(2:end-1), idMap);
-%     elseif strcmp(expr(1), '~')
-%         % expr is of form "~subexpr"
-%         % (due to bracketing, "~subexpr op subexpr" should not be possible)
-%         %   mSimplify(~lsSimplify(subexpr))
-%         subexpr = lsSimplifyAux(expr(2:end), idMap);
-%         newExpr = mSimplify(~subexpr, idMap);
-%     else
-%         % expr is of form "subexpr1 op subexpr2"
-%         % if op is relational {<,>,<=,>=,==,~=}:
-%         %   relSimplify(lsSimplify(subexpr1) op lsSimplify(subexpr2))
-%         % else op is not relational {&,|}:
-%         %   mSimplify(lsSimplify(subexpr1) op lsSimplify(subexpr2))
-%         
-%         startIdx = getNextOp(expr);
-%         
-%         rhsIdx = match + regexp(expr(match+1:end), '(^[\s~=><&\|]*)', 'end'); % Index before the right-hand side subexpression starts
-%         tok = regexp(expr(match+1:rhsIdx), '([~=><&\|]*)', 'tokens'); % Captures operators (and other cases using the same symbols)
-%         assert(length(tok)==1, 'Pattern match failed; unexpected expression pattern.')
-%         assert(length(tok{1})==1, 'Pattern match failed; unexpected expression pattern.')
-%         op = tok{1}{1};
-%         isRelOp = ~isempty(regexp(op, '^(>|>=|<|<=|==|~=)$', 'once')); % Checks if op is a relational operator
-%         
-%         lhs = lsSimplifyAux(expr(2:match-1), idMap); % Might be more efficient to do this in the simplification functions in case these don't need to be computed
-%         rhs = lsSimplifyAux(expr(rhsIdx+1:end), idMap);
-%         if isRelOp
-%             newExpr = relSimplify(lhs, op, rhs, idMap);
-%         else
-%             newExpr = mSimplify([lhs op rhs], idMap);
-%         end
-%     end
-    
-    switch expr(1)
-        case '('
-            match = findMatchingParen(expr, 1);
-            if match == length(expr)
-                % expr is of form "(subexpr)", so run lsSimplify(subexpr)
-                newExpr = lsSimplifyAux(expr(2:end-1), idMap);
+    if strcmp(expr(1), '(') && findMatchingParen(expr, 1) == length(expr)
+        % expr is of form "(subexpr)", so run lsSimplify(subexpr)
+        newExpr = lsSimplifyAux(expr(2:end-1), idMap);
+    else
+        [startIdx, endIdx] = findLastOp(expr);
+        if startIdx == 0
+            % no simplification to be done
+            newExpr = expr;
+        else
+            op = expr(startIdx:endIdx);
+            if strcmp(op,'~')
+                % expr is of form "~subexpr"
+                % (due to precedence ~ will otherwise not be the last op)
+                %   mSimplify(~lsSimplify(subexpr))
+                subexpr = lsSimplifyAux(expr(2:end), idMap);
+                newExpr = mSimplify(['~(' subexpr ')']);
             else
-                % expr is of form "(subexpr1)op(subexpr2)"
+                % expr is of form "subexpr1 op subexpr2"
                 % if op is relational {<,>,<=,>=,==,~=}:
                 %   relSimplify(lsSimplify(subexpr1) op lsSimplify(subexpr2))
                 % else op is not relational {&,|}:
                 %   mSimplify(lsSimplify(subexpr1) op lsSimplify(subexpr2))
                 
-                [startIdx, endIdx] = findNextOp(expr);
-                assert(startIdx ~= 0 && endIdx ~= 0)
-                op = expr(startIdx:endIdx);
-                assert(~strcmp(op,'~'))
-                isRelOp = ~isempty(regexp(op, '^(>|>=|<|<=|==|~=)$', 'once')); % Checks if op is a relational operator
-                
                 rhsIdx = endIdx + 1; % Index where the right-hand side subexpression starts
-                
                 lhs = lsSimplifyAux(expr(2:startIdx-1), idMap); % Might be more efficient to do this in the simplification functions in case these don't need to be computed
                 rhs = lsSimplifyAux(expr(rhsIdx:end), idMap);
-                if isRelOp
+                if any(strcmp(op,{'>','>=','<','<=','==','~='}))
                     newExpr = relSimplify(lhs, op, rhs, idMap);
                 else
-                    newExpr = mSimplify([lhs op rhs], idMap);
+                    newExpr = mSimplify([lhs op rhs]);
                 end
             end
-        case '~'
-            % expr is of form "~subexpr"
-            % (due to bracketing, "~subexpr op subexpr" should not be possible)
-            %   mSimplify(~lsSimplify(subexpr))
-            subexpr = lsSimplifyAux(expr(2:end), idMap);
-            newExpr = mSimplify(~subexpr, idMap);
-        otherwise
-            % expr is an identifier or value - no simplification available
-            
-			% Assert that expr is just an identifier/value
-			assert(~isempty(regexp(expr, '^\s*\w*\s*$', 'once')), 'Expression of unexpected form.');
-			
-			newExpr = expr;
+        end
     end
     
     % % Let MATLAB simplify the expression as a condition
@@ -182,28 +139,43 @@ function newExpr = relSimplify(lhs, op, rhs, idMap)
     
     expr = [lhs, op, rhs];
     
-    % Get unique identifiers for lhs and rhs
-    lhsId = getNewId(idMap.keys);
-    idMap(lhsId) = lhs;
-    rhsId = getNewId(idMap.keys);
-    idMap(rhsId) = rhs;
-    
     % TODO
-    % Try to simply expr
+    % Try to simply expr better
     % Compare lhs and rhs logically
     % E.g. if lhs = 'X<Y' and rhs = 'Y>X', then we can use a
     % single id to better simplify
+
+    if (strcmp(lhs, 'true') && strcmp(op, '==')) ...
+            || (strcmp(lhs, 'false') && strcmp(op, '~='))
+        newExpr = rhs;
+    elseif (strcmp(rhs, 'true') && strcmp(op, '==')) ...
+            || (strcmp(rhs, 'false') && strcmp(op, '~='))
+        newExpr = lhs;
+    elseif (strcmp(lhs, 'true') && strcmp(op, '~=')) ...
+            || (strcmp(lhs, 'false') && strcmp(op, '=='))
+        newExpr = mSimplify(['~(' rhs ')']);
+    elseif (strcmp(rhs, 'true') && strcmp(op, '~=')) ...
+            || (strcmp(rhs, 'false') && strcmp(op, '=='))
+        newExpr = mSimplify(['~(' lhs ')']);
+    else
+        % if op has not been simplified out, then return with unique id
+        % since mSimplify may produce unexpected results for relational
+        % operators.
     
-    % if op has been simplified out, then return the full simplification
-    % else return with unique id since mSimplify may produce unexpected
-    %   results for relational operators
-    id = getNewId(idMap.keys);
-    idMap(id) = [lhs, op, rhs];
-    
-    newExpr = id; % id will later be replaced with idMap(id)
+        % Get unique identifiers for lhs and rhs
+        lhsId = getNewId(idMap.keys);
+        idMap(lhsId) = lhs;
+        rhsId = getNewId(idMap.keys);
+        idMap(rhsId) = rhs;
+        
+        id = getNewId(idMap.keys);
+        idMap(id) = [lhs, op, rhs];
+        
+        newExpr = id; % id will later be replaced with idMap(id)
+    end
 end
 
-function newExpr = mSimplify(expr, idMap)
+function newExpr = mSimplify(expr)
     
     newExpr = expr;
     
