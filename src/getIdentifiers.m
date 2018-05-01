@@ -22,7 +22,7 @@ function [idsChar, idsCell] = getIdentifiers(expr)
     idsChar = [];
     idsCell = {};
     for i = 1:length(tok)
-        if ~any(strcmp(tok{i}{1}, [{'TRUE', 'FALSE'}, idsCell])) % If not TRUE or FALSE and not already accounted for
+        if ~any(strcmp(tok{i}{1}, [{'true', 'false', 'TRUE', 'FALSE'}, idsCell])) % If not TRUE or FALSE and not already accounted for
             idsChar = [idsChar, tok{i}{1}, ' '];
             idsCell = [idsCell, tok{i}];
         end
