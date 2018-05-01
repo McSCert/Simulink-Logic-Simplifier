@@ -209,7 +209,7 @@ while (idx <= length(rhs))
             atomic = regexp(rhs(idx:end), '^[\w]+', 'match', 'once');
             
             % Check if atomic is a constant, if it is, get its value
-            if any(strcmp(atomic, {'TRUE', 'FALSE'}))
+            if any(strcmp(atomic, {'true', 'false', 'TRUE', 'FALSE'}))
                 atomic = lower(atomic);
                 val = atomic;
                 isConstant = true;
