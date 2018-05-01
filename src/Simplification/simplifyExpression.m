@@ -6,54 +6,80 @@ function expr = simplifyExpression(expr)
     %           this form).
     %
     %   Inputs:
-    %       expr    A string representing an expression. A symbolic
-    %               expression in MATLAB will work.
+    %       expr    A string representing an expression. E.g. A symbolic
+    %               expression in MATLAB will work if given as a string.
+    %               Cell array of elements of the above format will also
+    %               work.
     %
     %   Outputs:
-    %       expr    A simplified form of the original expression.
+    %       expr    A simplified form of the original expression. If the
+    %               input was a cell array, output will be a cell array of
+    %               the simplified forms.
     
-    % Tests:
-    %   simplifyExpression('3')
-    %   simplifyExpression('true')
-    %   simplifyExpression('TRUE')
-    %   simplifyExpression('true == 1')
-    %   simplifyExpression('true == TRUE')
-    %   simplifyExpression('x')
-    %   simplifyExpression('A&~A')
-    %   simplifyExpression('~(A <= 1)')
+    % Examples/Tests:
+%     simplifyExpression('~(A <= 1)')
+%     exprs = {'3', 'x', ...
+%         'true', 'TRUE', 'false', 'FALSE', ...
+%         'true == 1', '1 ~= false', 'false ~= false', ...
+%         'true == TRUE', 'true == FALSE', ...
+%         'A&false', 'true&A', 'A|false', 'true|A', ...
+%         'A&~A', 'A|~A', ...
+%         'A&A', 'A|A', ...
+%         '~~A', ...
+%         '(A&~A) ~= (A&false)', ...
+%         '0<=~false', '(X<Y) == 1', ...
+%         '(X<Y) == TRUE', 'false < 1', ...
+%         'A == true', 'A ~= true', 'A == false', 'A ~= false', ...
+%         '~A == A', 'A <= A', '~A <= A', 'A < A', ...
+%         '(A <= B) & (A > B)', '~(A <= B) & (A > B)', ...
+%         '(A < 1) & (A < 2)', '(A < 1) | (A < 2)',...
+%         '~(A <= 1)' };
+%     newExprs = simplifyExpression(exprs);
+%     for i = 1:length(exprs)
+%         disp([exprs{i} ' --> ' newExprs{i}])
+%     end
     
-    %% Modify the form of expr for the actual simplification
-    
-    % TODO - get rid of this
-    % When does this trigger? should the input ever have this?
-	%	Consider different versions of MATLAB (esp. 2011b)
-    assert(isempty(strfind(expr, '<>')), 'Assertion triggered for debugging')
-    
-    % Swap operators for MATLAB equivalents
-    expr = strrep(expr,'<>','~=');
-    
-    % Evaluate parts that MATLAB can already evaluate
-    truePat = identifierPattern('TRUE');
-    falsePat = identifierPattern('FALSE');
-    expr = regexprep(expr, truePat, '1'); % Replace TRUE/FALSE with 1/0 so that MATLAB can evaluate them
-    expr = regexprep(expr, falsePat, '0');
-    expr = evaluateConstOps(expr);
-    
-    % Add brackets to remove potential ambiguity
-    expr = bracketForPrecedence(expr, true);
-    expr = removeSpareBrackets(expr); % Removing brackets for easier debugging
-    
-    % Swap logical 1/0 for TRUE/FALSE (determine if 1/0 is logical from context)
-    % This is done because symengine will assume 1/0 are numerical
-    expr = makeBoolsTorF(expr,'upper');
-    
-    %% Perform the simplification
-    expr = lsSimplify(expr);
-    
-    %% Do final bracketing so that precedence does not need to be considered
-    % in other functions
-    expr = bracketForPrecedence(expr, true);
-    expr = removeSpareBrackets(expr); % Cleaning up excess brackets
+    if iscell(expr)
+        % If input is a cell array, instead of char array then simplify
+        % each cell.
+        for i = 1:length(expr)
+            expr{i} = simplifyExpression(expr{i});
+        end
+    else
+        
+        %% Modify the form of expr for the actual simplification
+        
+        % TODO - get rid of this
+        % When does this trigger? should the input ever have this?
+        %	Consider different versions of MATLAB (esp. 2011b)
+        assert(isempty(strfind(expr, '<>')), 'Assertion triggered for debugging')
+        
+        % Swap operators for MATLAB equivalents
+        expr = strrep(expr,'<>','~=');
+        
+        % Evaluate parts that MATLAB can already evaluate
+        truePat = identifierPattern('true|TRUE'); % final output uses TRUE
+        falsePat = identifierPattern('false|FALSE'); % final output uses FALSE
+        expr = regexprep(expr, truePat, '1'); % Replace TRUE/FALSE with 1/0 so that MATLAB can evaluate them
+        expr = regexprep(expr, falsePat, '0');
+        expr = evaluateConstOps(expr);
+        
+        % Add brackets to remove potential ambiguity
+        expr = bracketForPrecedence(expr, true);
+        expr = removeSpareBrackets(expr); % Removing brackets for easier debugging
+        
+        % Swap logical 1/0 for TRUE/FALSE (determine if 1/0 is logical from context)
+        % This is done because symengine will assume 1/0 are numerical
+        expr = makeBoolsTorF(expr,'lower');
+        
+        %% Perform the simplification
+        expr = lsSimplify(expr);
+        
+        %% Do final bracketing so that precedence does not need to be considered
+        % in other functions
+        expr = bracketForPrecedence(expr, true);
+        expr = removeSpareBrackets(expr); % Cleaning up excess brackets
+    end
 end
 
 function newExpr = lsSimplify(expr)
@@ -72,12 +98,14 @@ function newExpr = lsSimplify(expr)
         key = idMap.keys; key = key{i}; % key = ith key
         value = idMap(key);
         if ~strcmp(value, '')
-            newExpr = regexprep(newExpr, ['(^|\W)' key '(\W|$)'], ['(' value ')']); % match identifier when the character before and after isn't valid in an identifier
+            newExpr = regexprep(newExpr, ['(?<=(^|\W))' key '(?=(\W|$))'], ['(' value ')']); % match identifier when the character before and after isn't valid in an identifier
         end
     end
 end
 
 function newExpr = lsSimplifyAux(expr, idMap)
+    
+    assert(isempty(regexp(expr,'\s', 'once')))
     
     % Notes of things to account for:
     % (X>Y) == ((X~=Y) & (~(Y>X))) or equivalently ((X>Y)&(Y>X))==False
@@ -107,7 +135,7 @@ function newExpr = lsSimplifyAux(expr, idMap)
                 %   mSimplify(lsSimplify(subexpr1) op lsSimplify(subexpr2))
                 
                 rhsIdx = endIdx + 1; % Index where the right-hand side subexpression starts
-                lhs = lsSimplifyAux(expr(2:startIdx-1), idMap); % Might be more efficient to do this in the simplification functions in case these don't need to be computed
+                lhs = lsSimplifyAux(expr(1:startIdx-1), idMap); % Might be more efficient to do this in the simplification functions in case these don't need to be computed
                 rhs = lsSimplifyAux(expr(rhsIdx:end), idMap);
                 if any(strcmp(op,{'>','>=','<','<=','==','~='}))
                     newExpr = relSimplify(lhs, op, rhs, idMap);
@@ -117,6 +145,12 @@ function newExpr = lsSimplifyAux(expr, idMap)
             end
         end
     end
+    
+    % Replace TRUE/FALSE with true/false for recursive iterations where mSimplify may be used
+    upperTruePat = identifierPattern('TRUE');
+    upperFalsePat = identifierPattern('FALSE');
+    newExpr = regexprep(newExpr, upperTruePat, 'true');
+    newExpr = regexprep(newExpr, upperFalsePat, 'false');
     
     % % Let MATLAB simplify the expression as a condition
     % prev = expr; % Can use this to check equivalence between steps
@@ -137,31 +171,49 @@ end
 
 function newExpr = relSimplify(lhs, op, rhs, idMap)
     
-    expr = [lhs, op, rhs];
+    % expr = [lhs, op, rhs];
     
     % TODO
     % Try to simply expr better
     % Compare lhs and rhs logically
     % E.g. if lhs = 'X<Y' and rhs = 'Y>X', then we can use a
     % single id to better simplify
-
-    if (strcmp(lhs, 'true') && strcmp(op, '==')) ...
-            || (strcmp(lhs, 'false') && strcmp(op, '~='))
+    
+    eqTrue = @(str) any(strcmp(str,{'true','1'}));
+    eqFalse = @(str) any(strcmp(str,{'false','0'}));
+    
+    if (eqTrue(lhs) && strcmp(op, '==')) ...
+            || (eqFalse(lhs) && strcmp(op, '~='))
         newExpr = rhs;
-    elseif (strcmp(rhs, 'true') && strcmp(op, '==')) ...
-            || (strcmp(rhs, 'false') && strcmp(op, '~='))
+    elseif (eqTrue(rhs) && strcmp(op, '==')) ...
+            || (eqFalse(rhs) && strcmp(op, '~='))
         newExpr = lhs;
-    elseif (strcmp(lhs, 'true') && strcmp(op, '~=')) ...
-            || (strcmp(lhs, 'false') && strcmp(op, '=='))
+    elseif (eqTrue(lhs) && strcmp(op, '~=')) ...
+            || (eqFalse(lhs) && strcmp(op, '=='))
         newExpr = mSimplify(['~(' rhs ')']);
-    elseif (strcmp(rhs, 'true') && strcmp(op, '~=')) ...
-            || (strcmp(rhs, 'false') && strcmp(op, '=='))
+    elseif (eqTrue(rhs) && strcmp(op, '~=')) ...
+            || (eqFalse(rhs) && strcmp(op, '=='))
         newExpr = mSimplify(['~(' lhs ')']);
+    elseif (strcmp(lhs, rhs) && strcmp(op, '==')) ...
+            newExpr = 'true';
+    elseif (strcmp(lhs, rhs) && strcmp(op, '~=')) ...
+            newExpr = 'false';
     else
+%         [opLeft1, opLeft2] = findLastOp(lhs);
+%         [opRight1, opRight2] = findLastOp(rhs);
+%         if opLeft1 ~= 0
+%             opLeft = lhs(opLeft1:opLeft2);
+%             if strcmp(opLeft, '~')
+%                 if strcmp(op, '==')
+%                     newExpr = % flip the operator
+%         elseif opRight1 ~= 0
+%
+%         else
+        
         % if op has not been simplified out, then return with unique id
         % since mSimplify may produce unexpected results for relational
         % operators.
-    
+        
         % Get unique identifiers for lhs and rhs
         lhsId = getNewId(idMap.keys);
         idMap(lhsId) = lhs;
@@ -193,9 +245,10 @@ function newExpr = mSimplify(expr)
         newExpr = eval(['simplify( ', newExpr, ', ''Steps'', 100 )']);
         newExpr = char(newExpr);
     catch ME
-        if ~strcmp(ME.identifier, 'MATLAB:UndefinedFunction')
-            rethrow(ME);
-        end % else expr should be fully simplified already
+        % We may need to add some conditions to determine whether or not to
+        % throw an error. E.g.:
+        %   strcmp(ME.identifier, 'MATLAB:UndefinedFunction') && regexp(ME.message, 'Undefined function ''simplify'' for input arguments of type ')
+        rethrow(ME);
     end
     
     %Swap symbols back
@@ -211,7 +264,16 @@ function newExpr = mSimplify(expr)
     % Swap out 'in {...}':
     newExpr = swapIn(newExpr);
     
-    newExpr = ['(' newExpr ')'];
+    if ~isAtomic(newExpr)
+        newExpr = ['(' newExpr ')'];
+    end
+end
+
+function b = isAtomic(expr)
+    % expr is an identifier, a numeric value, or true/TRUE or false/FALSE
+    
+    % If there is no non-word character, then it is atomic
+    b = isempty(regexp(expr,'\W','once'));
 end
 
 function expr = swapIn(expr)
