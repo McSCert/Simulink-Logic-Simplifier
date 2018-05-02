@@ -1,7 +1,7 @@
 function [e_bh, e_blk] = createBlockCopy(s_blk, startSys, createIn, s2e_blockHandles)
     
     % Create block
-    e_bh = move_block(s_blk, createIn);
+    e_bh = copy_block(s_blk, createIn);
     e_blk = getfullname(e_bh);
     
     % Record that the created block is related to s_blk
