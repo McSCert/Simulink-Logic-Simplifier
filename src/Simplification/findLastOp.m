@@ -1,5 +1,5 @@
 function [startIdx, endIdx] = findLastOp(expr)
-    % FINDLASTOP Gets the starting index in a given expression of the last
+    % FINDLASTOP Finds the starting index in a given expression of the last
     %   operator to evaluate. The significance of the operator is that it
     %   determines the substructure of the expression. If there are no
     %   operators, return startIdx = 0, endIdx = 0.
@@ -52,7 +52,7 @@ function [startIdx, endIdx] = findLastOp(expr)
     % contents of those parentheses.
     
     if strcmp(expr(1), '(') && findMatchingParen(expr,1) == length(expr)
-        [startIdx, endIdx] = getLastOp(expr(2:end-1));
+        [startIdx, endIdx] = findLastOp(expr(2:end-1));
         if startIdx ~= 0
             startIdx = 1 + startIdx;
             endIdx = 1 + endIdx;
