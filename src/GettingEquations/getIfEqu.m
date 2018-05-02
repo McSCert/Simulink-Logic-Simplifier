@@ -1,6 +1,6 @@
-function [newExprs, handleID] = getIfExpr(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport)
+function [newEqus, handleID] = getIfEqu(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport)
 %this function will parse the conditions of the if block
-%in order to produce a logical expression indicative of the if block
+%in order to produce a logical equation indicative of the if block
 
 % Assumed that subsystem_rule is 'full_simplify', for other cases If blocks
 % should actually be treated as blackbox because of the way they interact
@@ -33,7 +33,7 @@ catch
 end
 ifExpr = exprOut;
 
-newExprs = {};
+newEqus = {};
 
 % Swap out u1, u2, ..., un for the appropriate source
 inPorts = get_param(blk, 'PortHandles');
@@ -46,13 +46,13 @@ for i = 1:length(conditionIndices)
     condNum = condition(2:end); % Also the port number
     srcHandle = inPorts(str2double(condNum));
     
-    % Get the expression for the source
-    [srcExprs, srcID] = getExprs(startSys, srcHandle, blocks, lhsTable, subsystem_rule, extraSupport);
+    % Get the equation for the source
+    [srcEqus, srcID] = getEqus(startSys, srcHandle, blocks, lhsTable, subsystem_rule, extraSupport);
     
-    ifExpr = [ifExpr(1:end-backIndex-1) '(' srcID ')' ifExpr(end-backIndex+length(condition):end)]; % This block/port's expression with respect to its sources
-    newExprs = [newExprs, srcExprs]; % Expressions involved in this block's expressions
+    ifExpr = [ifExpr(1:end-backIndex-1) '(' srcID ')' ifExpr(end-backIndex+length(condition):end)]; % This block/port's equation with respect to its sources
+    newEqus = [newEqus, srcEqus]; % Equations involved in this block's equations
 end
 
-expr = [handleID ' = ' ifExpr];
-newExprs = [{expr}, newExprs]; % Expressions involved in this block's expressions
+equ = [handleID ' = ' ifExpr];
+newEqus = [{equ}, newEqus]; % Equations involved in this block's equations
 end

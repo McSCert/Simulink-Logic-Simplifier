@@ -1,23 +1,23 @@
-function [newExprs, handleID] = getExprs(startSys, h, blocks, lhsTable, subsystem_rule, extraSupport)
-% GETEXPRS Get a list of expressions to represent the value of h. If an
-% expression has previously been done (indicated by lhsTable), then that
-% expression won't be generated again and won't be included in the output.
+function [newEqus, handleID] = getEqus(startSys, h, blocks, lhsTable, subsystem_rule, extraSupport)
+% GETEXPRS Get a list of equations to represent the value of h. If an
+% equation has previously been done (indicated by lhsTable), then that
+% equation won't be generated again and won't be included in the output.
 
 
 % Notes/rough overview:
-%   If h is an input port, then create an expression which sets it to the
+%   If h is an input port, then create an equation which sets it to the
 %       output port which sends a signal to h
 %   If the block/mask type corresponding with h is not supported or not listed 
-%       in blocks, then create a blackbox expression for it
+%       in blocks, then create a blackbox equation for it
 %   If it is supported and listed in blocks, then create an appropriate
-%       expression for the block given using it's next sources as input
+%       equation for the block given using it's next sources as input
 %       "next source" will generally be an input port of a block
-%   When creating expressions, for any input to that expression, find the
-%       expression for that input (through a recursive call)
+%   When creating equations, for any input to that equation, find the
+%       equation for that input (through a recursive call)
 
 if ~lhsTable.lookup.isKey(h)
-    % Get expression type - 'blk', 'in', or 'out'
-    eType = expressionType(h);
+    % Get equation type - 'blk', 'in', or 'out'
+    eType = equationType(h);
     
     % Get block type
     blk = getBlock(h);
@@ -33,7 +33,7 @@ if ~lhsTable.lookup.isKey(h)
         isSupp = isSupportedBlockType(bType);
     end
     
-    % Figure out what to call the handle in expressions
+    % Figure out what to call the handle in equations
     % Note: The type variable below can't be used to reliably get type data,
     % its purpose is just to be human readable for analysis.
     if isMask
@@ -41,42 +41,42 @@ if ~lhsTable.lookup.isKey(h)
     else
         type = [bType '_' eType '_'];
     end
-    type = regexprep(regexprep(type,'([^A-Za-z0-9])',''), '(^[0-9]*)', ''); % Strip characters that aren't valid for the expression structure
+    type = regexprep(regexprep(type,'([^A-Za-z0-9])',''), '(^[0-9]*)', ''); % Strip characters that aren't valid for the equation structure
     handleID = getUniqueId(type, lhsTable);
     % Add to lhsTable
-    lhsTable.add(h, handleID); % This will tell us not to get this expression again (apart from the main use of lhsTable)
+    lhsTable.add(h, handleID); % This will tell us not to get this equation again (apart from the main use of lhsTable)
     
     inBlx = any(strcmp(blk, blocks));
     switch eType
         case 'blk'
-            [inExtraSupp, newExprs] = extraSupport(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
+            [inExtraSupp, newEqus] = extraSupport(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
             if ~inExtraSupp
                 if inBlx && isMask && isSupp
-                    newExprs = getSuppMaskBlkExpression();
+                    newEqus = getSuppMaskBlkEquation();
                 elseif inBlx && isSupp
-                    newExprs = getSuppBlkExpression();
+                    newEqus = getSuppBlkEquation();
                 else
                     % Block is not supported or it isn't in blocks (blocks
                     % designates the set of blocks we want to simplify)
                     
                     % Treat as blackbox
-                    newExprs = getBlackBoxExpression();
+                    newEqus = getBlackBoxEquation();
                 end
             end
         case 'out'
-            [inExtraSupp, newExprs] = extraSupport(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
+            [inExtraSupp, newEqus] = extraSupport(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
             if ~inExtraSupp
                 if ~inBlx || (isMask && ~isSupp) || (~isMask && ~isSupp)
                     % Block is not supported or it isn't in blocks (blocks
                     % designates the set of blocks we want to simplify)
                     
                     % Treat as blackbox
-                    newExprs = getBlackBoxExpression();
+                    newEqus = getBlackBoxEquation();
                 else
                     if isMask
-                        newExprs = getSuppMaskOutExpression();
+                        newEqus = getSuppMaskOutEquation();
                     else
-                        newExprs = getSuppOutExpression();
+                        newEqus = getSuppOutEquation();
                     end
                 end
             end
@@ -85,41 +85,41 @@ if ~lhsTable.lookup.isKey(h)
             srch = getSrcPorts(h); % DstPort of a block which connects to this
             assert(length(srch) == 1, 'Error, an input port is expected to have a single source.')
             
-            % Get the expression for the handle and its sources recursively
-            [srcExprs, srcID] = getExprs(startSys, srch, blocks, lhsTable, subsystem_rule, extraSupport);
+            % Get the equation for the handle and its sources recursively
+            [srcEqus, srcID] = getEqus(startSys, srch, blocks, lhsTable, subsystem_rule, extraSupport);
             
-            expr = [handleID ' = ' srcID]; % This block/port's expression with respect to its sources
-            newExprs = [{expr}, srcExprs]; % Expressions involved in this block/port's expression
+            equ = [handleID ' = ' srcID]; % This block/port's equation with respect to its sources
+            newEqus = [{equ}, srcEqus]; % Equations involved in this block/port's equation
         otherwise
             error('Error: Unexpected eType')
     end
 else
     handleID = lhsTable.lookup(h);
-    newExprs = {};
+    newEqus = {};
 end
 
-    function nex = getBlackBoxExpression()
+    function nex = getBlackBoxEquation()
         
         % Get the source ports of the blk (i.e. inport, enable, ifaction, etc.)
         srcHandles = getPorts(blk, 'In');
                 
-        % Get the expressions for the sources
+        % Get the equations for the sources
         nex = {};
-        expr = [handleID ' =? ']; % Note the notation '=?' being used for blackboxes
+        equ = [handleID ' =? ']; % Note the notation '=?' being used for blackboxes
         for i = 1:length(srcHandles)
-            [srcExprs, srcID] = getExprs(startSys, srcHandles(i), blocks, lhsTable, subsystem_rule, extraSupport);
-            nex = [nex, srcExprs];
-            expr = [expr, srcID, ','];
+            [srcEqus, srcID] = getEqus(startSys, srcHandles(i), blocks, lhsTable, subsystem_rule, extraSupport);
+            nex = [nex, srcEqus];
+            equ = [equ, srcID, ','];
         end
         if ~isempty(srcHandles)
-            expr = expr(1:end-1); % Remove trailing comma
+            equ = equ(1:end-1); % Remove trailing comma
         end
         
-        nex = [nex, {expr}];
+        nex = [nex, {equ}];
     end
 
-    function nex = getSuppBlkExpression()
-        % Get expression for unmasked handles with eType of 'blk'
+    function nex = getSuppBlkEquation()
+        % Get equation for unmasked handles with eType of 'blk'
         switch bType
             case {'DataStoreWrite', 'Goto', 'Outport'}
                 % Get the source port
@@ -127,22 +127,22 @@ end
                 srch = ph.Inport;
                 assert(length(srch) == 1, 'Error, a block was expected to have a single source port.')
                 
-                % Get the expression for the handle and its sources recursively
-                [srcExprs, srcID] = getExprs(startSys, srch, blocks, lhsTable, subsystem_rule, extraSupport);
+                % Get the equation for the handle and its sources recursively
+                [srcEqus, srcID] = getEqus(startSys, srch, blocks, lhsTable, subsystem_rule, extraSupport);
                 
-                expr = [handleID ' = ' srcID]; % This block/port's expression with respect to its sources
-                nex = [{expr}, srcExprs]; % Expressions involved in this block/port's expression
+                equ = [handleID ' = ' srcID]; % This block/port's equation with respect to its sources
+                nex = [{equ}, srcEqus]; % Equations involved in this block/port's equation
             case 'SubSystem'
                 % TODO: This may need to be modified in the future to consider
                 % implicit data flow.
-                nex = getBlackBoxExpression();
+                nex = getBlackBoxEquation();
             otherwise
                 error('Error, unsupported BlockType when supported type expected.')
         end
     end
 
-    function nex = getSuppMaskBlkExpression()
-        % Get expression for masked handles with eType of 'blk'
+    function nex = getSuppMaskBlkEquation()
+        % Get equation for masked handles with eType of 'blk'
         switch mtype
             % Nothing supported at present
             otherwise
@@ -150,14 +150,14 @@ end
         end
     end
 
-    function nex = getSuppOutExpression()
-        % Get expression for unmasked handles with eType of 'out'
+    function nex = getSuppOutEquation()
+        % Get equation for unmasked handles with eType of 'out'
         
         % Note for subsystems and inports with subsystem_rule of
         % part-simplify: These aren't linked with blocks at higher
         % subsystem levels, but they could be, to do this, create the
-        % expression as a blackbox instead. After making this change, the
-        % function for creating blocks from the expression would need to
+        % equation as a blackbox instead. After making this change, the
+        % function for creating blocks from the equation would need to
         % change so as to handle that connection without trying to connect
         % a signal line.
         
@@ -167,30 +167,30 @@ end
                 % implicit data flow.
                 
                 if any(strcmp(subsystem_rule, {'blackbox', 'part-simplify'}))
-                    nex = getBlackBoxExpression();
+                    nex = getBlackBoxEquation();
                 elseif strcmp(subsystem_rule, 'full-simplify')
                     
                     % Get the immediate source of the output port (i.e. the outport block within the subsystem)
                     outBlock = subport2inoutblock(h);
                     srcHandle = get_param(outBlock, 'Handle');
                     
-                    % Get the expressions for the sources
-                    [srcExprs, srcID] = getExprs(startSys, srcHandle, blocks, lhsTable, subsystem_rule, extraSupport);
+                    % Get the equations for the sources
+                    [srcEqus, srcID] = getEqus(startSys, srcHandle, blocks, lhsTable, subsystem_rule, extraSupport);
                     
-                    expr = [handleID ' = ' srcID];
-                    nex = srcExprs;
+                    equ = [handleID ' = ' srcID];
+                    nex = srcEqus;
                     
                     ifPort = getPorts(blk, 'Ifaction');
                     assert(length(ifPort) <= 1, 'Error: Expected 0 or 1 if action port on a subsystem.')
                     
                     if ~isempty(ifPort)
-                        % Get the expressions for the Ifaction port
-                        [srcExprs, srcID] = getExprs(startSys, ifPort, blocks, lhsTable, subsystem_rule, extraSupport);
+                        % Get the equations for the Ifaction port
+                        [srcEqus, srcID] = getEqus(startSys, ifPort, blocks, lhsTable, subsystem_rule, extraSupport);
                         
-                        expr = [expr ' & ' srcID];
-                        nex = [{expr}, srcExprs, nex];
+                        equ = [equ ' & ' srcID];
+                        nex = [{equ}, srcEqus, nex];
                     else
-                        nex = [{expr}, nex];
+                        nex = [{equ}, nex];
                     end
                 else
                     error('Error, invalid subsystem_rule')
@@ -204,11 +204,11 @@ end
                     % input port of the subsystem)
                     srcHandle = inoutblock2subport(blk);
                     
-                    % Get the expressions for the sources
-                    [srcExprs, srcID] = getExprs(startSys, srcHandle, blocks, lhsTable, subsystem_rule, extraSupport);
+                    % Get the equations for the sources
+                    [srcEqus, srcID] = getEqus(startSys, srcHandle, blocks, lhsTable, subsystem_rule, extraSupport);
                     
-                    expr = [handleID ' = ' srcID];
-                    nex = [{expr}, srcExprs];
+                    equ = [handleID ' = ' srcID];
+                    nex = [{equ}, srcEqus];
                 elseif ~strcmp(get_param(blk, 'Parent'), startSys) && ...
                         any(strcmp(subsystem_rule, {'blackbox', 'part-simplify'}))
                     nex = {[handleID ' =? ']};
@@ -221,21 +221,21 @@ end
                 valIsTorF = any(strcmp(get_param(blk,'Value'), {'true','false'}));
                 
                 if valIsTorF
-                    expr = [handleID ' = ' value];
+                    equ = [handleID ' = ' value];
                 elseif valIsNan
-                    expr = [handleID ' =? '];
+                    equ = [handleID ' =? '];
                 else
-                    expr = [handleID ' = ' value];
+                    equ = [handleID ' = ' value];
                 end
                 
-                nex = {expr};
+                nex = {equ};
             case {'Logic', 'RelationalOperator'}
-                nex = getLogicExpression(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
+                nex = getLogicEquation(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
             case 'If'
                 if any(strcmp(subsystem_rule, {'blackbox', 'part-simplify'}))
-                    nex = getBlackBoxExpression();
+                    nex = getBlackBoxEquation();
                 elseif strcmp(subsystem_rule, 'full-simplify')
-                    [nex, ~] = getIfExpr(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
+                    [nex, ~] = getIfEqu(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
                 else
                     error('Error, invalid subsystem_rule')
                 end
@@ -249,23 +249,23 @@ end
             
                 assert(length(srcHandles) == 3) % IfElseif requires condition, then case, and else case
                 
-                % Get source expressions
-                [srcExprs1, srcID1] = getExprs(startSys, srcHandles(1), blocks, lhsTable, subsystem_rule, extraSupport);
-                [srcExprs2, srcID2] = getExprs(startSys, srcHandles(2), blocks, lhsTable, subsystem_rule, extraSupport);
-                [srcExprs3, srcID3] = getExprs(startSys, srcHandles(3), blocks, lhsTable, subsystem_rule, extraSupport);
+                % Get source equations
+                [srcEqus1, srcID1] = getEqus(startSys, srcHandles(1), blocks, lhsTable, subsystem_rule, extraSupport);
+                [srcEqus2, srcID2] = getEqus(startSys, srcHandles(2), blocks, lhsTable, subsystem_rule, extraSupport);
+                [srcEqus3, srcID3] = getEqus(startSys, srcHandles(3), blocks, lhsTable, subsystem_rule, extraSupport);
                 
                 criteria_param = get_param(blk, 'Criteria');
                 thresh = get_param(blk, 'Threshold');
                 criteria = strrep(strrep(criteria_param, 'u2 ', ['(' srcID2 ')']), 'Threshold', thresh); % Replace 'u2 ' and 'Threshold'
                 
-                % Record source expressions
+                % Record source equations
                 mult_add_available = false; % This will be made true/removed once * and + are accepted
                 if mult_add_available
-                    expr = [handleID ' = ' '(((' criteria ')*(' srcID1 '))+(~(' criteria ')*(' srcID3 ')))']; % This block/port's expression with respect to its 1st source
+                    equ = [handleID ' = ' '(((' criteria ')*(' srcID1 '))+(~(' criteria ')*(' srcID3 ')))']; % This block/port's equation with respect to its 1st source
                 else
-                    expr = [handleID ' = ' '(((' criteria ')&(' srcID1 '))|(~(' criteria ')&(' srcID3 ')))']; % srcID1 and 3 may not be logical so this doesn't work
+                    equ = [handleID ' = ' '(((' criteria ')&(' srcID1 '))|(~(' criteria ')&(' srcID3 ')))']; % srcID1 and 3 may not be logical so this doesn't work
                 end
-                nex = [{expr}, srcExprs1, srcExprs2, srcExprs3]; % Expressions involved in this block's expressions
+                nex = [{equ}, srcEqus1, srcEqus2, srcEqus3]; % Equations involved in this block's equations
             case 'From'
                 % Get corresponding Goto block
                 %goto = getGoto4From(block);
@@ -275,19 +275,19 @@ end
                     % Goto not found or should not be linked because it is
                     % blackbox
                     
-                    % Record as a blackbox expression
-                    expr = [handleID ' =? '];
-                    nex = {expr};
+                    % Record as a blackbox equation
+                    equ = [handleID ' =? '];
+                    nex = {equ};
                 else
-                    % Get Goto expressions
-                    [srcExprs, srcID] = getExprs(startSys, srcHandle, blocks, lhsTable, subsystem_rule, extraSupport);
+                    % Get Goto equations
+                    [srcEqus, srcID] = getEqus(startSys, srcHandle, blocks, lhsTable, subsystem_rule, extraSupport);
                     
-                    % Record this block's expressions
-                    expr = [handleID ' = ' srcID]; % The expression for this handle
-                    nex = [{expr}, srcExprs]; % Expressions involved in this block's expressions
+                    % Record this block's equations
+                    equ = [handleID ' = ' srcID]; % The equation for this handle
+                    nex = [{equ}, srcEqus]; % Equations involved in this block's equations
                 end
             case 'DataStoreRead'
-                nex = getBlackBoxExpression();
+                nex = getBlackBoxEquation();
             case 'Merge'
             
             otherwise
@@ -295,11 +295,11 @@ end
         end
     end
 
-    function nex = getSuppMaskOutExpression()
-        % Get expression for masked handles with eType of 'out'
+    function nex = getSuppMaskOutEquation()
+        % Get equation for masked handles with eType of 'out'
         switch mType
             case {'Compare To Constant', 'Compare To Zero'}
-                nex = getLogicExpression(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
+                nex = getLogicEquation(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
             otherwise
                 error('Error, unsupported MaskType when supported type expected.')
         end
@@ -307,7 +307,7 @@ end
 end
 
 function uid = getUniqueId(type, existingIDs)
-% GETUNIQUEID Gets a unique identifier for a block to use in expressions
+% GETUNIQUEID Gets a unique identifier for a block to use in equations
 %   (rather than having to write the fullpath).
 %
 %   Inputs:

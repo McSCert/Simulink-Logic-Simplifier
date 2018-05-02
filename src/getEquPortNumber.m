@@ -1,13 +1,13 @@
-function pNum = getExprPortNumber(expr, lhsTable)
+function pNum = getEquPortNumber(equ, lhsTable)
 % Returns the port number of the handle associated with the LHS of the given
-% expression.
-% pNum == 0 -> expression type is blk; no associated pNum
+% equation.
+% pNum == 0 -> equation type is blk; no associated pNum
 
-[lhs, ~] = getExpressionLhsRhs(expr);
+[lhs, ~] = getEquationLhsRhs(equ);
 
 h = lhsTable.lookdown(lhs);
 
-eType = expressionType(h);
+eType = equationType(h);
 
 switch eType
     case {'out', 'in'}

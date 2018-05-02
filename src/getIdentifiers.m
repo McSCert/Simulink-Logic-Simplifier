@@ -2,7 +2,7 @@ function [idsChar, idsCell] = getIdentifiers(expr)
     % GETIDENTIFIERS Gets the identifiers/variables in expr
     %
     %   Input:
-    %       expr    A cell array representing an expression
+    %       expr    A character array representing an expression
     %
     %   Output:
     %       idsChar     Character array of the identifiers. Identifiers are

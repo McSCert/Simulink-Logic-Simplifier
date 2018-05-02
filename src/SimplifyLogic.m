@@ -1,4 +1,4 @@
-function [newExpr, oldExpr] = SimplifyLogic(blocks, varargin)
+function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
 % SIMPLIFYLOGIC A function that takes a set of logic blocks and simplifies
 %   them. Results are saved in a new model in a folder called 
 %   'Logic_Simplifier_Results'.
@@ -14,9 +14,9 @@ function [newExpr, oldExpr] = SimplifyLogic(blocks, varargin)
 %                   'Logic_Simplifier_Results' folder.
 %
 %   Outputs:
-%       oldExpr     Cell array of expressions found for the blocks as
+%       oldEqu      Cell array of equations found for the blocks as
 %                   given.
-%       newExpr     Cell array of expressions found for the blocks after
+%       newEqu      Cell array of equations found for the blocks after
 %                   the simplification process.
 
 % Constants:
@@ -66,9 +66,9 @@ set_param(logicSys, 'UnderspecifiedInitializationDetection', get_param(origModel
 
 % Perform the simplification and generate the simplification in logicSys
 if strcmp('', EXTRA_SUPPORT_FUNCTION)
-    [newExpr, oldExpr] = doSimplification(logicSys, blocks, 'subsystem_rule', SUBSYSTEM_RULE);
+    [newEqu, oldEqu] = doSimplification(logicSys, blocks, 'subsystem_rule', SUBSYSTEM_RULE);
 else
-    [newExpr, oldExpr] = doSimplification(logicSys, blocks, 'subsystem_rule', SUBSYSTEM_RULE, 'extra_support_function', EXTRA_SUPPORT_FUNCTION);
+    [newEqu, oldEqu] = doSimplification(logicSys, blocks, 'subsystem_rule', SUBSYSTEM_RULE, 'extra_support_function', EXTRA_SUPPORT_FUNCTION);
 end
 
 

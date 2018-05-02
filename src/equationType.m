@@ -1,12 +1,12 @@
-function type = expressionType(h)
-% EXPRESSIONTYPE Returns the type of expression that would be created for a
+function type = equationType(h)
+% EQUATIONTYPE Returns the type of equation that would be created for a
 %   given handle. The types are: 'blk', 'in', 'out'
 %
 %   Input:
 %       h       Simulink object handle. Must be for a blocks or a port.
 %
 %   Output:
-%       type    Types of expression: 'blk', 'in', 'out'
+%       type    Types of equation: 'blk', 'in', 'out'
 
 hType = get_param(h,'Type');
 

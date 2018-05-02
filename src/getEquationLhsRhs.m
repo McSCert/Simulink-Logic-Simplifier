@@ -1,14 +1,14 @@
-function [lhs, rhs] = getExpressionLhsRhs(expr)
-% GETEXPRESSIONLHSRHS Gets the left-hand-side and right-hand-side of input
-%   expression. In this context this will mean the portion to the left and
+function [lhs, rhs] = getEquationLhsRhs(equ)
+% GETEQUATIONLHSRHS Gets the left-hand-side and right-hand-side of input
+%   equation. In this context this will mean the portion to the left and
 %   right of the first "=" (or "=?") repectively (whitespace ignored).
 %
 %   Input:
-%       expr    A character array containing the "=" symbol.
+%       equ     A character array containing the "=" symbol.
 %
 %   Output:
-%       lhs     Left-hand-side of expr.
-%       rhs     Right-hand-side of expr.
+%       lhs     Left-hand-side of equ.
+%       rhs     Right-hand-side of equ.
 
 % Create pattern for lhs:
 % Start with any amount of not "=" ending with not whitespace,
@@ -17,7 +17,7 @@ function [lhs, rhs] = getExpressionLhsRhs(expr)
 % Make token before and after the "="/"=?".
 patLhsRhs = '^([^=]*[^=\s])\s*=[?]?\s*(.*)$';
 
-lhsrhs = regexp(expr, patLhsRhs, 'tokens', 'once');
+lhsrhs = regexp(equ, patLhsRhs, 'tokens', 'once');
 
 lhs = lhsrhs{1};
 rhs = lhsrhs{2};
