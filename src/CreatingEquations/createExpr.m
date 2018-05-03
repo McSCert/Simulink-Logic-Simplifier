@@ -83,7 +83,7 @@ if isBlackBoxEquation(expr)
         end
         
         % Record that lhs has been added
-        switch expressionType(s_h)
+        switch equationType(s_h)
             case 'out'
                 oPorts = getPorts(e_blk, 'Outport');
                 pNum = getEquPortNumber(expr, s_lhsTable);
@@ -155,7 +155,7 @@ if isBlackBoxEquation(expr)
             %         connectPorts(createIn, bbSrcs, connectDst);
         end
                 
-        switch expressionType(s_h)
+        switch equationType(s_h)
             case 'out'
                 connectSrcs = e_lhs2handle(lhs);
                 assert(~isempty(connectSrcs))
@@ -172,7 +172,7 @@ if isBlackBoxEquation(expr)
     else
         e_blk = getBlock(e_lhs2handle(lhs));
         
-        switch expressionType(s_h)
+        switch equationType(s_h)
             case 'out'
                 connectSrcs = e_lhs2handle(lhs);
                 assert(~isempty(connectSrcs))

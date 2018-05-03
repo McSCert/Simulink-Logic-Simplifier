@@ -53,11 +53,15 @@ function [connectSrc, idx] = createLogic(expr, exprs, startSys, sys, idx, s_lhsT
             assert(length(ports.Outport) == 1, 'Error: Constant expected to have 1 output.')
             connectSrc = ports.Outport(1);
         else
-            connectSrc = createEquRhs(atomic, exprs, startSys, sys, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
+            connectSrc = createExpr(atomic, exprs, startSys, sys, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
         end
     else
-        if any(strcmp(op, {'&','|'}))
-            subexprs = expand2nAry(subexprs, op);
+        [opIdx1, opIdx2] = findLastOp_alt(expr);
+        if opIdx1 ~= 0
+            op = expr(opIdx1:opIdx2);
+            if any(strcmp(op, {'&','|'}))
+                subexprs = expand2nAry(subexprs, op);
+            end
         end
         
         output_ports = cell(1,length(subexprs));
@@ -67,10 +71,9 @@ function [connectSrc, idx] = createLogic(expr, exprs, startSys, sys, idx, s_lhsT
             % TODO: If expression has already been made in the current
             %   system, then use that. Currently makes a new representation.
             
-            output_ports{i} = createLogic(subexprs{i}, exprs, startSys, sys, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
+            output_ports{i} = createLogic(subexprs{i}, exprs, startSys, sys, idx, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
         end
-        
-        [opIdx1, opIdx2] = findLastOp(expr);
+
         if opIdx1 == 0
             % There is no operator for the subexprs
             assert(length(subexprs) == 1)
@@ -78,7 +81,6 @@ function [connectSrc, idx] = createLogic(expr, exprs, startSys, sys, idx, s_lhsT
             % Set connectSrc to the output from the created subexpression
             connectSrc = output_ports{1};
         else
-            op = expr(opIdx1:opIdx2);
             if strcmp(op,'~')
                 % Unary operator, '~'
                 
@@ -161,15 +163,37 @@ function [connectSrc, idx] = createLogic(expr, exprs, startSys, sys, idx, s_lhsT
     end
 end
 
+function [startIdx, endIdx] = findLastOp_alt(expr)
+    % This alteration of findLastOp means that it will find the operators
+    % for the next subexpression(s) rather than the last operator overall.
+    % E.g. (expr) now has no 'last operator'  even if expr has an operator.
+    % Only expressions of the following forms will have a 'last operator':
+    %   expr op expr
+    %   op expr
+    % (whitespace can be ignored)
+    % Essentially this makes it so the operator corresponds with the
+    % results of:
+    %   subexprs = findNextSubexpressions(expr);
+    %
+    
+    if strcmp(expr(1), '(') && findMatchingParen(expr,1) == length(expr)
+        startIdx = 0;
+        endIdx = 0;
+    else
+        [startIdx, endIdx] = findLastOp(expr);
+    end
+end
+
 function newsubexprs = expand2nAry(subexprs, op)
     % If either subexpr has the same last op then op can be used with an
     % extra input.
     
     newsubexprs = {};
     for i = 1:length(subexprs)
-        [opIdx1, opIdx2] = findLastOp(subexprs{i});
+        subexprs{i} = removeOuterBrackets(subexprs{i});
+        [opIdx1, opIdx2] = findLastOp_alt(subexprs{i});
         if opIdx1 ~= 0
-            subop = expr(opIdx1:opIdx2);
+            subop = subexprs{i}(opIdx1:opIdx2);
             if strcmp(op,subop)
                 newexprs = findNextSubexpressions(subexprs{i});
                 assert(length(newexprs) == 2)
@@ -177,6 +201,25 @@ function newsubexprs = expand2nAry(subexprs, op)
             else
                 newsubexprs = [newsubexprs, subexprs(i)];
             end
+        end
+    end
+end
+
+function newExpr = removeOuterBrackets(expr)
+    
+    newExpr = expr;
+    
+    %% Remove brackets surrounding the whole expression
+    flag = true;
+    while flag
+        flag = false;
+        if strcmp(newExpr(1), '(') && findMatchingParen(newExpr,1) == length(newExpr)
+            % Remove brackets surrounding the whole expression
+            newExpr = newExpr(2:end-1);
+            
+            % Set flag to true; continue looping until brackets no longer
+            % surround the whole expression.
+            flag = true;
         end
     end
 end
