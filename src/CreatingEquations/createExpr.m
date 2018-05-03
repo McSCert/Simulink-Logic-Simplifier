@@ -27,14 +27,14 @@ expr = exprs{idx};
 s_h = s_lhsTable.lookdown(lhs);
 s_blk = getBlock(s_h);
 
-[~, rhs] = getExpressionLhsRhs(expr);
+[~, rhs] = getEquationLhsRhs(expr);
 
 %% Create the expressions
 % If blackbox: essentially make the block and connect the inputs (call this
 %   function recursively to get the inputs)
 % Else: create a logical expression and then connect the inputs (call this
 %   function recursively to get the inputs)
-if isBlackBoxExpression(expr)
+if isBlackBoxEquation(expr)
     
     %% Create block if needed
     if ~e_lhs2handle.isKey(lhs)
@@ -86,7 +86,7 @@ if isBlackBoxExpression(expr)
         switch expressionType(s_h)
             case 'out'
                 oPorts = getPorts(e_blk, 'Outport');
-                pNum = getExprPortNumber(expr, s_lhsTable);
+                pNum = getEquPortNumber(expr, s_lhsTable);
                 e_h = oPorts(pNum);
                 e_lhs2handle(lhs) = e_h;
             case 'blk'

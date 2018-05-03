@@ -1,16 +1,17 @@
-function createExpressions(exprs, s_lhsTable, startSys, endSys, subsystem_rule)
-% CREATEEXPRESSIONS Generate blocks to represent a set of expressions.
+function createEquations(equs, s_lhsTable, startSys, endSys, subsystem_rule)
+% CREATEEQUATIONS Generate blocks to represent a set of equations.
 %
 %   Inputs:
-%       exprs       Cell array of expressions (strings) to generate.
+%       equs        Cell array of equations (strings) to generate.
 %       s_lhsTable  A BiMap (2-way containers.Map()) linking identifiers in
-%                   expr to blocks in startSys.
-%                   lhsTable.lookup(blockHandle) -> expression_identifier
-%                   lhsTable.lookdown(expression_identifier) -> blockHandle
+%                   equs to blocks in startSys.
+%                   lhsTable.lookup(blockHandle) -> <equation_identifier>
+%                   lhsTable.lookdown(<equation_identifier>) -> blockHandle
 %       startSys    System from which blocks in lhsTable can be found (the 
-%                   expression should have been made from analysis of this 
+%                   equation should have been made from analysis of this 
 %                   system).
-%       endSys      System in which to create the expressions.
+%       endSys      System in which to create the representations of the
+%                   equations.
 %       subsystem_rule  Rule about how to treat subsystems, see the logic
 %                       simplifier config file for details.
 %
@@ -20,8 +21,8 @@ function createExpressions(exprs, s_lhsTable, startSys, endSys, subsystem_rule)
 
 %% Initializations
 
-% e_lhs2handle: For the LHS of an expression, gives the associated handle
-%   in the final system. If the expression hasn't been generated yet, then
+% e_lhs2handle: For the LHS of an equation, gives the associated handle
+%   in the final system. If the equation hasn't been generated yet, then
 %   the LHS will not be a key.
 e_lhs2handle = containers.Map('KeyType', 'char', 'ValueType', 'double');
 
@@ -29,49 +30,49 @@ e_lhs2handle = containers.Map('KeyType', 'char', 'ValueType', 'double');
 %   add an item if it gets copied into the end system (endSys).
 s2e_blockHandles = containers.Map('KeyType', 'double', 'ValueType', 'double');
 
-% lefts: List of LHS's in exprs
-% rights: List of RHS's in exprs
-[lefts, rights] = getAllLhsRhs(exprs);
+% lefts: List of LHS's in equs
+% rights: List of RHS's in equs
+[lefts, rights] = getAllLhsRhs(equs);
 
-%% Find the 'right-most' expressions
-%   By this we mean expressions which are not depended on. Expressions
+%% Find the 'right-most' equations
+%   By this we mean equations which are not depended on. equations
 %   which are not depended on will correspond with blocks further in the
-%   data flow of the Simulink diagram. Thus these expressions are
+%   data flow of the Simulink diagram. Thus these equations are
 %   'right-most' assuming the Simulink diagram has left-to-right flow.
 %
 % TODO: Account for loops in the Simulink diagram
-% TODO: Check if need to account for expressions within subsystems
+% TODO: Check if need to account for equations within subsystems
 %
-% Old approach was able to simply reorder expressions to be made in a
+% Old approach was able to simply reorder equations to be made in a
 % suitable order, however this approach was less intuitive and was not easy
 % to maintain during certain code modifications
-depMat = getExprDepMat(exprs);
+depMat = getEquDepMat(equs);
 notDepByMat = zeros(1,size(depMat,1)); % notDepBy: not depended on by anything
 for i = 1:size(depMat,1)
     notDepByMat(i) = ~any(depMat(:,i));
 end
 
-%% Generate Expressions
+%% Generate equations
 % TODO - account for loops / subsystems / other things that aren't handled yet / at all by this method
 % TODO - Describe what's going on in the for loop overall
 for i = find(notDepByMat) % When notDepByMat is 1
-    %% Get info about the expression
-    expr = exprs{i};
+    %% Get info about the equation
+    equ = equs{i};
 
     lhs = lefts{i};
     rhs = rights{i};
 
-    s_h = s_lhsTable.lookdown(lhs); % Expression handle
+    s_h = s_lhsTable.lookdown(lhs); % Equation handle
     s_blk = getBlock(s_h); % Block corresponding to the handle (i.e. parent of port else same as handle)
     bType = get_param(s_blk, 'BlockType');
 
-    %% Figure out in which (sub)system to generate the expression
+    %% Figure out in which (sub)system to generate the equation
     if any(strcmp(subsystem_rule, {'blackbox', 'part-simplify'}))
-        % Create expression in the (sub)system it comes from, but in the
+        % Create equation in the (sub)system it comes from, but in the
         % new model
         createIn = regexprep(get_param(s_blk, 'Parent'),['^' startSys], endSys, 'ONCE');
     elseif strcmp(subsystem_rule, 'full-simplify')
-        % Create expression at the highest level (subsystems will be 
+        % Create equation at the highest level (subsystems will be 
         % 'flattened')
         createIn = endSys;
     else
@@ -80,18 +81,18 @@ for i = find(notDepByMat) % When notDepByMat is 1
     
     %%
     if strcmp(bType, 'ActionPort') && strcmp(subsystem_rule, 'full-simplify')
-        % Expression isn't desired; skip
+        % Equation isn't desired; skip
         continue
     elseif ~strcmp(createIn, endSys)
-        % Expression will be handled through other iterations of this loop via
+        % Equation will be handled through other iterations of this loop via
         % the recursive nature of createExpr; skip
         continue
     end
     
     %%
-    connectSrcs = createExpr(lhs, exprs, startSys, createIn, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
+    connectSrcs = createExpr(lhs, equs, startSys, createIn, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
     
-    if isBlackBoxExpression(expr)
+    if isBlackBoxEquation(equ)
         % Note: The corresponding block would have been made in createExpr
         
         for j = 1:length(connectSrcs)
@@ -128,7 +129,7 @@ for i = find(notDepByMat) % When notDepByMat is 1
         
 %         %% Get connectDst & Create block for the lhs if needed
 %         % This uses similar code to some used in createExpr
-%         % In this case, expressionType(s_h) will probably be guaranteed to
+%         % In this case, equationType(s_h) will probably be guaranteed to
 %         % be 'blk', but this assumption wasn't made below
 %         if ~e_lhs2handle.isKey(lhs)
 %             s_bh = get_param(s_blk, 'Handle');
@@ -152,14 +153,14 @@ for i = find(notDepByMat) % When notDepByMat is 1
 %             end
 %             
 %             % Record that lhs has been added
-%             switch expressionType(s_h)
+%             switch equationType(s_h)
 %                 case 'out'
-%                     error('Error: Something went wrong, if expression type is ''out'', then it should depend on another expression.')
+%                     error('Error: Something went wrong, if equation type is ''out'', then it should depend on another equation.')
 %                 case 'blk'
 %                     e_h = e_bh;
 %                     e_lhs2handle(lhs) = e_h;
 %                 case 'in'
-%                     error('Error: Something went wrong, if expression type is ''in'', then it should depend on another expression.')
+%                     error('Error: Something went wrong, if equation type is ''in'', then it should depend on another equation.')
 %                 otherwise
 %                     error('Error: Unexpected eType')
 %             end
@@ -173,7 +174,7 @@ for i = find(notDepByMat) % When notDepByMat is 1
         connectDst = ph.Inport(1);
         
         %% Connect RHS to LHS
-        assert(length(connectSrcs) == 1, 'Error: Non-blackbox expression expected to just have one outgoing port.')
+        assert(length(connectSrcs) == 1, 'Error: Non-blackbox equation expected to just have one outgoing port.')
         connectPorts(createIn, connectSrcs, connectDst);
     end
 end

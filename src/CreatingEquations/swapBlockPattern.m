@@ -72,51 +72,51 @@ for z = 1:length(orBlock)
     end
     andBlocks = unique(andBlocks);
     
-    % Get expressions for the AND blocks
+    % Get equations for the AND blocks
     % subsystem_rule is passed as 'blackbox' because we don't want to
     %   look under subsystems to determine if the inputs satisfy a
     %   switch block.
-    exprs = getExprsForBlocks(sys, setdiff(sysBlocks, andBlocks), sysBlocks, lhsTable, 'blackbox', extraSupport);
-    subExprs = substituteExprs(exprs, andBlocks, lhsTable, 'blackbox'); % Substitute expressions
+    equs = getEqusForBlocks(sys, setdiff(sysBlocks, andBlocks), sysBlocks, lhsTable, 'blackbox', extraSupport);
+    subEqus = substituteEqus(equs, andBlocks, lhsTable, 'blackbox'); % Substitute equations
     
-    andExprs = cell(1,length(andBlocks));
-    for i = 1:length(subExprs)
-        [lhs, rhs] = getExpressionLhsRhs(subExprs{i});
+    andEqus = cell(1,length(andBlocks));
+    for i = 1:length(subEqus)
+        [lhs, rhs] = getEquationLhsRhs(subEqus{i});
         if strcmp('port', get_param(lhsTable.lookdown(lhs), 'Type')) ...
                 && strcmp('inport', get_param(lhsTable.lookdown(lhs), 'PortType')) ...
                 && any(strcmp(get_param(lhsTable.lookdown(lhs), 'Parent'), andBlocks))
             
             andi = find(strcmp(get_param(lhsTable.lookdown(lhs), 'Parent'), andBlocks),1);
-            andExprs{andi}{end+1} = subExprs{i};
+            andEqus{andi}{end+1} = subEqus{i};
         end
     end
     idx = -1;
-    for i = 1:length(andExprs) % for each AND
-        for j = 1:length(andExprs{i}) % for each input
-            for k = i+1:length(andExprs) 
-                idx = findExprComplement(andExprs{i}{j}, andExprs{k});
+    for i = 1:length(andEqus) % for each AND
+        for j = 1:length(andEqus{i}) % for each input
+            for k = i+1:length(andEqus) 
+                idx = findExprComplement(andEqus{i}{j}, andEqus{k});
                 if idx ~= -1
                     % Add switch
                     switchBlk = add_block(['built-in/' 'Switch'], getGenBlockName(sys, 'Switch'), 'MAKENAMEUNIQUE','ON', 'Criteria','u2 ~= 0');
                     switchIns = getPorts(switchBlk, 'Inport');
                     
                     % First switch input 
-                    expr = andExprs{i}{(j==1)+1};
-                    [lhs, ~] = getExpressionLhsRhs(expr);
+                    equ = andEqus{i}{(j==1)+1};
+                    [lhs, ~] = getEquationLhsRhs(equ);
                     andIn1 = lhsTable.lookdown(lhs);
                     switchSrc1 = getSrcPorts(andIn1);
                     delete_line(sys, switchSrc1, andIn1)
                     connectPorts(sys, switchSrc1, switchIns(1));
                     % Second switch input
-                    expr = andExprs{i}{j};
-                    [lhs, ~] = getExpressionLhsRhs(expr);
+                    equ = andEqus{i}{j};
+                    [lhs, ~] = getEquationLhsRhs(equ);
                     andIn2 = lhsTable.lookdown(lhs);
                     switchSrc2 = getSrcPorts(andIn2);
                     delete_line(sys, switchSrc2, andIn2)
                     connectPorts(sys, switchSrc2, switchIns(2));
                     % Third switch input
-                    expr = andExprs{k}{(idx==1)+1};
-                    [lhs, ~] = getExpressionLhsRhs(expr);
+                    equ = andEqus{k}{(idx==1)+1};
+                    [lhs, ~] = getEquationLhsRhs(equ);
                     andIn3 = lhsTable.lookdown(lhs);
                     switchSrc3 = getSrcPorts(andIn3);
                     delete_line(sys, switchSrc3, andIn3)
@@ -158,19 +158,19 @@ for z = 1:length(orBlock)
 end
 end
 
-function index = findExprComplement(expr, exprs)
+function index = findExprComplement(equ, equs)
     % FINDEXPRCOMPLEMENT Finds the index of the complement of a given
-    %   expression within a list of expressions. If there is no complement,
-    %   a value of -1 is returned.
+    %   expression (i.e. equation rhs) within a list of equations. If there
+    %   is no complement, a value of -1 is returned.
     
     index = -1; % Assume nothing will be found
     
-    [~, rhs1] = getExpressionLhsRhs(expr);
+    [~, rhs1] = getEquationLhsRhs(equ);
     
-    for i = 1:length(exprs)
-        [~, rhs2] = getExpressionLhsRhs(exprs{i});
+    for i = 1:length(equs)
+        [~, rhs2] = getEquationLhsRhs(equs{i});
         negCmp = simplifyExpression(['(' rhs1 ') == ~(' rhs2 ')']);
-        if strcmp(negCmp, 'TRUE')
+        if any(strcmp(negCmp, {'true','TRUE'}))
             index = i;
             break
         end

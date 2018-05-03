@@ -26,7 +26,7 @@ function equs = getEqusForBlocks(startSys, blocks, sysBlocks, lhsTable, subsyste
 %                   equations.
 %
 %   Outputs:
-%       equs       List of equations. Cell array of chars.
+%       equs        List of equations. Cell array of chars.
 
 % for each b in sysBlocks
 %   if b has no outports

@@ -1,15 +1,15 @@
-function depMat = getExprDepMat(exprs)
-% GETEXPRDEPMAT Gets a dependency matrix for the LHS's of the expressions
+function depMat = getEquDepMat(equs)
+% GETEQUDEPMAT Gets a dependency matrix for the LHS's of the equations
 %
 %   Input
-%       exprs       List of expressions.
+%       equs       List of equations.
 %
 %   Output
-%       depMat      n = length(exprs). nxn array. Rows & columns correspond
-%                   with the ordering of exprs. Element (i,j) means LHS_i
+%       depMat      n = length(equs). nxn array. Rows & columns correspond
+%                   with the ordering of equs. Element (i,j) means LHS_i
 %                   depends on LHS_j.
 
-% E.g. If we have the following expressions:
+% E.g. If we have the following equations:
 % A = B + C
 % B = D * E
 % C = 1
@@ -22,19 +22,19 @@ function depMat = getExprDepMat(exprs)
 %           0,0,0,1,0; % D depends on D
 %           0,1,0,1,1]; % E depends on B,D,E
 
-exlen = length(exprs);
+exlen = length(equs);
 
-exprDeps = getExprDependencies(exprs);
+equDeps = getEquDependencies(equs);
 
 lhs2idx = containers.Map();
 for i = 1:exlen
-    lhs2idx(exprDeps{i,1}) = i;
+    lhs2idx(equDeps{i,1}) = i;
 end
 
 depMat = zeros(exlen,exlen);
 for i = 1:exlen
-    for k = 1:length(exprDeps{i,2})
-        depMat(i,lhs2idx(exprDeps{i,2}{k})) = 1;
+    for k = 1:length(equDeps{i,2})
+        depMat(i,lhs2idx(equDeps{i,2}{k})) = 1;
     end
 end
 end

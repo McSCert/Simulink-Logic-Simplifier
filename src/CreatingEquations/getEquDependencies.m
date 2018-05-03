@@ -1,15 +1,15 @@
-function exprDeps = getExprDependencies(exprs)
-% GETEXPRDEPENDENCIES Gets the dependencies of the LHS of each expression.
+function equDeps = getEquDependencies(equs)
+% GETEQUDEPENDENCIES Gets the dependencies of the LHS of each equation.
 %
 %   Input
-%       exprs       List of expressions.
+%       equs       List of equations.
 %
 %   Output
-%       exprDeps    nx2 cell array which stores an LHS with its 
+%       equDeps    nx2 cell array which stores an LHS with its 
 %                   dependencies. column 1: LHS; 
 %                   column 2: cell array listing dependencies
 
-% E.g. If we have the following expressions:
+% E.g. If we have the following equations:
 % A = B + C
 % B = D * E
 % C = 1
@@ -22,33 +22,33 @@ function exprDeps = getExprDependencies(exprs)
 % D directly depends on: D   ; D ultimately depends on: D
 % E directly depends on: B   ; E ultimately depends on: B, D, E
 
-[lefts, rights] = getAllLhsRhs(exprs);
+[lefts, rights] = getAllLhsRhs(equs);
 
-len_exprs = length(exprs);
-exprDeps = cell(len_exprs,2);
-for i = 1:len_exprs
-    exprDeps{i,1} = lefts{i};
-    exprDeps{i,2} = {}; % Leave the dependencies empty for now
+len_equs = length(equs);
+equDeps = cell(len_equs,2);
+for i = 1:len_equs
+    equDeps{i,1} = lefts{i};
+    equDeps{i,2} = {}; % Leave the dependencies empty for now
 end
 
 % Find direct dependencies
-% (by this we mean dependencies apparent directly from the RHS of an expression)
-for i = 1:len_exprs
+% (by this we mean dependencies apparent directly from the RHS of an equation)
+for i = 1:len_equs
     idPat = ['(^|[^0-9A-z_])(', lefts{i}, ')([^0-9A-z_]|$)'];
-    for j = 1:len_exprs
-        if regexp(rights{j}, idPat, 'ONCE') % The jth expression directly depends on the ith expression
-            exprDeps{j,2}{end+1} = lefts{i};
+    for j = 1:len_equs
+        if regexp(rights{j}, idPat, 'ONCE') % The jth equation directly depends on the ith equation
+            equDeps{j,2}{end+1} = lefts{i};
         end
     end
 end
 % Make sure there are no duplicate dependencies
-for i = 1:len_exprs
-    x = exprDeps{i,2};
+for i = 1:len_equs
+    x = equDeps{i,2};
     assert(length(unique(x)) == length(x), ['Something went wrong in ' mfilename ' dependencies should not have been listed twice.'])
 end
 
 % Fill in indirect dependencies.
-exprDeps = getAllFinalDependencies(exprDeps);
+equDeps = getAllFinalDependencies(equDeps);
 end
 
 function finalDeps = getAllFinalDependencies(baseDeps)
