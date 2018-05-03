@@ -111,6 +111,10 @@ function newExpr = lsSimplifyAux(expr, idMap)
     % (X>Y) == ((X~=Y) & (~(Y>X))) or equivalently ((X>Y)&(Y>X))==False
     % (X<2)&(1>X) -> X<1
     
+    %% TODO try reimplementing this by starting with these:
+    %subexprs = findNextSubexpressions(expr);
+    %[startIdx, endIdx] = findLastOp(expr, 'alt');
+    
     if strcmp(expr(1), '(') && findMatchingParen(expr, 1) == length(expr)
         % expr is of form "(subexpr)", so run lsSimplify(subexpr)
         newExpr = lsSimplifyAux(expr(2:end-1), idMap);

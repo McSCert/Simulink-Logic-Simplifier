@@ -56,7 +56,7 @@ function [connectSrc, idx] = createLogic(expr, exprs, startSys, sys, idx, s_lhsT
             connectSrc = createExpr(atomic, exprs, startSys, sys, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
         end
     else
-        [opIdx1, opIdx2] = findLastOp_alt(expr);
+        [opIdx1, opIdx2] = findLastOp(expr, 'alt');
         if opIdx1 ~= 0
             op = expr(opIdx1:opIdx2);
             if any(strcmp(op, {'&','|'}))
@@ -163,27 +163,6 @@ function [connectSrc, idx] = createLogic(expr, exprs, startSys, sys, idx, s_lhsT
     end
 end
 
-function [startIdx, endIdx] = findLastOp_alt(expr)
-    % This alteration of findLastOp means that it will find the operators
-    % for the next subexpression(s) rather than the last operator overall.
-    % E.g. (expr) now has no 'last operator'  even if expr has an operator.
-    % Only expressions of the following forms will have a 'last operator':
-    %   expr op expr
-    %   op expr
-    % (whitespace can be ignored)
-    % Essentially this makes it so the operator corresponds with the
-    % results of:
-    %   subexprs = findNextSubexpressions(expr);
-    %
-    
-    if strcmp(expr(1), '(') && findMatchingParen(expr,1) == length(expr)
-        startIdx = 0;
-        endIdx = 0;
-    else
-        [startIdx, endIdx] = findLastOp(expr);
-    end
-end
-
 function newsubexprs = expand2nAry(subexprs, op)
     % If either subexpr has the same last op then op can be used with an
     % extra input.
@@ -191,7 +170,7 @@ function newsubexprs = expand2nAry(subexprs, op)
     newsubexprs = {};
     for i = 1:length(subexprs)
         subexprs{i} = removeOuterBrackets(subexprs{i});
-        [opIdx1, opIdx2] = findLastOp_alt(subexprs{i});
+        [opIdx1, opIdx2] = findLastOp(subexprs{i}, 'alt');
         if opIdx1 ~= 0
             subop = subexprs{i}(opIdx1:opIdx2);
             if strcmp(op,subop)
