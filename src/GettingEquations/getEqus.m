@@ -127,11 +127,38 @@ end
                 srch = ph.Inport;
                 assert(length(srch) == 1, 'Error, a block was expected to have a single source port.')
                 
-                % Get the equation for the handle and its sources recursively
-                [srcEqus, srcID] = getEqus(startSys, srch, blocks, lhsTable, subsystem_rule, extraSupport);
+                bbFlag = false; % Default
                 
-                equ = [handleID ' = ' srcID]; % This block/port's equation with respect to its sources
-                nex = [{equ}, srcEqus]; % Equations involved in this block/port's equation
+                % If a DSW/Goto leads into a block that is being
+                % considered blackbox, then that block must not be removed,
+                % thus the DSW/Goto needs to stay as well to send it data.
+                % Thus if a corresponding DSR/From is not in blocks, then
+                % the current block must be made blackbox.
+                if any(strcmp(bType, {'DataStoreWrite', 'Goto'}))
+                    if strcmp(bType, 'Goto')
+                        findFun = @findFromsInScope;
+                    elseif strcmp(bType, 'DataStoreWrite')
+                        findFun = @ findReadsInScope;
+                    end
+                    dstBlocks = findFun(blk);
+                    for i = 1:length(dstBlocks)
+                        dBlk = dstBlocks{i};
+                        if isempty(find(strcmp(dBlk,blocks))) % if dBlk not in blocks
+                            bbFlag = true; % means that the goto/write has a from/read not in blocks
+                            break;
+                        end
+                    end
+                end
+                
+                if bbFlag == true
+                    nex = getBlackBoxEquation();
+                else
+                    % Get the equation for the handle and its sources recursively
+                    [srcEqus, srcID] = getEqus(startSys, srch, blocks, lhsTable, subsystem_rule, extraSupport);
+                    
+                    equ = [handleID ' = ' srcID]; % This block/port's equation with respect to its sources
+                    nex = [{equ}, srcEqus]; % Equations involved in this block/port's equation
+                end
             case 'SubSystem'
                 % TODO: This may need to be modified in the future to consider
                 % implicit data flow.
