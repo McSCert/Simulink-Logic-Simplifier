@@ -3,7 +3,7 @@ function type = equationType(h)
 %   given handle. The types are: 'blk', 'in', 'out'
 %
 %   Input:
-%       h       Simulink object handle. Must be for a blocks or a port.
+%       h       Simulink object handle. Must be for a block or a port.
 %
 %   Output:
 %       type    Types of equation: 'blk', 'in', 'out'

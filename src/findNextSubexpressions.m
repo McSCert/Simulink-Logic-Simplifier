@@ -1,6 +1,6 @@
 function subexprs = findNextSubexpressions(expr)
     % FINDSUBEXPRESSIONS Finds the immediate subexpressions for a given
-    %   expression. 
+    %   expression.
     %   E.g. (x&y)|z is an expression which we say has the following
     %   subexpressions:
     %       x, y, z, x&y, (x&y)
