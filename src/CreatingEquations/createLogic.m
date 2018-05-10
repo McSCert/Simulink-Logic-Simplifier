@@ -171,15 +171,13 @@ function newsubexprs = expand2nAry(subexprs, op)
     for i = 1:length(subexprs)
         subexprs{i} = removeOuterBrackets(subexprs{i});
         [opIdx1, opIdx2] = findLastOp(subexprs{i}, 'alt');
-        if opIdx1 ~= 0
-            subop = subexprs{i}(opIdx1:opIdx2);
-            if strcmp(op,subop)
-                newexprs = findNextSubexpressions(subexprs{i});
-                assert(length(newexprs) == 2)
-                newsubexprs = [newsubexprs, newexprs];
-            else
-                newsubexprs = [newsubexprs, subexprs(i)];
-            end
+        if opIdx1 ~= 0 ...
+                && strcmp(op,subexprs{i}(opIdx1:opIdx2)) % strcmp(op, subop)
+            newexprs = findNextSubexpressions(subexprs{i});
+            assert(length(newexprs) == 2)
+            newsubexprs = [newsubexprs, newexprs];
+        else
+            newsubexprs = [newsubexprs, subexprs(i)];
         end
     end
 end
