@@ -129,8 +129,34 @@ function newExpr = lsSimplifyAux(expr, idMap)
                 % expr is of form "~subexpr"
                 % (due to precedence ~ will otherwise not be the last op)
                 %   mSimplify(~lsSimplify(subexpr))
-                subexpr = lsSimplifyAux(expr(2:end), idMap);
-                newExpr = mSimplify(['~(' subexpr ')']);
+                
+                subExpr = expr(2:end);
+
+                % The cases below were added to "flip" relational operators 
+                [idx1, idx2] = findLastOp(subExpr);
+                switch getLastOp(subExpr,idx1,idx2)
+                    case '<'
+                        tmpExpr = [subExpr(1:idx1-1) '>=' subExpr(idx2+1:end)];
+                        newExpr = lsSimplifyAux(tmpExpr, idMap);
+                    case '>='
+                        tmpExpr = [subExpr(1:idx1-1) '<' subExpr(idx2+1:end)];
+                        newExpr = lsSimplifyAux(tmpExpr, idMap);
+                    case '>'
+                        tmpExpr = [subExpr(1:idx1-1) '<=' subExpr(idx2+1:end)];
+                        newExpr = lsSimplifyAux(tmpExpr, idMap);
+                    case '<='
+                        tmpExpr = [subExpr(1:idx1-1) '>' subExpr(idx2+1:end)];
+                        newExpr = lsSimplifyAux(tmpExpr, idMap);
+                    case '=='
+                        tmpExpr = [subExpr(1:idx1-1) '~=' subExpr(idx2+1:end)];
+                        newExpr = lsSimplifyAux(tmpExpr, idMap);
+                    case '~='
+                        tmpExpr = [subExpr(1:idx1-1) '==' subExpr(idx2+1:end)];
+                        newExpr = lsSimplifyAux(tmpExpr, idMap);
+                    otherwise
+                        tmpExpr = lsSimplifyAux(subExpr, idMap);
+                        newExpr = mSimplify(['~(' tmpExpr ')']);
+                end
             else
                 % expr is of form "subexpr1 op subexpr2"
                 % if op is relational {<,>,<=,>=,==,~=}:
@@ -174,46 +200,12 @@ function newExpr = lsSimplifyAux(expr, idMap)
 end
 
 function newExpr = relSimplify(lhs, op, rhs, idMap)
+    % Wrapper for relational simplifications and if the operator remains
+    % then replaces the expression with a unique id
     
-    % expr = [lhs, op, rhs];
+    [lhs, op, rhs, replaceBool] = relSimplifyAux(lhs,op,rhs);
     
-    % TODO
-    % Try to simply expr better
-    % Compare lhs and rhs logically
-    % E.g. if lhs = 'X<Y' and rhs = 'Y>X', then we can use a
-    % single id to better simplify
-    
-    eqTrue = @(str) any(strcmp(str,{'true','1'}));
-    eqFalse = @(str) any(strcmp(str,{'false','0'}));
-    
-    if (eqTrue(lhs) && strcmp(op, '==')) ...
-            || (eqFalse(lhs) && strcmp(op, '~='))
-        newExpr = rhs;
-    elseif (eqTrue(rhs) && strcmp(op, '==')) ...
-            || (eqFalse(rhs) && strcmp(op, '~='))
-        newExpr = lhs;
-    elseif (eqTrue(lhs) && strcmp(op, '~=')) ...
-            || (eqFalse(lhs) && strcmp(op, '=='))
-        newExpr = mSimplify(['~(' rhs ')']);
-    elseif (eqTrue(rhs) && strcmp(op, '~=')) ...
-            || (eqFalse(rhs) && strcmp(op, '=='))
-        newExpr = mSimplify(['~(' lhs ')']);
-    elseif (strcmp(lhs, rhs) && strcmp(op, '==')) ...
-            newExpr = 'true';
-    elseif (strcmp(lhs, rhs) && strcmp(op, '~=')) ...
-            newExpr = 'false';
-    else
-%         [opLeft1, opLeft2] = findLastOp(lhs);
-%         [opRight1, opRight2] = findLastOp(rhs);
-%         if opLeft1 ~= 0
-%             opLeft = lhs(opLeft1:opLeft2);
-%             if strcmp(opLeft, '~')
-%                 if strcmp(op, '==')
-%                     newExpr = % flip the operator
-%         elseif opRight1 ~= 0
-%
-%         else
-        
+    if replaceBool
         % if op has not been simplified out, then return with unique id
         % since mSimplify may produce unexpected results for relational
         % operators.
@@ -228,6 +220,102 @@ function newExpr = relSimplify(lhs, op, rhs, idMap)
         idMap(id) = [lhs, op, rhs];
         
         newExpr = id; % id will later be replaced with idMap(id)
+    else
+        newExpr = [lhs, op, rhs]; % op and rhs should be ''
+    end
+end
+
+function [newLhs, newOp, newRhs, replaceBool] = relSimplifyAux(lhs, op, rhs)
+    % Auxiliary for actual simplifications
+    %
+    % lhs, op, rhs are updated via the outputs
+    % replaceBool indicates whether or not a unique id is needed (i.e. if
+    %   the op was not simplified out of the expression)
+    % if ~replaceBool, then newOp and newRhs are '' and the new expression
+    %   is entirely in newLhs
+    
+    % expr = [lhs, op, rhs];
+    
+    % TODO
+    % Try to simplify expr better
+    % Compare lhs and rhs logically
+    % E.g. if lhs = 'X<Y' and rhs = 'Y>X', then we can use a
+    % single id to better simplify
+    
+    eqTrue = @(str) any(strcmp(str,{'true','1'}));
+    eqFalse = @(str) any(strcmp(str,{'false','0'}));
+    
+    % if (~A) == B or (~A) ~= B, then simplify to A ~= B or A == B
+    [opLeft1, opLeft2] = findLastOp(lhs);
+    opLeft = getLastOp(lhs, opLeft1, opLeft2);
+    if strcmp('~', opLeft)
+        if strcmp(op, '==')
+            % flip the operator, remove the ~
+            op = '~=';
+            lhs = [lhs(1:opLeft1-1) lhs(opLeft2+1:end)];
+        elseif strcmp(op, '~=')
+            % flip the operator, remove the ~
+            op = '==';
+            lhs = [lhs(1:opLeft1-1) lhs(opLeft2+1:end)];
+        end
+    end
+    
+    % if A == (~B) or A ~= (~B), then simplify to A ~= B or A == B
+    [opRight1, opRight2] = findLastOp(rhs);
+    opRight = getLastOp(rhs, opRight1, opRight2);
+    if strcmp('~', opRight)
+        if strcmp(op, '==')
+            % flip the operator, remove the ~
+            op = '~=';
+            rhs = [rhs(1:opRight1-1) lhs(opRight2+1:end)];
+        elseif strcmp(op, '~=')
+            % flip the operator, remove the ~
+            op = '==';
+            rhs = [rhs(1:opRight1-1) lhs(opRight2+1:end)];
+        end
+    end
+    
+    lhs = removeSpareBrackets(lhs);
+    rhs = removeSpareBrackets(rhs);
+    
+    % first 4 cases check for
+    %   bool == B and A == bool and
+    %   bool ~= B and A ~= bool
+    %   where bool is true/false
+    %   these can be simplified to lhs, rhs, or the negation of one of them
+    if (eqTrue(lhs) && strcmp(op, '==')) ...
+            || (eqFalse(lhs) && strcmp(op, '~='))
+        newLhs = rhs;
+        newOp = ''; newRhs = ''; replaceBool = false;
+    elseif (eqTrue(rhs) && strcmp(op, '==')) ...
+            || (eqFalse(rhs) && strcmp(op, '~='))
+        newLhs = lhs;
+        newOp = ''; newRhs = ''; replaceBool = false;
+    elseif (eqTrue(lhs) && strcmp(op, '~=')) ...
+            || (eqFalse(lhs) && strcmp(op, '=='))
+        newLhs = mSimplify(['~(' rhs ')']);
+        newOp = ''; newRhs = ''; replaceBool = false;
+    elseif (eqTrue(rhs) && strcmp(op, '~=')) ...
+            || (eqFalse(rhs) && strcmp(op, '=='))
+        newLhs = mSimplify(['~(' lhs ')']);
+        newOp = ''; newRhs = ''; replaceBool = false;    
+    elseif strcmp(lhs, rhs)
+        % if A == A or A ~= A, simplify to true/false
+        if strcmp(op, '==')
+            newLhs = 'true';
+            newOp = ''; newRhs = ''; replaceBool = false;
+        elseif strcmp(op, '~=')
+            newLhs = 'false';
+            newOp = ''; newRhs = ''; replaceBool = false;
+        else
+            % op not removed
+            newLhs = lhs; newOp = op; newRhs = rhs;
+            replaceBool = true;
+        end
+    else
+        % op not removed
+        newLhs = lhs; newOp = op; newRhs = rhs;
+        replaceBool = true;
     end
 end
 
@@ -270,6 +358,27 @@ function newExpr = mSimplify(expr)
     
     if ~isAtomic(newExpr)
         newExpr = ['(' newExpr ')'];
+    end
+end
+
+function op = getLastOp(expr, varargin)
+    % '' if there is none
+    % else returns the op (e.g. '<=', '==', '~', '&', '|', '>')
+    %
+    % varargin{1} is startIdx
+    % varargin{2} is endIdx - varargin{2} must be given if varargin{1} is
+    %   given
+    
+    if nargin == 1
+        [startIdx, endIdx] = findLastOp(expr);
+    else
+        startIdx = varargin{1};
+        endIdx = varargin{2};
+    end
+    if startIdx == 0
+        op = '';
+    else
+        op = expr(startIdx:endIdx);
     end
 end
 
