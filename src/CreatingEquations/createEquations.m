@@ -55,6 +55,9 @@ end
 %% Generate equations
 % TODO - account for loops / subsystems / other things that aren't handled yet / at all by this method
 % TODO - Describe what's going on in the for loop overall
+%   -For each 'right-most' equation, create blocks to represent the rhs,
+%   then create the block on the lhs and connect the parts
+%   
 for i = find(notDepByMat) % When notDepByMat is 1
     %% Get info about the equation
     equ = equs{i};
@@ -90,92 +93,35 @@ for i = find(notDepByMat) % When notDepByMat is 1
     end
     
     %%
-    connectSrcs = createExpr(lhs, equs, startSys, createIn, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
-    
     if isBlackBoxEquation(equ)
-        % Note: The corresponding block would have been made in createExpr
+        %%
+        % Note: The block for the lhs will be made in createExpr because of
+        % the way it treats blackboxes
         
-        for j = 1:length(connectSrcs)
-            % Create Terminator
-            term_h = add_block('built-in/Terminator', [createIn '/gen_' 'Terminator'], 'MAKENAMEUNIQUE', 'ON');
-            % Get Terminator input port
-            ph = get_param(term_h, 'PortHandles');
-            assert(length(ph.Inport) == 1, 'Error: Terminator expected to have 1 input port.')
-            connectDst = ph.Inport(1);
-            % Connect the blackbox to the Terminator
-            connectPorts(createIn, connectSrcs(j), connectDst);
-        end
-    else
-        % TODO make a function to return these supported blocks so that it's
-        % easier to change/find later if needed
-        supportedStartBlocks = {'Outport','DataStoreWrite','Goto'};
-        
-        %% Get connectDst & Create block for the lhs if needed
-        if any(strcmp(bType,supportedStartBlocks))
-            e_blk = [createIn '/' get_param(s_blk, 'Name')]; % Default name of the block to put in endSys
-            
-            % Create block
-            e_bh = add_block(s_blk, e_blk, 'MakeNameUnique', 'On');
-            e_blk = getfullname(e_bh);
-        else
-            % I don't think this can ever happen so I'm just going to
-            % leave the error here to check for now
-            error('Error: Unexpected case.')
-            
-            % Create Terminator
-            e_bh = add_block('built-in/Terminator', [createIn '/gen_' 'Terminator'], 'MAKENAMEUNIQUE', 'ON');
-            e_blk = getfullname(e_bh);
-        end
-        
-%         %% Get connectDst & Create block for the lhs if needed
-%         % This uses similar code to some used in createExpr
-%         % In this case, equationType(s_h) will probably be guaranteed to
-%         % be 'blk', but this assumption wasn't made below
-%         if ~e_lhs2handle.isKey(lhs)
-%             s_bh = get_param(s_blk, 'Handle');
-%             if ~s2e_blockHandles.isKey(s_bh)
-%                 if any(strcmp(bType,supportedStartBlocks))
-%                     [e_bh, e_blk] = createBlockCopy(s_blk, startSys, createIn, s2e_blockHandles);
-%                 else
-%                     % I don't think this can ever happen so I'm just going to
-%                     % leave the error here to check for now
-%                     error('Error: Unexpected case.')
-%                     
-%                     % Create Terminator
-%                     e_bh = add_block('built-in/Terminator', [createIn '/gen_' 'Terminator'], 'MAKENAMEUNIQUE', 'ON');
-%                     e_blk = getfullname(e_bh);
-%                     s2e_blockHandles(s_bh) = e_bh;
-%                 end
-%             else
-%                 % block already created
-%                 e_bh = s2e_blockHandles(s_bh);
-%                 e_blk = getfullname(e_bh);
-%             end
-%             
-%             % Record that lhs has been added
-%             switch equationType(s_h)
-%                 case 'out'
-%                     error('Error: Something went wrong, if equation type is ''out'', then it should depend on another equation.')
-%                 case 'blk'
-%                     e_h = e_bh;
-%                     e_lhs2handle(lhs) = e_h;
-%                 case 'in'
-%                     error('Error: Something went wrong, if equation type is ''in'', then it should depend on another equation.')
-%                 otherwise
-%                     error('Error: Unexpected eType')
-%             end
-%         else
-%             e_blk = getBlock(e_lhs2handle(lhs));
-%         end
+        %% Create blocks for the rhs
+        createExpr(lhs, equs, startSys, createIn, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
+    elseif any(strcmp(bType, {'Outport','DataStoreWrite','Goto'}))
+        %% Get connectDst & create block for the lhs
+        [e_bh, e_blk] = createBlockCopy(s_blk, startSys, createIn, s2e_blockHandles);
         
         % Find the handle to connect to
         ph = get_param(e_blk, 'PortHandles');
         assert(length(ph.Inport) == 1, 'Error: Block expected to have 1 input port.')
         connectDst = ph.Inport(1);
         
+        %% Get connectSrc and create blocks for the rhs
+        connectSrc = createExpr(lhs, equs, startSys, createIn, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
+        assert(length(connectSrc) == 1, 'Error: Non-blackbox equation expected to just have one outgoing port.')
+        
         %% Connect RHS to LHS
-        assert(length(connectSrcs) == 1, 'Error: Non-blackbox equation expected to just have one outgoing port.')
-        connectPorts(createIn, connectSrcs, connectDst);
+        connectPorts(createIn, connectSrc, connectDst);
+    else
+        % I don't think this can ever happen so I'm just going to
+        % leave the error here to check for now
+        error('Error: Unexpected case.')
+        
+        %% Get connectSrc and create blocks for the rhs
+        createExpr(lhs, equs, startSys, createIn, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
     end
 end
 

@@ -1,7 +1,6 @@
 function [e_bh, e_blk] = createBlockCopy(s_blk, startSys, createIn, s2e_blockHandles)
     
     % Create block
-    assert(strcmp(startSys, get_param(s_blk, 'Parent')))
     e_bh = copy_block(s_blk, createIn);
     e_blk = getfullname(e_bh);
     

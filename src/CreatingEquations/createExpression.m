@@ -1,5 +1,5 @@
-function [connectSrc, idx] = createLogic(expr, exprs, startSys, sys, idx, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule)
-    % CREATELOGIC Places blocks with appropriate connections into an
+function [connectSrc, idx] = createExpression(expr, exprs, startSys, sys, idx, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule)
+    % CREATEEXPRESSION Places blocks with appropriate connections into an
     %   empty model to represent a logical expression.
     %
     %   Input:
@@ -53,7 +53,7 @@ function [connectSrc, idx] = createLogic(expr, exprs, startSys, sys, idx, s_lhsT
             assert(length(ports.Outport) == 1, 'Error: Constant expected to have 1 output.')
             connectSrc = ports.Outport(1);
         else
-            connectSrc = createExpr(atomic, exprs, startSys, sys, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
+            connectSrc = createRhs(atomic, exprs, startSys, sys, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
         end
     else
         [opIdx1, opIdx2] = findLastOp(expr, 'alt');
@@ -71,7 +71,7 @@ function [connectSrc, idx] = createLogic(expr, exprs, startSys, sys, idx, s_lhsT
             % TODO: If expression has already been made in the current
             %   system, then use that. Currently makes a new representation.
             
-            output_ports{i} = createLogic(subexprs{i}, exprs, startSys, sys, idx, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
+            output_ports{i} = createExpression(subexprs{i}, exprs, startSys, sys, idx, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
         end
 
         if opIdx1 == 0
