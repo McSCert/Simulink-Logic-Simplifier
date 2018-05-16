@@ -98,27 +98,27 @@ else
     newEqus = {};
 end
 
-    function nex = getBlackBoxEquation()
+    function neq = getBlackBoxEquation()
         
         % Get the source ports of the blk (i.e. inport, enable, ifaction, etc.)
         srcHandles = getPorts(blk, 'In');
                 
         % Get the equations for the sources
-        nex = {};
+        neq = {};
         equ = [handleID ' =? ']; % Note the notation '=?' being used for blackboxes
         for i = 1:length(srcHandles)
             [srcEqus, srcID] = getEqus(startSys, srcHandles(i), blocks, lhsTable, subsystem_rule, extraSupport);
-            nex = [nex, srcEqus];
+            neq = [neq, srcEqus];
             equ = [equ, srcID, ','];
         end
         if ~isempty(srcHandles)
             equ = equ(1:end-1); % Remove trailing comma
         end
         
-        nex = [nex, {equ}];
+        neq = [neq, {equ}];
     end
 
-    function nex = getSuppBlkEquation()
+    function neq = getSuppBlkEquation()
         % Get equation for unmasked handles with eType of 'blk'
         switch bType
             case {'DataStoreWrite', 'Goto', 'Outport'}
@@ -151,24 +151,24 @@ end
                 end
                 
                 if bbFlag == true
-                    nex = getBlackBoxEquation();
+                    neq = getBlackBoxEquation();
                 else
                     % Get the equation for the handle and its sources recursively
                     [srcEqus, srcID] = getEqus(startSys, srch, blocks, lhsTable, subsystem_rule, extraSupport);
                     
                     equ = [handleID ' = ' srcID]; % This block/port's equation with respect to its sources
-                    nex = [{equ}, srcEqus]; % Equations involved in this block/port's equation
+                    neq = [{equ}, srcEqus]; % Equations involved in this block/port's equation
                 end
             case 'SubSystem'
                 % TODO: This may need to be modified in the future to consider
                 % implicit data flow.
-                nex = getBlackBoxEquation();
+                neq = getBlackBoxEquation();
             otherwise
                 error('Error, unsupported BlockType when supported type expected.')
         end
     end
 
-    function nex = getSuppMaskBlkEquation()
+    function neq = getSuppMaskBlkEquation()
         % Get equation for masked handles with eType of 'blk'
         switch mtype
             % Nothing supported at present
@@ -177,7 +177,7 @@ end
         end
     end
 
-    function nex = getSuppOutEquation()
+    function neq = getSuppOutEquation()
         % Get equation for unmasked handles with eType of 'out'
         
         % Note for subsystems and inports with subsystem_rule of
@@ -194,7 +194,7 @@ end
                 % implicit data flow.
                 
                 if any(strcmp(subsystem_rule, {'blackbox', 'part-simplify'}))
-                    nex = getBlackBoxEquation();
+                    neq = getBlackBoxEquation();
                 elseif strcmp(subsystem_rule, 'full-simplify')
                     
                     % Get the immediate source of the output port (i.e. the outport block within the subsystem)
@@ -205,7 +205,7 @@ end
                     [srcEqus, srcID] = getEqus(startSys, srcHandle, blocks, lhsTable, subsystem_rule, extraSupport);
                     
                     equ = [handleID ' = ' srcID];
-                    nex = srcEqus;
+                    neq = srcEqus;
                     
                     ifPort = getPorts(blk, 'Ifaction');
                     assert(length(ifPort) <= 1, 'Error: Expected 0 or 1 if action port on a subsystem.')
@@ -215,16 +215,16 @@ end
                         [srcEqus, srcID] = getEqus(startSys, ifPort, blocks, lhsTable, subsystem_rule, extraSupport);
                         
                         equ = [equ ' & ' srcID];
-                        nex = [{equ}, srcEqus, nex];
+                        neq = [{equ}, srcEqus, neq];
                     else
-                        nex = [{equ}, nex];
+                        neq = [{equ}, neq];
                     end
                 else
                     error('Error, invalid subsystem_rule')
                 end
             case 'Inport'
                 if strcmp(get_param(blk, 'Parent'), startSys)
-                    nex = {[handleID ' =? ']};
+                    neq = {[handleID ' =? ']};
                 elseif ~strcmp(get_param(blk, 'Parent'), startSys) && ...
                         strcmp('full-simplify', subsystem_rule)
                     % Get the source of the inport block (i.e. the corresponding
@@ -235,10 +235,10 @@ end
                     [srcEqus, srcID] = getEqus(startSys, srcHandle, blocks, lhsTable, subsystem_rule, extraSupport);
                     
                     equ = [handleID ' = ' srcID];
-                    nex = [{equ}, srcEqus];
+                    neq = [{equ}, srcEqus];
                 elseif ~strcmp(get_param(blk, 'Parent'), startSys) && ...
                         any(strcmp(subsystem_rule, {'blackbox', 'part-simplify'}))
-                    nex = {[handleID ' =? ']};
+                    neq = {[handleID ' =? ']};
                 else
                     error('Error, invalid subsystem_rule')
                 end
@@ -255,14 +255,19 @@ end
                     equ = [handleID ' = ' value];
                 end
                 
-                nex = {equ};
+                neq = {equ};
             case {'Logic', 'RelationalOperator'}
-                nex = getLogicEquation(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
+                neq = getLogicEquation(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
+            case 'Merge'
+                % Treat like an OR Logic block
+                % This isn't necessarily an accurate representation so it
+                % may be modified in the future
+                neq = getNaryOpEquation(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport, '|');
             case 'If'
                 if any(strcmp(subsystem_rule, {'blackbox', 'part-simplify'}))
-                    nex = getBlackBoxEquation();
+                    neq = getBlackBoxEquation();
                 elseif strcmp(subsystem_rule, 'full-simplify')
-                    [nex, ~] = getIfEqu(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
+                    [neq, ~] = getIfEqu(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
                 else
                     error('Error, invalid subsystem_rule')
                 end
@@ -292,7 +297,7 @@ end
                 else
                     equ = [handleID ' = ' '(((' criteria ')&(' srcID1 '))|(~(' criteria ')&(' srcID3 ')))']; % srcID1 and 3 may not be logical so this doesn't work
                 end
-                nex = [{equ}, srcEqus1, srcEqus2, srcEqus3]; % Equations involved in this block's equations
+                neq = [{equ}, srcEqus1, srcEqus2, srcEqus3]; % Equations involved in this block's equations
             case 'From'
                 % Get corresponding Goto block
                 %goto = getGoto4From(block);
@@ -304,17 +309,17 @@ end
                     
                     % Record as a blackbox equation
                     equ = [handleID ' =? '];
-                    nex = {equ};
+                    neq = {equ};
                 else
                     % Get Goto equations
                     [srcEqus, srcID] = getEqus(startSys, srcHandle, blocks, lhsTable, subsystem_rule, extraSupport);
                     
                     % Record this block's equations
                     equ = [handleID ' = ' srcID]; % The equation for this handle
-                    nex = [{equ}, srcEqus]; % Equations involved in this block's equations
+                    neq = [{equ}, srcEqus]; % Equations involved in this block's equations
                 end
             case 'DataStoreRead'
-                nex = getBlackBoxEquation();
+                neq = getBlackBoxEquation();
             case 'Merge'
             
             otherwise
@@ -322,11 +327,11 @@ end
         end
     end
 
-    function nex = getSuppMaskOutEquation()
+    function neq = getSuppMaskOutEquation()
         % Get equation for masked handles with eType of 'out'
         switch mType
             case {'Compare To Constant', 'Compare To Zero'}
-                nex = getLogicEquation(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
+                neq = getLogicEquation(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
             otherwise
                 error('Error, unsupported MaskType when supported type expected.')
         end
