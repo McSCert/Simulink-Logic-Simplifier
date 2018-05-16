@@ -88,21 +88,21 @@ for i = find(notDepByMat) % When notDepByMat is 1
         continue
     elseif ~strcmp(createIn, endSys)
         % Equation will be handled through other iterations of this loop via
-        % the recursive nature of createExpr; skip
+        % the recursive nature of createRhs; skip
         continue
     end
     
     %%
     if isBlackBoxEquation(equ)
         %%
-        % Note: The block for the lhs will be made in createExpr because of
+        % Note: The block for the lhs will be made in createRhs because of
         % the way it treats blackboxes
         
         %% Create blocks for the rhs
-        createExpr(lhs, equs, startSys, createIn, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
+        createRhs(lhs, equs, startSys, createIn, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
     elseif any(strcmp(bType, {'Outport','DataStoreWrite','Goto'}))
         %% Get connectDst & create block for the lhs
-        [e_bh, e_blk] = createBlockCopy(s_blk, startSys, createIn, s2e_blockHandles);
+        [~, e_blk] = createBlockCopy(s_blk, startSys, createIn, s2e_blockHandles);
         
         % Find the handle to connect to
         ph = get_param(e_blk, 'PortHandles');
@@ -110,7 +110,7 @@ for i = find(notDepByMat) % When notDepByMat is 1
         connectDst = ph.Inport(1);
         
         %% Get connectSrc and create blocks for the rhs
-        connectSrc = createExpr(lhs, equs, startSys, createIn, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
+        connectSrc = createRhs(lhs, equs, startSys, createIn, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
         assert(length(connectSrc) == 1, 'Error: Non-blackbox equation expected to just have one outgoing port.')
         
         %% Connect RHS to LHS
@@ -121,7 +121,7 @@ for i = find(notDepByMat) % When notDepByMat is 1
         error('Error: Unexpected case.')
         
         %% Get connectSrc and create blocks for the rhs
-        createExpr(lhs, equs, startSys, createIn, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
+        createRhs(lhs, equs, startSys, createIn, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
     end
 end
 
