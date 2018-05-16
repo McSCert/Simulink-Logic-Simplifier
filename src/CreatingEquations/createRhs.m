@@ -57,7 +57,7 @@ function connectSrcs = createRhs(lhs, equs, startSys, createIn, s_lhsTable, e_lh
                     e_blk = inports{index};
                     e_bh = get_param(e_blk, 'Handle');
                 else
-                    assert(~strcmp(get_param(s_blk, 'BlockType'), 'Outport') && ~strcmp(createIn, bdroot(createIn)), 'Outport blocks should have been handled in the same iteration as their parent subsystem.')
+                    assert(~strcmp(get_param(s_blk, 'BlockType'), 'Outport') || strcmp(createIn, bdroot(createIn)), 'Outport blocks should have been handled in the same iteration as their parent subsystem.')
                     [e_bh, e_blk] = createBlockCopy(s_blk, startSys, createIn, s2e_blockHandles);
                 end
                 
