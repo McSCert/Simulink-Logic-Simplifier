@@ -8,7 +8,7 @@
 #		see them as a black box for the sake of their simplification), 
 #	blackbox (subsystems will not be modified during simplification and there 
 #		output will not be assumed)
-subsystem_rule: part-simplify
+subsystem_rule: full-simplify
 
 #EXTRA_SUPPORT_FUNCTION Indicates a function to use to generate expressions for 
 #	cases beyond what is supported by the default tool. Certain companies with a 
@@ -19,7 +19,7 @@ subsystem_rule: part-simplify
 #	The value should either be left blank or be a valid function on the MATLAB 
 #	search path. When left blank defaultExtraSupport.m will be used and this
 #	corresponds with no added support from the main tool.
-extra_support_function:
+extra_support_function: fcaSupport
 
 ## THE REMAINING RULES NEED TO BE TESTED AGAIN, MAJOR CHANGES HAVE OCCURRED TO THE TOOL
 
