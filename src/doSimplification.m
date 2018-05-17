@@ -386,13 +386,6 @@ finalEqus = postSimpleEqus;
 %     add_line(sysName, logicOutPort, outBlockInPort);
 % end
 
-% Perform second pass, finding common block patterns and reducing them
-for i = 1:length(blocks)
-    if isLsNewerVer()
-        secondPass(endSys);
-    end
-end
-
 end
 
 function atomics = copySystemInports(startSys, endSys, atomics, predicates)
