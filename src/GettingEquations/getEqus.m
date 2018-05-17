@@ -244,8 +244,8 @@ function [newEqus, handleID] = getEqus(startSys, h, blocks, lhsTable, subsystem_
                 end
             case 'Constant'
                 value = get_param(blk, 'Value');
-                valIsNan = isnan(str2double(get_param(blk,'Value'))); % constant is using a string value
-                valIsTorF = any(strcmp(get_param(blk,'Value'), {'true','false'}));
+                valIsNan = isnan(str2double(value)); % constant is using a string value
+                valIsTorF = any(strcmp(value, {'true','false'}));
                 
                 if valIsTorF
                     equ = [handleID ' = ' value];
