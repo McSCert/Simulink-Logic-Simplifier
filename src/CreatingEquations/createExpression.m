@@ -173,10 +173,14 @@ function newsubexprs = expand2nAry(subexprs, op)
         [opIdx1, opIdx2] = findLastOp(subexprs{i}, 'alt');
         if opIdx1 ~= 0 ...
                 && strcmp(op,subexprs{i}(opIdx1:opIdx2)) % strcmp(op, subop)
+            % if can expand an expression, then include the subexpressions
+            % from the expansion
             newexprs = findNextSubexpressions(subexprs{i});
             assert(length(newexprs) == 2)
+            newexprs = expand2nAry(newexprs, op);
             newsubexprs = [newsubexprs, newexprs];
         else
+            % if can't expand an expression, then include it
             newsubexprs = [newsubexprs, subexprs(i)];
         end
     end
