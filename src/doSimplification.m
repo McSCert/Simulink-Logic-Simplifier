@@ -47,6 +47,7 @@ if strcmp(subsystem_rule, 'full-simplify') || strcmp(subsystem_rule, 'part-simpl
     % All blocks in subsystems of blocks should be included as blocks to
     % simplify
     
+    tmpBlocks = blocks; % use temp variable so indices aren't messed up
     for i = 1:length(blocks) 
         % Note this loop uses blocks not sysBlocks, we want sysBlocks to involve
         % all blocks in any subsystem being modified, we only want to
@@ -54,9 +55,10 @@ if strcmp(subsystem_rule, 'full-simplify') || strcmp(subsystem_rule, 'part-simpl
         if strcmp(get_param(blocks{i}, 'BlockType'), 'SubSystem')
             subBlocks = find_system(blocks{i});
             sysBlocks = union(sysBlocks, subBlocks);
-            blocks = union(blocks, subBlocks);
+            tmpBlocks = union(tmpBlocks, subBlocks);
         end
     end
+    blocks = tmpBlocks;
 elseif strcmp(subsystem_rule, 'blackbox')
     % No changes needed. We aren't simplifying within subsystems.
 else
