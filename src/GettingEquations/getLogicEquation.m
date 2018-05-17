@@ -8,12 +8,7 @@ function newEqus = getLogicEquation(startSys, h, handleID, blocks, lhsTable, sub
     blk = getBlock(h);
     
     % Get the source ports of the blk (i.e. inport, enable, ifaction, etc.)
-    ph = get_param(blk, 'PortHandles');
-    pfields = fieldnames(ph);
-    srcHandles = [];
-    for i=setdiff(1:length(pfields), 2) % for all inport field types (though only regular inports should matter)
-        srcHandles = [srcHandles, ph.(pfields{i})];
-    end
+    srcHandles = getPorts(blk, 'In');
     
     assert(~isempty(srcHandles)) % Ensure minimum 1 source
     

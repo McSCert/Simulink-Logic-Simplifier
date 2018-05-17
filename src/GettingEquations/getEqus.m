@@ -256,13 +256,64 @@ function [newEqus, handleID] = getEqus(startSys, h, blocks, lhsTable, subsystem_
                 end
                 
                 neq = {equ};
-            case {'Logic', 'RelationalOperator'}
-                neq = getLogicEquation(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
+            case 'Logic'
+                % Get operator
+                operator = get_param(blk, 'Operator');
+                
+                switch operator
+                    case 'AND'
+                        sym = '&';
+                        neq = getNaryOpEquation(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport, sym);
+                    case 'OR'
+                        sym = '|';
+                        neq = getNaryOpEquation(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport, sym);
+                    case 'NAND'
+                        sym = '&';
+                        neq = getNaryOpEquation(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport, sym);
+                        % 1st equation in neq is an AND equation, we need
+                        % to negate it
+                        [lhs, rhs] = getEquationLhsRhs(neq{1});
+                        neq{1} = [lhs ' = ' '~(' rhs ')'];
+                    case 'NOR'
+                        sym = '|';
+                        neq = getNaryOpEquation(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport, sym);
+                        % 1st equation in neq is an OR equation, we need
+                        % to negate it
+                        [lhs, rhs] = getEquationLhsRhs(neq{1});
+                        neq{1} = [lhs ' = ' '~(' rhs ')'];
+                    case 'NOT'
+                        % Get the source port
+                        srcHandle = getPorts(blk, 'Inport');
+                        assert(length(srcHandle) == 1)
+                        
+                        % Get the equation for the source
+                        [srcEqus, srcID] = getEqus(startSys, srcHandle(1), blocks, lhsTable, subsystem_rule, extraSupport);
+                        
+                        equ = [handleID ' = ' '~' srcID]; % This block/port's equation with respect to its sources
+                        neq = {equ, srcEqus{1:end}}; % Equations involved in this block's equations
+                    case {'XOR', 'NXOR'}
+                        % This should be updated in the future depending on
+                        % how well the simplification can handle XOR and NXOR.
+                        % This current implementation assumes that they
+                        % will most likely be simplified poorly if
+                        % translated to an expression using ~, &, |
+                        % so instead these are treated as blackbox.
+                        % A first step for this in the future may be to
+                        % implement it such that it is black box unless the
+                        % operator can be removed entirely.
+                        
+                        neq = getBlackBoxEquation();
+                    otherwise
+                        error('Unexpected Operator parameter on Logic block.')
+                end
             case 'Merge'
                 % Treat like an OR Logic block
                 % This isn't necessarily an accurate representation so it
-                % may be modified in the future
+                % may be modified in the future e.g. only treat as an OR
+                % under specific circumstances else treat as blackbox.
                 neq = getNaryOpEquation(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport, '|');
+            case 'RelationalOperator'
+                neq = getLogicEquation(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
             case 'If'
                 if any(strcmp(subsystem_rule, {'blackbox', 'part-simplify'}))
                     neq = getBlackBoxEquation();

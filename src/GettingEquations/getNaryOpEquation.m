@@ -6,6 +6,8 @@ function newEqus = getNaryOpEquation(startSys, h, handleID, blocks, lhsTable, ..
     %   where expr is an arbitrary expression.
     %   Thus the operator is for 2 to N arguments (1 argument will not be
     %   an error, but the op won't be applied).
+    %   The first equation in newEqus will be the one with the main
+    %   equation (i.e. using the operator).
     %
     % Inputs:
     %   startSys
