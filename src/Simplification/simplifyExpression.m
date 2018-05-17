@@ -49,14 +49,6 @@ function expr = simplifyExpression(expr)
         
         %% Modify the form of expr for the actual simplification
         
-        % TODO - get rid of this
-        % When does this trigger? should the input ever have this?
-        %	Consider different versions of MATLAB (esp. 2011b)
-        assert(isempty(strfind(expr, '<>')), 'Assertion triggered for debugging')
-        
-        % Swap operators for MATLAB equivalents
-        expr = strrep(expr,'<>','~=');
-        
         % Evaluate parts that MATLAB can already evaluate
         truePat = identifierPattern('true|TRUE'); % final output uses TRUE
         falsePat = identifierPattern('false|FALSE'); % final output uses FALSE
