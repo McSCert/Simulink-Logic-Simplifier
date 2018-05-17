@@ -65,7 +65,10 @@ function expr = simplifyExpression(expr)
         expr = makeBoolsTorF(expr,'lower');
         
         %% Perform the simplification
-        expr = lsSimplify(expr);
+        n = 10; % arbitrary number of times to try simplifying
+        for i = 1:n
+            expr = lsSimplify(expr);
+        end
         
         %% Do final bracketing so that precedence does not need to be considered
         % in other functions
