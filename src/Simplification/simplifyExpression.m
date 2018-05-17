@@ -333,14 +333,20 @@ function newExpr = mSimplify(expr)
     % MATLAB simplify
     identifiers = getIdentifiers(newExpr);
     eval(['syms ' identifiers]);
-    try
-        newExpr = eval(['simplify( ', newExpr, ', ''Steps'', 100 )']);
+    newExpr = eval(newExpr); % type will change
+    if isa(newExpr, 'double')
+        newExpr = num2str(newExpr);
+    elseif isa(newExpr, 'logical')
+        if newExpr
+            newExpr = 'TRUE';
+        else
+            newExpr = 'FALSE';
+        end
+    elseif isa(newExpr, 'sym')
+        newExpr = simplify(newExpr, 'Steps', 100);
         newExpr = char(newExpr);
-    catch ME
-        % We may need to add some conditions to determine whether or not to
-        % throw an error. E.g.:
-        %   strcmp(ME.identifier, 'MATLAB:UndefinedFunction') && regexp(ME.message, 'Undefined function ''simplify'' for input arguments of type ')
-        rethrow(ME);
+    else
+        error('Unexpected expression.')
     end
     
     %Swap symbols back
