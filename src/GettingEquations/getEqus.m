@@ -313,7 +313,13 @@ function [newEqus, handleID] = getEqus(startSys, h, blocks, lhsTable, subsystem_
                 % under specific circumstances else treat as blackbox.
                 neq = getNaryOpEquation(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport, '|');
             case 'RelationalOperator'
-                neq = getLogicEquation(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
+                % Get operator
+                operator = get_param(blk, 'Operator');
+                
+                if any(strcmp(operator, {'~=', '==', '<=', '>=', '<', '>'}))
+                    sym = operator;
+                    neq = getNaryOpEquation(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport, sym);
+                end
             case 'If'
                 if any(strcmp(subsystem_rule, {'blackbox', 'part-simplify'}))
                     neq = getBlackBoxEquation();
@@ -380,7 +386,20 @@ function [newEqus, handleID] = getEqus(startSys, h, blocks, lhsTable, subsystem_
         % Get equation for masked handles with eType of 'out'
         switch mType
             case {'Compare To Constant', 'Compare To Zero'}
-                neq = getLogicEquation(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
+                if strcmp(mType, 'Compare To Constant')
+                    num = get_param(blk, 'Const');
+                elseif strcmp(mType, 'Compare To Zero')
+                    num = '0';
+                end
+                
+                % Get operator
+                operator = get_param(blk, 'Operator');
+                
+                if any(strcmp(operator, {'~=', '==', '<=', '>=', '<', '>'}))
+                    sym = operator;
+                    neq = getNaryOpEquation(startSys, h, handleID, blocks, ...
+                        lhsTable, subsystem_rule, extraSupport, sym, {num}); % note use of varargin for this function
+                end
             otherwise
                 error('Error, unsupported MaskType when supported type expected.')
         end
