@@ -16,6 +16,8 @@ function subexprs = findNextSubexpressions(expr)
     %
     %   Output:
     %       subexprs    Cell array of immediate subexpressions of expr.
+    %                   Given in order from left-to-right within the
+    %                   expression.
     %
     
     if strcmp(expr(1), '(') && findMatchingParen(expr,1) == length(expr)
