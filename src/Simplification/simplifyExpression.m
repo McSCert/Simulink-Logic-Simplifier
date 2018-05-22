@@ -65,15 +65,16 @@ function expr = simplifyExpression(expr)
         expr = makeBoolsTorF(expr,'lower');
         
         %% Perform the simplification
-        n = 10; % arbitrary number of times to try simplifying
+        n = 2; % arbitrary number of times to try simplifying
         for i = 1:n
             expr = lsSimplify(expr);
+            
+            %% Do final bracketing 
+            %  Purpose is to allow other functions to ignore operator
+            %  precedence as long as they respect brackets.
+            expr = bracketForPrecedence(expr, true);
+            expr = removeSpareBrackets(expr); % Cleaning up excess brackets for readability during debugging
         end
-        
-        %% Do final bracketing so that precedence does not need to be considered
-        % in other functions
-        expr = bracketForPrecedence(expr, true);
-        expr = removeSpareBrackets(expr); % Cleaning up excess brackets
     end
 end
 
@@ -237,9 +238,7 @@ function [newLhs, newOp, newRhs, replaceBool] = relSimplifyAux(lhs, op, rhs)
     % E.g. if lhs = 'X<Y' and rhs = 'Y>X', then we can use a
     % single id to better simplify
     
-    eqTrue = @(str) any(strcmp(str,{'true','1'}));
-    eqFalse = @(str) any(strcmp(str,{'false','0'}));
-    
+    %%
     % if (~A) == B or (~A) ~= B, then simplify to A ~= B or A == B
     [opLeft1, opLeft2] = findLastOp(lhs);
     opLeft = getLastOp(lhs, opLeft1, opLeft2);
@@ -255,6 +254,7 @@ function [newLhs, newOp, newRhs, replaceBool] = relSimplifyAux(lhs, op, rhs)
         end
     end
     
+    %%
     % if A == (~B) or A ~= (~B), then simplify to A ~= B or A == B
     [opRight1, opRight2] = findLastOp(rhs);
     opRight = getLastOp(rhs, opRight1, opRight2);
@@ -270,47 +270,187 @@ function [newLhs, newOp, newRhs, replaceBool] = relSimplifyAux(lhs, op, rhs)
         end
     end
     
+    %%
     lhs = removeSpareBrackets(lhs);
     rhs = removeSpareBrackets(rhs);
     
-    % first 4 cases check for
-    %   bool == B and A == bool and
-    %   bool ~= B and A ~= bool
-    %   where bool is true/false
-    %   these can be simplified to lhs, rhs, or the negation of one of them
-    if (eqTrue(lhs) && strcmp(op, '==')) ...
-            || (eqFalse(lhs) && strcmp(op, '~='))
-        newLhs = rhs;
-        newOp = ''; newRhs = ''; replaceBool = false;
-    elseif (eqTrue(rhs) && strcmp(op, '==')) ...
-            || (eqFalse(rhs) && strcmp(op, '~='))
-        newLhs = lhs;
-        newOp = ''; newRhs = ''; replaceBool = false;
-    elseif (eqTrue(lhs) && strcmp(op, '~=')) ...
-            || (eqFalse(lhs) && strcmp(op, '=='))
-        newLhs = mSimplify(['~(' rhs ')']);
-        newOp = ''; newRhs = ''; replaceBool = false;
-    elseif (eqTrue(rhs) && strcmp(op, '~=')) ...
-            || (eqFalse(rhs) && strcmp(op, '=='))
-        newLhs = mSimplify(['~(' lhs ')']);
-        newOp = ''; newRhs = ''; replaceBool = false;    
-    elseif strcmp(lhs, rhs)
-        % if A == A or A ~= A, simplify to true/false
-        if strcmp(op, '==')
-            newLhs = 'true';
+    
+    % These functions will be useful in conditions below
+    isLogExpr = @(expr) findLastOp(expr) ~= 0;
+    isTerm = @(expr) ~isLogExpr(expr);
+    % isValueTerm checks if isTerm to reduce possible forms of the input
+    % (so nothing tricks it) and checks checks length equal to 1 to omit
+    % 'asd' as well as '[1 2 3]'
+    isValueTerm = @(expr) isTerm(expr) && length(str2num(removeSpareBrackets(expr))) == 1;
+    eqTrue = @(expr) any(strcmp(removeSpareBrackets(expr),{'true','1'}));
+    eqFalse = @(expr) any(strcmp(removeSpareBrackets(expr),{'false','0'}));
+    
+    if any(strcmp(op, {'==','~='})) && ...
+            (eqTrue(lhs) || eqTrue(rhs) || eqFalse(lhs) || eqFalse(rhs) || strcmp(lhs, rhs))
+        %%
+        % first 4 cases check for
+        %   bool == B and A == bool and
+        %   bool ~= B and A ~= bool
+        %   where bool is true/false
+        %   these can be simplified to lhs, rhs, or the negation of one of them
+        if (eqTrue(lhs) && strcmp(op, '==')) ...
+                || (eqFalse(lhs) && strcmp(op, '~='))
+            newLhs = rhs;
             newOp = ''; newRhs = ''; replaceBool = false;
-        elseif strcmp(op, '~=')
-            newLhs = 'false';
+        elseif (eqTrue(rhs) && strcmp(op, '==')) ...
+                || (eqFalse(rhs) && strcmp(op, '~='))
+            newLhs = lhs;
             newOp = ''; newRhs = ''; replaceBool = false;
+        elseif (eqTrue(lhs) && strcmp(op, '~=')) ...
+                || (eqFalse(lhs) && strcmp(op, '=='))
+            newLhs = mSimplify(['~(' rhs ')']);
+            newOp = ''; newRhs = ''; replaceBool = false;
+        elseif (eqTrue(rhs) && strcmp(op, '~=')) ...
+                || (eqFalse(rhs) && strcmp(op, '=='))
+            newLhs = mSimplify(['~(' lhs ')']);
+            newOp = ''; newRhs = ''; replaceBool = false;
+        elseif strcmp(lhs, rhs)
+            % if A == A or A ~= A, simplify to true/false
+            if strcmp(op, '==')
+                newLhs = 'true';
+                newOp = ''; newRhs = ''; replaceBool = false;
+            elseif strcmp(op, '~=')
+                newLhs = 'false';
+                newOp = ''; newRhs = ''; replaceBool = false;
+            end
         else
-            % op not removed
-            newLhs = lhs; newOp = op; newRhs = rhs;
-            replaceBool = true;
+            error('Unexpected case. Probably caused by faulty logic in code.')
+        end
+    elseif any(strcmp(op,{'<','<=','>','>='})) && ...
+            ((isLogExpr(lhs) && isValueTerm(rhs)) || (isLogExpr(rhs) && isValueTerm(lhs))) % X is logical & y is a known number
+        %%
+        % For a logical X:
+        % if X >= y where 1<y, then simplify to false
+        % if X >= y where 0<y<=1, then simplify to X
+        % if X >= y where y<=0, then simplify to true
+        %
+        % if X > y where 1<=y, then simplify to false
+        % if X > y where 0<=y<1, then simplify to X
+        % if X > y where y<0, then simplify to true
+        %
+        % if X <= y where 1<=y, then simplify to true
+        % if X <= y where 0<=y<1, then simplify to ~X
+        % if X <= y where y<0, then simplify to false
+        %
+        % if X < y where 1<y, then simplify to true
+        % if X < y where 0<y<=1, then simplify to ~X
+        % if X < y where y<=0, then simplify to false
+        %
+        % We know X is logical when it contains an operator (i.e.
+        % &,|,<,<=,>,>=,==,~=,~)
+        
+        % Put lhs op rhs into the form X op y
+        if isLogExpr(lhs) && isValueTerm(rhs)
+            y = str2num(removeSpareBrackets(rhs));
+            X = lhs;
+        elseif isLogExpr(rhs) && isValueTerm(lhs)
+            y = str2num(removeSpareBrackets(lhs));
+            X = rhs;
+            op = flipOp(op);
+        end
+        
+        if any(strcmp(op, {'>=', negateRelOp('>=')})) % >= or <
+            newOp = ''; newRhs = ''; replaceBool = false; % the op will be removed
+            % Assume >= to start, then negate if <
+            if 1 < y
+                if strcmp(op, negateRelOp('>='))
+                    % X < y where 1 < y
+                    newLhs = 'true';
+                else
+                    % X >= y where 1 < y
+                    newLhs = 'false';
+                end
+            elseif y <= 0
+                if strcmp(op, negateRelOp('>='))
+                    % X < y where y <= 0
+                    newLhs = 'false';
+                else
+                    % X >= y where y <= 0
+                    newLhs = 'true';
+                end
+            else
+                if strcmp(op, negateRelOp('>='))
+                    % X < y
+                    newLhs = ['~(' X ')'];
+                else
+                    % X >= y
+                    newLhs = X;
+                end
+            end
+        elseif any(strcmp(op, {'>', negateRelOp('>')})) % > or <=
+            newOp = ''; newRhs = ''; replaceBool = false; % the op will be removed
+            % Assume > to start, then negate if <=
+            if 1 <= y
+                if strcmp(op, negateRelOp('>'))
+                    % X <= y where 1 <= y
+                    newLhs = 'true';
+                else
+                    % X > y where 1 <= y
+                    newLhs = 'false';
+                end
+            elseif y < 0
+                if strcmp(op, negateRelOp('>'))
+                    % X <= y where y < 0
+                    newLhs = 'false';
+                else
+                    % X > y where y < 0
+                    newLhs = 'true';
+                end
+            else
+                if strcmp(op, negateRelOp('>'))
+                    % X <= y
+                    newLhs = ['~(' X ')'];
+                else
+                    % X > y
+                    newLhs = X;
+                end
+            end
         end
     else
         % op not removed
         newLhs = lhs; newOp = op; newRhs = rhs;
         replaceBool = true;
+    end
+end
+
+function nop = negateRelOp(op)
+    switch op
+        case '<='
+            nop = '>';
+        case '<'
+            nop = '>=';
+        case '>='
+            nop = '<';
+        case '>'
+            nop = '<=';
+        case '=='
+            nop = '~=';
+        case '~='
+            nop = '==';
+        otherwise
+            error(['Unexpected operator: ' op])
+    end
+end
+
+function nop = flipOp(op)
+    switch op
+        case '<='
+            nop = '>=';
+        case '<'
+            nop = '>';
+        case '>='
+            nop = '<=';
+        case '>'
+            nop = '<';
+        case {'==', '~=', '&', '|'}
+            nop = op;
+        otherwise
+            error(['Unexpected operator: ' op])
     end
 end
 
