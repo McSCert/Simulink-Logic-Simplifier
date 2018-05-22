@@ -32,8 +32,9 @@ function expr = simplifyExpression(expr)
 %         'A == true', 'A ~= true', 'A == false', 'A ~= false', ...
 %         '~A == A', 'A <= A', '~A <= A', 'A < A', ...
 %         '(A <= B) & (A > B)', '~(A <= B) & (A > B)', ...
-%         '(A < 1) & (A < 2)', '(A < 1) | (A < 2)',...
-%         '~(A <= 1)' };
+%         '(A < 1) & (A < 2)', '(A < 1) | (A < 2)', ...
+%         '~(A <= 1)', ...
+%         '1<=(X&Y)', '(X&Y)>0.5'};
 %     newExprs = simplifyExpression(exprs);
 %     for i = 1:length(exprs)
 %         disp([exprs{i} ' --> ' newExprs{i}])
@@ -206,16 +207,33 @@ function newExpr = relSimplify(lhs, op, rhs, idMap)
         % since mSimplify may produce unexpected results for relational
         % operators.
         
-        % Get unique identifiers for lhs and rhs
-        lhsId = getNewId(idMap.keys);
-        idMap(lhsId) = lhs;
-        rhsId = getNewId(idMap.keys);
-        idMap(rhsId) = rhs;
-        
-        id = getNewId(idMap.keys);
-        idMap(id) = [lhs, op, rhs];
-        
-        newExpr = id; % id will later be replaced with idMap(id)
+        keys = idMap.keys;
+        vals = idMap.values;
+        for i = 1:length(keys)
+            if ~isempty(vals{i})
+                subs = findNextSubexpressions(removeSpareBrackets(vals{i}));
+                subop = getLastOp(vals{i});
+                if all(strcmp({lhs,op,rhs}, {subs{1},subop,subs{2}})) ...
+                        || all(strcmp({lhs,op,rhs}, {subs{2},flipOp(subop),subs{1}}))
+                    % Current expression is equivalent to the expression
+                    % represented by current key
+                    newExpr = keys{i};
+                    continue
+                elseif all(strcmp({lhs,op,rhs}, {subs{1},negateRelOp(subop),subs{2}})) ...
+                        || all(strcmp({lhs,op,rhs}, {subs{2},negateRelOp(flipOp(subop)),subs{1}}))
+                    % Current expression is the negation of the expression
+                    % represented by current key
+                    newExpr = ['~(' keys{i} ')'];
+                    continue
+                end
+            end
+        end
+        if ~exist('newExpr','var')
+            % Get unique identifier for the expression
+            id = getNewId(idMap.keys);
+            idMap(id) = [lhs, op, rhs];
+            newExpr = id; % id will later be replaced with idMap(id)
+        end
     else
         newExpr = [lhs, op, rhs]; % op and rhs should be ''
     end
@@ -262,11 +280,11 @@ function [newLhs, newOp, newRhs, replaceBool] = relSimplifyAux(lhs, op, rhs)
         if strcmp(op, '==')
             % flip the operator, remove the ~
             op = '~=';
-            rhs = [rhs(1:opRight1-1) lhs(opRight2+1:end)];
+            rhs = [rhs(1:opRight1-1) rhs(opRight2+1:end)];
         elseif strcmp(op, '~=')
             % flip the operator, remove the ~
             op = '==';
-            rhs = [rhs(1:opRight1-1) lhs(opRight2+1:end)];
+            rhs = [rhs(1:opRight1-1) rhs(opRight2+1:end)];
         end
     end
     
@@ -415,42 +433,6 @@ function [newLhs, newOp, newRhs, replaceBool] = relSimplifyAux(lhs, op, rhs)
         % op not removed
         newLhs = lhs; newOp = op; newRhs = rhs;
         replaceBool = true;
-    end
-end
-
-function nop = negateRelOp(op)
-    switch op
-        case '<='
-            nop = '>';
-        case '<'
-            nop = '>=';
-        case '>='
-            nop = '<';
-        case '>'
-            nop = '<=';
-        case '=='
-            nop = '~=';
-        case '~='
-            nop = '==';
-        otherwise
-            error(['Unexpected operator: ' op])
-    end
-end
-
-function nop = flipOp(op)
-    switch op
-        case '<='
-            nop = '>=';
-        case '<'
-            nop = '>';
-        case '>='
-            nop = '<=';
-        case '>'
-            nop = '<';
-        case {'==', '~=', '&', '|'}
-            nop = op;
-        otherwise
-            error(['Unexpected operator: ' op])
     end
 end
 
