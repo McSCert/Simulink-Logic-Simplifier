@@ -127,7 +127,7 @@ function newExpr = lsSimplifyAux(expr, idMap)
                 % (due to precedence ~ will otherwise not be the last op)
                 %   mSimplify(~lsSimplify(subexpr))
                 
-                subExpr = expr(2:end);
+                subExpr = expr(endIdx+1:end); % endIdx == 1
 
                 % The cases below were added to "flip" relational operators 
                 [idx1, idx2] = findLastOp(subExpr);
@@ -160,14 +160,125 @@ function newExpr = lsSimplifyAux(expr, idMap)
                 %   relSimplify(lsSimplify(subexpr1) op lsSimplify(subexpr2))
                 % else op is not relational {&,|}:
                 %   mSimplify(lsSimplify(subexpr1) op lsSimplify(subexpr2))
-                
-                rhsIdx = endIdx + 1; % Index where the right-hand side subexpression starts
-                lhs = lsSimplifyAux(expr(1:startIdx-1), idMap); % Might be more efficient to do this in the simplification functions in case these don't need to be computed
-                rhs = lsSimplifyAux(expr(rhsIdx:end), idMap);
+
                 if any(strcmp(op,{'>','>=','<','<=','==','~='}))
+                    rhsIdx = endIdx + 1; % Index where the right-hand side subexpression starts
+                    lhs = lsSimplifyAux(expr(1:startIdx-1), idMap); % Might be more efficient to do this in the simplification functions in case these don't need to be computed
+                    rhs = lsSimplifyAux(expr(rhsIdx:end), idMap);
                     newExpr = relSimplify(lhs, op, rhs, idMap);
                 else
-                    newExpr = mSimplify([lhs op rhs]);
+                    lhs = removeSpareBrackets(expr(1:startIdx-1));
+                    rhs = removeSpareBrackets(expr(endIdx+1:end));
+                    
+                    [lhsIdx1, lhsIdx2] = findLastOp(lhs);
+                    lhsOp = getLastOp(lhs,lhsIdx1,lhsIdx2);
+                    [rhsIdx1, rhsIdx2] = findLastOp(rhs);
+                    rhsOp = getLastOp(rhs,rhsIdx1,rhsIdx2);
+                    
+                    if any(strcmp(lhsOp,{'>','>=','<','<=','==','~='})) ...
+                            && any(strcmp(rhsOp,{'>','>=','<','<=','==','~='}))
+                        lhsLeft = lsSimplifyAux(lhs(1:lhsIdx1-1), idMap);
+                        lhsRight = lsSimplifyAux(lhs(lhsIdx2+1:end), idMap);
+                        rhsLeft = lsSimplifyAux(rhs(1:rhsIdx1-1), idMap);
+                        rhsRight = lsSimplifyAux(rhs(rhsIdx2+1:end), idMap);
+                        if (isValueTerm(lhsLeft) || isValueTerm(lhsRight)) ...
+                                && (isValueTerm(rhsLeft) || isValueTerm(rhsRight)) ...
+                            % left side of expr or right side of expr is
+                            % value term for lhs and rhs
+                            
+                            % Find A,B,op1,op2,x,y to structure the
+                            % expression as: A op1 x op B op2 y
+                            % I.e. use lhs/rhs left/right and flip operator
+                            % and input order as needed.
+                            if isValueTerm(lhsLeft)
+                                op1 = flipOp(lhsOp);
+                                x = removeSpareBrackets(lhsLeft);
+                                A = removeSpareBrackets(lhsRight);
+                            else
+                                op1 = lhsOp;
+                                A = removeSpareBrackets(lhsLeft);
+                                x = removeSpareBrackets(lhsRight);
+                            end
+                            if isValueTerm(rhsLeft)
+                                op2 = flipOp(rhsOp);
+                                y = removeSpareBrackets(rhsLeft);
+                                B = removeSpareBrackets(rhsRight);
+                            else
+                                op2 = rhsOp;
+                                B = removeSpareBrackets(rhsLeft);
+                                y = removeSpareBrackets(rhsRight);
+                            end
+                            
+                            if strcmp(A, B)
+                                % left of lhs and rhs is the same, right of
+                                % lhs and rhs is a value, and lhs and rhs
+                                % use a relational operator
+                                
+                                % expression can now be represented as: A op1 x OP A op2 y
+                                
+                                if str2num(x) < str2num(y)
+                                    xRy = '<';
+                                    yRx = '>';
+                                elseif str2num(x) == str2num(y)
+                                    xRy = '==';
+                                    yRx = '==';
+                                elseif str2num(x) > str2num(y)
+                                    xRy = '>';
+                                    yRx = '<';
+                                end
+                                
+                                if strcmp(op,'&')
+                                    % Starting expression looks like: 
+                                    %   A op1 x & A op2 y where x xRy y
+                                    if isImplied(op2,op1,xRy) % Means that A op1 x & x xRy y ==> A op2 y
+                                        newExpr = [A op1 x]; % Since this implies A op2 y
+                                    elseif isImplied(negateRelOp(op2),op1,xRy) % Means that A op1 x & x xRy y ==> ~(A op2 y)
+                                        newExpr = 'false'; % Can't meet all criteria
+                                    elseif isImplied(op1,op2,yRx) % Means that A op2 y & x xRy y ==> A op1 x
+                                        newExpr = [A op2 y]; % Since this implies A op1 x
+                                    elseif isImplied(negateRelOp(op1),op2,yRx) % Means that A op2 y & x xRy y ==> ~(A op1 x)
+                                        newExpr = 'false'; % Can't meet all criteria
+                                    else
+                                        lhs = relSimplify(lhsLeft, lhsOp, lhsRight, idMap);
+                                        rhs = relSimplify(rhsLeft, rhsOp, rhsRight, idMap);
+                                        newExpr = mSimplify([lhs op rhs]);
+                                    end
+                                elseif strcmp(op,'|')
+                                    % Starting expression looks like: 
+                                    %   A op1 x | A op2 y where x xRy y
+                                    
+                                    if isImplied(op2,op1,xRy) % Means that A op1 x & x xRy y ==> A op2 y
+                                        newExpr = [A op2 y]; % Since this occurs whenever A op1 x does
+                                    elseif isImplied(op2,negateRelOp(op1),xRy) % Means that ~(A op1 x) & x xRy y ==> A op2 y
+                                        newExpr = 'true'; % Since this means A op2 y holds whenever A op1 x fails so at least one will hold
+                                    elseif isImplied(op1,op2,yRx) % Means that A op2 y & x xRy y ==> A op1 x
+                                        newExpr = [A op1 x]; % Since this occurs whenever A op2 y does
+                                    elseif isImplied(op1,negateRelOp(op2),yRx) % Means that ~(A op2 y) & x xRy y ==> A op1 x
+                                        newExpr = 'true'; % Since this means A op1 x holds whenever A op2 y fails so at least one will hold
+                                    else
+                                        lhs = relSimplify(lhsLeft, lhsOp, lhsRight, idMap);
+                                        rhs = relSimplify(rhsLeft, rhsOp, rhsRight, idMap);
+                                        newExpr = mSimplify([lhs op rhs]);
+                                    end
+                                else
+                                    error(['Unexpected operator: ' op])
+                                end
+                            else
+                                lhs = relSimplify(lhsLeft, lhsOp, lhsRight, idMap);
+                                rhs = relSimplify(rhsLeft, rhsOp, rhsRight, idMap);
+                                newExpr = mSimplify([lhs op rhs]);
+                            end
+                        else
+                            lhs = relSimplify(lhsLeft, lhsOp, lhsRight, idMap);
+                            rhs = relSimplify(rhsLeft, rhsOp, rhsRight, idMap);
+                            newExpr = mSimplify([lhs op rhs]);
+                        end
+                    else
+                        rhsIdx = endIdx + 1; % Index where the right-hand side subexpression starts
+                        lhs = lsSimplifyAux(expr(1:startIdx-1), idMap); % Might be more efficient to do this in the simplification functions in case these don't need to be computed
+                        rhs = lsSimplifyAux(expr(rhsIdx:end), idMap);
+                        newExpr = mSimplify([lhs op rhs]);
+                    end
                 end
             end
         end
@@ -292,14 +403,7 @@ function [newLhs, newOp, newRhs, replaceBool] = relSimplifyAux(lhs, op, rhs)
     lhs = removeSpareBrackets(lhs);
     rhs = removeSpareBrackets(rhs);
     
-    
     % These functions will be useful in conditions below
-    isLogExpr = @(expr) findLastOp(expr) ~= 0;
-    isTerm = @(expr) ~isLogExpr(expr);
-    % isValueTerm checks if isTerm to reduce possible forms of the input
-    % (so nothing tricks it) and checks checks length equal to 1 to omit
-    % 'asd' as well as '[1 2 3]'
-    isValueTerm = @(expr) isTerm(expr) && length(str2num(removeSpareBrackets(expr))) == 1;
     eqTrue = @(expr) any(strcmp(removeSpareBrackets(expr),{'true','1'}));
     eqFalse = @(expr) any(strcmp(removeSpareBrackets(expr),{'false','0'}));
     
@@ -434,6 +538,23 @@ function [newLhs, newOp, newRhs, replaceBool] = relSimplifyAux(lhs, op, rhs)
         newLhs = lhs; newOp = op; newRhs = rhs;
         replaceBool = true;
     end
+end
+
+function b = isLogExpr(expr)
+    b = findLastOp(expr) ~= 0;
+end
+function b = isTerm(expr)
+    b = ~isLogExpr(expr);
+end
+function b = isValueTerm(expr)
+    % isValueTerm checks if isTerm to reduce possible forms of the input
+    % (so nothing tricks it) and checks length equal to 1 to omit things
+    % like 'asd' as well as '[1 2 3]'.
+    %
+    % if isValueTerm(expr), then use str2num(removeSpareBrackets(expr)) to
+    % extract the value
+
+    b = isTerm(expr) && length(str2num(removeSpareBrackets(expr))) == 1;
 end
 
 function newExpr = mSimplify(expr)
