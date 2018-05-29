@@ -46,14 +46,33 @@ function [connectSrc, idx] = createExpression(expr, exprs, startSys, sys, idx, s
         if isConstant
             const_blk = 'built-in/Constant';
             atomicBlock = add_block(const_blk, ...
-                getGenBlockName(sys, [val '_' get_param(const_blk, 'BlockType')]), ...
+                getGenBlockName(sys, [get_param(const_blk, 'BlockType'), '_', val]), ...
                 'MakeNameUnique', 'on', 'Value', val);
             % Get the outport of the added block
             ports = get_param(atomicBlock, 'PortHandles');
             assert(length(ports.Outport) == 1, 'Error: Constant expected to have 1 output.')
             connectSrc = ports.Outport(1);
         else
-            connectSrc = createRhs(atomic, exprs, startSys, sys, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
+            isGoto = strcmp(get_param(getBlock(s_lhsTable.lookdown(atomic)),'BlockType'), 'Goto');
+            if isGoto
+                % Need to create the From for the Goto
+                tag = get_param(s_lhsTable.lookdown(atomic),'GotoTag');
+                from_blk = 'built-in/From';
+                atomicBlock = add_block(from_blk, ...
+                    getGenBlockName(sys, [get_param(from_blk, 'BlockType'), '_', tag]), ...
+                    'MAKENAMEUNIQUE','ON', 'GotoTag', tag);
+                
+                % Create the Goto
+                connectSrc = createRhs(atomic, exprs, startSys, sys, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
+                assert(isempty(connectSrc))
+                
+                % Get the outport of the added block
+                ports = get_param(atomicBlock, 'PortHandles');
+                assert(length(ports.Outport) == 1, 'Error: From expected to have 1 output.')
+                connectSrc = ports.Outport(1);
+            else
+                connectSrc = createRhs(atomic, exprs, startSys, sys, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
+            end
         end
     else
         [opIdx1, opIdx2] = findLastOp(expr, 'alt');
