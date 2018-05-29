@@ -111,7 +111,7 @@ for i = find(notDepByMat) % When notDepByMat is 1
         
         %% Get connectSrc and create blocks for the rhs
         connectSrc = createRhs(lhs, equs, startSys, createIn, s_lhsTable, e_lhs2handle, s2e_blockHandles, subsystem_rule);
-        assert(length(connectSrc) == 1, 'Error: Non-blackbox equation expected to just have one outgoing port.')
+        assert(length(connectSrc) == 1, 'Error: Non-blackbox equation expected to have 1 outgoing port.')
         
         %% Connect RHS to LHS
         connectPorts(createIn, connectSrc, connectDst);
