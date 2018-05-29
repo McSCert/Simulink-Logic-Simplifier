@@ -357,7 +357,6 @@ function [newEqus, handleID] = getEqus(startSys, h, blocks, lhsTable, subsystem_
                 neq = [{equ}, srcEqus1, srcEqus2, srcEqus3]; % Equations involved in this block's equations
             case 'From'
                 % Get corresponding Goto block
-                %goto = getGoto4From(block);
                 gotoInfo = get_param(blk, 'GotoBlock');
                 srcHandle = gotoInfo.handle;
                 if isempty(srcHandle) || ~any(strcmp(getBlock(srcHandle), blocks))
