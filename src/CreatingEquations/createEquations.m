@@ -63,7 +63,7 @@ for i = find(notDepByMat) % When notDepByMat is 1
     equ = equs{i};
 
     lhs = lefts{i};
-    rhs = rights{i};
+    %rhs = rights{i};
 
     s_h = s_lhsTable.lookdown(lhs); % Equation handle
     s_blk = getBlock(s_h); % Block corresponding to the handle (i.e. parent of port else same as handle)
