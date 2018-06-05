@@ -52,8 +52,10 @@ if strcmp(subsystem_rule, 'full-simplify') || strcmp(subsystem_rule, 'part-simpl
         % Note this loop uses blocks not sysBlocks, we want sysBlocks to involve
         % all blocks in any subsystem being modified, we only want to
         % modify subsystems in blocks.
-        if strcmp(get_param(blocks{i}, 'BlockType'), 'SubSystem')
+        if strcmp(get_param(blocks{i}, 'BlockType'), 'SubSystem') ...
+                && strcmp(get_param(blocks{i}, 'Mask'), 'off')
             subBlocks = find_system(blocks{i});
+            
             sysBlocks = union(sysBlocks, subBlocks);
             tmpBlocks = union(tmpBlocks, subBlocks);
         end
