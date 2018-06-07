@@ -90,13 +90,31 @@ function newExpr = lsSimplify(expr)
     % expression they represent.
     newExpr = lsSimplifyAux(expr, idMap);
     
+    % Swap idMap keys for values
+    newExpr = swapIdMapIdentifiers(newExpr, idMap);
+    
+end
+
+function expr = swapIdMapIdentifiers(expr, idMap)
     % Swap ids in idMap for the expression they represent
     for i = 1:length(idMap.keys)
-        key = idMap.keys; key = key{i}; % key = ith key
-        value = idMap(key);
-        if ~strcmp(value, '')
-            newExpr = regexprep(newExpr, ['(?<=(^|\W))' key '(?=(\W|$))'], ['(' value ')']); % match identifier when the character before and after isn't valid in an identifier
+        ikey = idMap.keys; ikey = ikey{i}; % ith key
+        ival = idMap(ikey);
+        if ~strcmp(ival, '')
+            for j = i:length(idMap.keys)
+                jkey = idMap.keys; jkey = jkey{j}; % jth key
+                jval = idMap(jkey);
+                if ~strcmp(jval, '')
+                    idMap(jkey) = swapKey4Val(jval,ikey,ival);
+                end
+            end
+            expr = swapKey4Val(expr,ikey,ival);
         end
+    end
+    
+    function ex = swapKey4Val(ex,key,val)
+        pat = ['(?<=(^|\W))' key '(?=(\W|$))']; % match identifier when the character before and after isn't valid in an identifier
+        ex = regexprep(ex, pat, ['(' val ')']);
     end
 end
 
