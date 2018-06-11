@@ -1,0 +1,32 @@
+.../tools/Simulink/Tools/Utility/
+	FindingConnectedBlocks/
+		findDataStoreMemory.m
+		findFromsInScope.m
+		findGotoFromsInScope.m
+		findGotosInScope.m
+		findReadsInScope.m
+		findReadWritesInScope.m
+		findVisibilityTag.m
+		findWritesInScope.m
+
+	PositionUtil/
+		alignPorts.m
+		branchToPort.m
+		connectBlocks.m
+		connectPorts.m
+		copy_block.m
+		move_block.m
+		moveToPort.m
+
+	find_in_models.m
+	fulfillPorts.m
+	gcbs.m
+	gcls.m
+	getDstPorts.m
+	getDsts.m
+	getPorts.m
+	getSrcPorts.m
+	getSrcs.m
+	inoutblock2subport.m
+	new_system_makenameunique.m
+	subport2inoutblock.m
