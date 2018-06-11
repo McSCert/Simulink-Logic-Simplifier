@@ -363,8 +363,21 @@ function [newEqus, handleID] = getEqus(startSys, h, blocks, lhsTable, subsystem_
                     % Goto not found or should not be linked because it is
                     % blackbox
                     
-                    % Record as a blackbox equation
-                    equ = [handleID ' =? '];
+                    froms = findFromsInScope(srcHandle);
+                    setEqu = false;
+                    for i = 1:length(froms)
+                        from_i = getPorts(froms{i}, 'Outport');
+                        if lhsTable.lookup.isKey(from_i) ...
+                                && from_i ~= lhsTable.lookdown(handleID)
+                            equ = [handleID ' = ' lhsTable.lookup(from_i)];
+                            setEqu = true;
+                            break
+                        end
+                    end
+                    if ~setEqu
+                        % Record as a blackbox equation
+                        equ = [handleID ' =? '];
+                    end
                     neq = {equ};
                 else
                     % Get Goto equations
