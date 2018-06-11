@@ -14,14 +14,20 @@ function [finalEqus, baseEqus] = doSimplification(sys, blocks, varargin)
 %% Initializations
 subsystem_rule = 'blackbox'; % Default
 extraSupportFun = @defaultExtraSupport;
+generate_mode = 'All';
 assert(mod(length(varargin),2) == 0, 'Even number of varargin arguments expected.')
 for i = 1:2:length(varargin)
     switch varargin{i}
         case 'subsystem_rule'
             subsystem_rule = varargin{i+1};
         case 'extra_support_function'
-            assert(exist(varargin{i+1}, 'file') == 2, 'Error: extra_support_function in the config is expected to be a file on the MATLAB path.')
+            assert(exist(varargin{i+1}, 'file') == 2, ...
+                'Error: extra_support_function in the config is expected to be a file on the MATLAB path.')
             extraSupportFun = eval(['@' varargin{i+1}]);
+        case 'generate_mode'
+            assert(any(strcmpi(varargin{i+1}, {'SelectionOnly', 'All'})), ...
+                'Unexpected parameter value.')
+            generate_mode = varargin{i+1};
         otherwise
             error(['Error in ' mfilename ' unexpected Name for Name-Value pair input argument.'])
     end
@@ -39,10 +45,12 @@ lhsTable = BiMap('double','char');
 % blocks - blocks to simplify 
 % sysBlocks - blocks to simplify and blocks to simplify around
 
-sysBlocks = find_system(startSys, 'SearchDepth', '1');
-sysBlocks = sysBlocks(2:end); % Remove startSys
+topSysBlocks = find_system(startSys, 'SearchDepth', '1');
+topSysBlocks = topSysBlocks(2:end); % Remove startSys
 
-% Add blocks within subsystems to the block lists
+% Get block list including blocks from the top-level and ones from nested
+% levels depending on the subsystem_rule parameter.
+sysBlocks = topSysBlocks;
 if strcmp(subsystem_rule, 'full-simplify') || strcmp(subsystem_rule, 'part-simplify')
     % All blocks in subsystems of blocks should be included as blocks to
     % simplify
@@ -55,7 +63,7 @@ if strcmp(subsystem_rule, 'full-simplify') || strcmp(subsystem_rule, 'part-simpl
         if strcmp(get_param(blocks{i}, 'BlockType'), 'SubSystem') ...
                 && strcmp(get_param(blocks{i}, 'Mask'), 'off')
             subBlocks = find_system(blocks{i});
-            
+            assert(~isempty(subBlocks),'Temporary assertion for debugging.') % TODO remove this
             sysBlocks = union(sysBlocks, subBlocks);
             tmpBlocks = union(tmpBlocks, subBlocks);
         end
@@ -101,9 +109,28 @@ for i = 1:length(preSimpleEqus)
 end
 
 %% Create blocks for each equation
-createEquations(postSimpleEqus, lhsTable, startSys, endSys, subsystem_rule);
+s2e_blockHandles = createEquations(postSimpleEqus, lhsTable, startSys, endSys, subsystem_rule);
 
 swapBlockPattern(endSys, extraSupportFun);
+
+if strcmpi(generate_mode, 'SelectionOnly')
+    unselectedBlocks = setdiff(topSysBlocks,blocks);
+    unselectedBlocksHdls = get_param(unselectedBlocks,'Handle');
+    for i = 1:length(unselectedBlocksHdls)
+        % For all blocks that weren't selected at top-level
+        
+        % Search for a corresponding end block
+        if s2e_blockHandles.isKey(unselectedBlocksHdls{i})
+            e_handle = s2e_blockHandles(unselectedBlocksHdls{i});
+            
+            % Delete block and its lines
+            delete_block_lines(e_handle)
+            delete_block(e_handle)
+        end
+    end
+elseif ~strcmpi(generate_mode, 'All')
+    error('Unexpected parameter value.')
+end
 
 finalEqus = postSimpleEqus;
 

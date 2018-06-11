@@ -23,6 +23,7 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
 DELETE_UNUSED = getLogicSimplifierConfig('delete_unused', 'off'); % Indicates whether or not to delete blocks which are unused in the final model
 SUBSYSTEM_RULE = getLogicSimplifierConfig('subsystem_rule', 'blackbox'); % Indicates how to address subsystems in the simplification process
 EXTRA_SUPPORT_FUNCTION = getLogicSimplifierConfig('extra_support_function', '');
+GENERATE_MODE = getLogicSimplifierConfig('generate_mode', 'All'); % Indicates mode of generation (generate everything or only selected things)
 
 if nargin == 1
     verify = false;
@@ -65,12 +66,11 @@ set_param(logicSys, 'ProdHWDeviceType', get_param(origModel, 'ProdHWDeviceType')
 set_param(logicSys, 'UnderspecifiedInitializationDetection', get_param(origModel, 'UnderspecifiedInitializationDetection'));
 
 % Perform the simplification and generate the simplification in logicSys
-if strcmp('', EXTRA_SUPPORT_FUNCTION)
-    [newEqu, oldEqu] = doSimplification(logicSys, blocks, 'subsystem_rule', SUBSYSTEM_RULE);
-else
-    [newEqu, oldEqu] = doSimplification(logicSys, blocks, 'subsystem_rule', SUBSYSTEM_RULE, 'extra_support_function', EXTRA_SUPPORT_FUNCTION);
+simplificationInput = {logicSys, blocks, 'subsystem_rule', SUBSYSTEM_RULE, 'generate_mode', GENERATE_MODE};
+if ~strcmp('', EXTRA_SUPPORT_FUNCTION)
+    simplificationInput = [simplificationInput, {'extra_support_function'}, {EXTRA_SUPPORT_FUNCTION}];
 end
-
+[newEqu, oldEqu] = doSimplification(simplificationInput{:});
 
 if strcmp(DELETE_UNUSED,'on')
     % Delete blocks in the top-level system that don't contribute to output
