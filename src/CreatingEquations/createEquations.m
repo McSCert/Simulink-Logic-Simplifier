@@ -1,4 +1,4 @@
-function createEquations(equs, s_lhsTable, startSys, endSys, subsystem_rule)
+function s2e_blockHandles = createEquations(equs, s_lhsTable, startSys, endSys, subsystem_rule)
 % CREATEEQUATIONS Generate blocks to represent a set of equations.
 %
 %   Inputs:
