@@ -10,6 +10,14 @@
 #		output will not be assumed)
 subsystem_rule: full-simplify
 
+#GENERATE_MODE Indicates which blocks to generate in the simplification.
+#Default is all.
+#
+#Acceptable parameter values are:
+#	all (generates all blocks in the system),
+#	selectiononly (generates only selected blocks and blocks involved in their simplification)
+generate_mode: selectiononly
+
 #EXTRA_SUPPORT_FUNCTION Indicates a function to use to generate expressions for 
 #	cases beyond what is supported by the default tool. Certain companies with a 
 #	wide variety of custom blocks may desire this functionality.
