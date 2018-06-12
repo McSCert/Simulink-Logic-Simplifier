@@ -17,6 +17,11 @@
 		copy_block.m
 		move_block.m
 		moveToPort.m
+		
+	TextDimensions/
+		blockStringDims.m
+		getBlockTextWidth.m
+		getTextDims.m
 
 	find_in_models.m
 	fulfillPorts.m
