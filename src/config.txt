@@ -10,13 +10,21 @@
 #		output will not be assumed)
 subsystem_rule: full-simplify
 
+#BLOCKS_TO_SIMPLIFY Indicates which blocks to try to simplify.
+#Default is selected.
+#
+#Acceptable parameter values are:
+#	selected (simplifies selected blocks),
+#	unselected (simplifies blocks in the system except the ones that are selected)
+generate_mode: selected
+
 #GENERATE_MODE Indicates which blocks to generate in the simplification.
 #Default is all.
 #
 #Acceptable parameter values are:
 #	all (generates all blocks in the system),
-#	selectiononly (generates only selected blocks and blocks involved in their simplification)
-generate_mode: selectiononly
+#	simplifiedonly (generates only blocks that are being simplified i.e. the same set as chosed by BLOCKS_TO_SIMPLIFY)
+generate_mode: simplifiedonly
 
 #EXTRA_SUPPORT_FUNCTION Indicates a function to use to generate expressions for 
 #	cases beyond what is supported by the default tool. Certain companies with a 

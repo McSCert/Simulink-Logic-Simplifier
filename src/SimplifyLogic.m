@@ -24,6 +24,7 @@ DELETE_UNUSED = getLogicSimplifierConfig('delete_unused', 'off'); % Indicates wh
 SUBSYSTEM_RULE = getLogicSimplifierConfig('subsystem_rule', 'blackbox'); % Indicates how to address subsystems in the simplification process
 EXTRA_SUPPORT_FUNCTION = getLogicSimplifierConfig('extra_support_function', '');
 GENERATE_MODE = getLogicSimplifierConfig('generate_mode', 'All'); % Indicates mode of generation (generate everything or only selected things)
+BLOCKS_TO_SIMPLIFY = getLogicSimplifierConfig('blocks_to_simplify', 'selected'); % Indicates which set of blocks to simplify
 
 if nargin == 1
     verify = false;
@@ -66,7 +67,8 @@ set_param(logicSys, 'ProdHWDeviceType', get_param(origModel, 'ProdHWDeviceType')
 set_param(logicSys, 'UnderspecifiedInitializationDetection', get_param(origModel, 'UnderspecifiedInitializationDetection'));
 
 % Perform the simplification and generate the simplification in logicSys
-simplificationInput = {logicSys, blocks, 'subsystem_rule', SUBSYSTEM_RULE, 'generate_mode', GENERATE_MODE};
+simplificationInput = {logicSys, blocks, 'subsystem_rule', SUBSYSTEM_RULE, ...
+    'generate_mode', GENERATE_MODE, 'blocks_to_simplify', BLOCKS_TO_SIMPLIFY};
 if ~strcmp('', EXTRA_SUPPORT_FUNCTION)
     simplificationInput = [simplificationInput, {'extra_support_function'}, {EXTRA_SUPPORT_FUNCTION}];
 end

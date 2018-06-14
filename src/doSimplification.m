@@ -4,7 +4,7 @@ function [finalEqus, baseEqus] = doSimplification(sys, blocks, varargin)
 %   Inputs:
 %       sys         Handle of empty system to place the simplified blocks in.
 %       blocks      List of blocks to perform simplification on.
-%       varargin    Ctrl+f "Initializations" in the code
+%       varargin    See "Initializations" in the code
 %
 %   Outputs:
 %       baseEqus   Equations extracted from blocks for simplification.
@@ -15,6 +15,7 @@ function [finalEqus, baseEqus] = doSimplification(sys, blocks, varargin)
 subsystem_rule = 'blackbox'; % Default
 extraSupportFun = @defaultExtraSupport;
 generate_mode = 'All';
+blocks_to_simplify = 'selected';
 assert(mod(length(varargin),2) == 0, 'Even number of varargin arguments expected.')
 for i = 1:2:length(varargin)
     switch varargin{i}
@@ -25,9 +26,13 @@ for i = 1:2:length(varargin)
                 'Error: extra_support_function in the config is expected to be a file on the MATLAB path.')
             extraSupportFun = eval(['@' varargin{i+1}]);
         case 'generate_mode'
-            assert(any(strcmpi(varargin{i+1}, {'SelectionOnly', 'All'})), ...
+            assert(any(strcmpi(varargin{i+1}, {'SimplifiedOnly', 'All'})), ...
                 'Unexpected parameter value.')
             generate_mode = varargin{i+1};
+        case 'blocks_to_simplify'
+            assert(any(strcmpi(varargin{i+1}, {'Selected', 'Unselected'})), ...
+                'Unexpected parameter value.')
+            blocks_to_simplify = varargin{i+1};
         otherwise
             error(['Error in ' mfilename ' unexpected Name for Name-Value pair input argument.'])
     end
@@ -51,6 +56,13 @@ topSysBlocks = topSysBlocks(2:end); % Remove startSys
 % Get block list including blocks from the top-level and ones from nested
 % levels depending on the subsystem_rule parameter.
 sysBlocks = topSysBlocks;
+if strcmp(blocks_to_simplify, 'selected')
+    % Do nothing
+elseif strcmp(blocks_to_simplify, 'unselected')
+    blocks = setdiff(topSysBlocks, blocks);
+else
+    error('Error, invalid blocks_to_simplify')
+end
 if strcmp(subsystem_rule, 'full-simplify') || strcmp(subsystem_rule, 'part-simplify')
     % All blocks in subsystems of blocks should be included as blocks to
     % simplify
@@ -113,7 +125,7 @@ s2e_blockHandles = createEquations(postSimpleEqus, lhsTable, startSys, endSys, s
 
 swapBlockPattern(endSys, extraSupportFun);
 
-if strcmpi(generate_mode, 'SelectionOnly')
+if strcmpi(generate_mode, 'simplifiedonly')
     unselectedBlocks = setdiff(topSysBlocks,blocks);
     unselectedBlocksHdls = get_param(unselectedBlocks,'Handle');
     for i = 1:length(unselectedBlocksHdls)
