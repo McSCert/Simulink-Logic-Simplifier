@@ -123,13 +123,16 @@ for z = 1:length(orBlock)
                     connectPorts(sys, switchSrc3, switchIns(3));
                     
                     % Delete old logic and extra blocks
-                    orDsts = getDsts(orBlock{z}); % Will need this later
+                    orDsts = getDsts(orBlock{z}, ...
+                            'IncludeImplicit', 'off', 'ExitSubsystems', 'off', ...
+                            'EnterSubsystems', 'off', 'Method', 'RecurseUntilTypes', ...
+                            'RecurseUntilTypes', {'Inport'}); % Will need this later
                     deleteBlockChain(orBlock{z});
                     
                     % Connect switch outport
                     switchOut = getPorts(switchBlk,'Outport');
                     for m = 1:length(orDsts)
-                        connectPorts(sys, switchOut, orDsts{m});
+                        connectPorts(sys, switchOut, orDsts(m));
                     end
                     break
                 end
