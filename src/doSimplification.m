@@ -18,21 +18,24 @@ generate_mode = 'All';
 blocks_to_simplify = 'selected';
 assert(mod(length(varargin),2) == 0, 'Even number of varargin arguments expected.')
 for i = 1:2:length(varargin)
-    switch varargin{i}
+    param = varargin{i};
+    value = varargin{i+1};
+    
+    switch param
         case 'subsystem_rule'
-            subsystem_rule = varargin{i+1};
+            subsystem_rule = value;
         case 'extra_support_function'
-            assert(exist(varargin{i+1}, 'file') == 2, ...
+            assert(exist(value, 'file') == 2, ...
                 'Error: extra_support_function in the config is expected to be a file on the MATLAB path.')
-            extraSupportFun = eval(['@' varargin{i+1}]);
+            extraSupportFun = eval(['@' value]);
         case 'generate_mode'
-            assert(any(strcmpi(varargin{i+1}, {'SimplifiedOnly', 'All'})), ...
+            assert(any(strcmpi(value, {'SimplifiedOnly', 'All'})), ...
                 'Unexpected parameter value.')
-            generate_mode = varargin{i+1};
+            generate_mode = value;
         case 'blocks_to_simplify'
-            assert(any(strcmpi(varargin{i+1}, {'Selected', 'Unselected'})), ...
+            assert(any(strcmpi(value, {'Selected', 'Unselected'})), ...
                 'Unexpected parameter value.')
-            blocks_to_simplify = varargin{i+1};
+            blocks_to_simplify = value;
         otherwise
             error(['Error in ' mfilename ' unexpected Name for Name-Value pair input argument.'])
     end
@@ -123,8 +126,6 @@ end
 %% Create blocks for each equation
 s2e_blockHandles = createEquations(postSimpleEqus, lhsTable, startSys, endSys, subsystem_rule);
 
-swapBlockPattern(endSys, extraSupportFun);
-
 if strcmpi(generate_mode, 'simplifiedonly')
     unselectedBlocks = setdiff(topSysBlocks,blocks);
     unselectedBlocksHdls = get_param(unselectedBlocks,'Handle');
@@ -143,6 +144,8 @@ if strcmpi(generate_mode, 'simplifiedonly')
 elseif ~strcmpi(generate_mode, 'All')
     error('Unexpected parameter value.')
 end
+
+swapBlockPattern(endSys, extraSupportFun);
 
 finalEqus = postSimpleEqus;
 
