@@ -1,169 +1,188 @@
 function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
-% SIMPLIFYLOGIC A function that takes a set of logic blocks and simplifies
-%   them. Results are saved in a new model in a folder called 
-%   'Logic_Simplifier_Results'.
-%
-%   Input:
-%       blocks      Cell array of blocks (indicated by fullname). All blocks
-%                   should be in the same system/subsystem. Input blocks should
-%                   be the outputs of the simplification (i.e. if the only only
-%                   block is an outport, it will simplify the blocks that
-%                   impact it).
-%       varargin{1} Bool indicating whether or not to verify the results.
-%                   Verifying involves creating an additional model within the
-%                   'Logic_Simplifier_Results' folder.
-%
-%   Outputs:
-%       oldEqu      Cell array of equations found for the blocks as
-%                   given.
-%       newEqu      Cell array of equations found for the blocks after
-%                   the simplification process.
-
-% Constants:
-DELETE_UNUSED = getLogicSimplifierConfig('delete_unused', 'off'); % Indicates whether or not to delete blocks which are unused in the final model
-SUBSYSTEM_RULE = getLogicSimplifierConfig('subsystem_rule', 'blackbox'); % Indicates how to address subsystems in the simplification process
-EXTRA_SUPPORT_FUNCTION = getLogicSimplifierConfig('extra_support_function', '');
-GENERATE_MODE = getLogicSimplifierConfig('generate_mode', 'All'); % Indicates mode of generation (generate everything or only selected things)
-BLOCKS_TO_SIMPLIFY = getLogicSimplifierConfig('blocks_to_simplify', 'selected'); % Indicates which set of blocks to simplify
-
-if nargin == 1
-    verify = false;
-elseif nargin == 2
-    verify = varargin{1};
-else
-    error(['Error in ' mfilename ', 1 or 2 input arguments expected.']);
-end
-
-assert(~isempty(blocks), ['Error in ' mfilename ', 1st argument cannot be empty.'])
-
-parent = get_param(blocks{1}, 'parent'); % Get name of system the blocks are in
-origModel = bdroot(blocks{1});
-
-if ~(strcmp(get_param(origModel, 'UnderspecifiedInitializationDetection'), 'Classic'))
-    disp(['Warning: The ' mfilename ' function may result in unexpected results if the ''UnderspecifiedInitializationDetection'' model parameter is not set to ''Classic'', please check the results carefully.'])
-end
-
-% Create model for the simplification
-parentName = get_param(parent, 'Name');
-logicSysName = [parentName '_newLogic'];
-try
-    logicSys = new_system_makenameunique(logicSysName);
-catch ME
-    if any(strcmp(ME.identifier, ...
-            {'Simulink:LoadSave:InvalidBlockDiagramName', ...
-            'Simulink:LoadSave:NameTooLong'}))
-        % Name invalid so use some default
-        logicSysName = ['DefaultModel' '_newLogic'];
-        logicSys = new_system_makenameunique(logicSysName);
-    else
-        rethrow(ME)
-    end
-end
-clear logicSysName % Use logicSys
-open_system(logicSys)
-set_param(logicSys, 'Solver', get_param(origModel, 'Solver'));
-set_param(logicSys, 'SolverType', get_param(origModel, 'SolverType'));
-set_param(logicSys, 'ProdHWDeviceType', get_param(origModel, 'ProdHWDeviceType'));
-set_param(logicSys, 'UnderspecifiedInitializationDetection', get_param(origModel, 'UnderspecifiedInitializationDetection'));
-
-% Perform the simplification and generate the simplification in logicSys
-simplificationInput = {logicSys, blocks, 'subsystem_rule', SUBSYSTEM_RULE, ...
-    'generate_mode', GENERATE_MODE, 'blocks_to_simplify', BLOCKS_TO_SIMPLIFY};
-if ~strcmp('', EXTRA_SUPPORT_FUNCTION)
-    simplificationInput = [simplificationInput, {'extra_support_function'}, {EXTRA_SUPPORT_FUNCTION}];
-end
-[newEqu, oldEqu] = doSimplification(simplificationInput{:});
-
-if strcmp(DELETE_UNUSED,'on')
-    % Delete blocks in the top-level system that don't contribute to output
-    blocks = find_system(logicSys,'FindAll','on','SearchDepth',1,'type','block'); % Doesn't delete blocks within SubSystems
-    deleteIfNoOut(blocks, true);
-elseif strcmp(DELETE_UNUSED,'off')
-    % Do nothing
-else
-    error(['Error in ' mfilename ', DELETE_UNUSED should be ''on'' or ''off''.']);
-end
-% Fulfill unconnected ports with terminators and grounds.
-if ~strcmp(SUBSYSTEM_RULE, 'blackbox')
-    ports = find_system(logicSys,'FindAll','on','type','port');
-else
-    ports = find_system(logicSys, 'SearchDepth', 1, 'FindAll','on','type','port');
-end
-fulfillPorts(ports);
-
-
-%Fix the layout
-automatic_layout(getfullname(logicSys))
+    % SIMPLIFYLOGIC A function that takes a set of logic blocks and simplifies
+    %   them. Results are saved in a new model in a folder called
+    %   'Logic_Simplifier_Results'.
+    %
+    %   Input:
+    %       blocks      Cell array of blocks (indicated by fullname). All blocks
+    %                   should be in the same system/subsystem. Input blocks should
+    %                   be the outputs of the simplification (i.e. if the only only
+    %                   block is an outport, it will simplify the blocks that
+    %                   impact it).
+    %       varargin{1} Bool indicating whether or not to verify the results.
+    %                   Verifying involves creating an additional model within the
+    %                   'Logic_Simplifier_Results' folder.
+    %
+    %   Outputs:
+    %       oldEqu      Cell array of equations found for the blocks as
+    %                   given.
+    %       newEqu      Cell array of equations found for the blocks after
+    %                   the simplification process.
     
-
-%Zoom on new system
-set_param(getfullname(logicSys), 'Zoomfactor', '100');
-
-if ~strcmp(SUBSYSTEM_RULE, 'blackbox')
-    % Do layout and zoom on SubSystems as well
-    subsystems = find_system(logicSys, 'BlockType', 'SubSystem', 'Mask', 'off');
-    for i = 1:length(subsystems)
-        automatic_layout(getfullname(subsystems(i)));
-        set_param(getfullname(subsystems(i)), 'Zoomfactor', '100');
-    end
-end
-
-% Save the resulting model - DO NOT MODIFY IT BELOW THIS
-startDir = pwd;
-resultsDir = 'Logic_Simplifier_Results';
-mkdir(resultsDir) % Where we'll save results
-addpath(resultsDir) % So that the saved model(s) is/are still on the path
-try
-    cd([startDir '/' resultsDir])
-    save_system(logicSys)
-    cd(startDir)
-catch ME
-    cd(startDir)
-    rethrow(ME)
-end
-
-% Handle verification if needed
-if verify
-    if strcmp(parent, bdroot(parent)) % parent is the whole model
-        % Call verification function on logicSys and parent
-        makeVerificationModel([bdroot(parent) '_Verify'], bdroot(parent), getfullname(logicSys), [startDir '/' resultsDir]);
+    % Constants:
+    DELETE_UNUSED = getLogicSimplifierConfig('delete_unused', 'off'); % Indicates whether or not to delete blocks which are unused in the final model
+    SUBSYSTEM_RULE = getLogicSimplifierConfig('subsystem_rule', 'blackbox'); % Indicates how to address subsystems in the simplification process
+    EXTRA_SUPPORT_FUNCTION = getLogicSimplifierConfig('extra_support_function', '');
+    GENERATE_MODE = getLogicSimplifierConfig('generate_mode', 'All'); % Indicates mode of generation (generate everything or only selected things)
+    BLOCKS_TO_SIMPLIFY = getLogicSimplifierConfig('blocks_to_simplify', 'selected'); % Indicates which set of blocks to simplify
+    
+    if nargin == 1
+        verify = false;
+    elseif nargin == 2
+        verify = varargin{1};
     else
-        % Extract subsystem to new model
-
-        copySysName = parentName;
-        try
-            copySys = new_system_makenameunique(copySysName, 'Model', parent);
-            copySysName = getfullname(copySys);
-        catch ME
-            if strcmp(ME.identifier, 'Simulink:LoadSave:InvalidBlockDiagramName')
-                % Name invalid so use some default
-                copySysName = 'DefaultModel';
-                copySys = new_system_makenameunique(copySysName, 'Model', parent);
-                copySysName = getfullname(copySys);
-            else
-                rethrow(ME)
-            end
-        end
-        open_system(copySys)
-        set_param(copySys, 'Solver', get_param(origModel, 'Solver'));
-        set_param(copySys, 'SolverType', get_param(origModel, 'SolverType'));
-        set_param(copySys, 'ProdHWDeviceType', get_param(origModel, 'ProdHWDeviceType'));
-        set_param(copySys, 'UnderspecifiedInitializationDetection', get_param(origModel, 'UnderspecifiedInitializationDetection'));
-        
-        try
-            cd([startDir '/' resultsDir])
-            save_system(copySys)
-            cd(startDir)
-        catch ME
-            cd(startDir)
+        error(['Error in ' mfilename ', 1 or 2 input arguments expected.']);
+    end
+    
+    assert(~isempty(blocks), ['Error in ' mfilename ', 1st argument cannot be empty.'])
+    
+    parent = get_param(blocks{1}, 'parent'); % Get name of system the blocks are in
+    origModel = bdroot(blocks{1});
+    
+    if ~(strcmp(get_param(origModel, 'UnderspecifiedInitializationDetection'), 'Classic'))
+        disp(['Warning: The ' mfilename ' function may result in unexpected results if the ''UnderspecifiedInitializationDetection'' model parameter is not set to ''Classic'', please check the results carefully.'])
+    end
+    
+    % Create model for the simplification
+    parentName = get_param(parent, 'Name');
+    logicSysSuffix = '_newLogic';
+    logicSysName = [parentName logicSysSuffix];
+    try
+        logicSys = new_system_makenameunique(logicSysName);
+    catch ME
+        if any(strcmp(ME.identifier, ...
+                {'Simulink:LoadSave:InvalidBlockDiagramName', ...
+                'Simulink:LoadSave:NameTooLong'}))
+            % Name invalid so use some default
+            logicSysName = ['DefaultModel' logicSysSuffix];
+            logicSys = new_system_makenameunique(logicSysName);
+        else
             rethrow(ME)
         end
+    end
+    clear logicSysName % Use logicSys
+    open_system(logicSys)
+    setModelParams(logicSys, origModel)
+    
+    % Perform the simplification and generate the simplification in logicSys
+    simplificationInput = {logicSys, blocks, 'subsystem_rule', SUBSYSTEM_RULE, ...
+        'generate_mode', GENERATE_MODE, 'blocks_to_simplify', BLOCKS_TO_SIMPLIFY};
+    if ~strcmp('', EXTRA_SUPPORT_FUNCTION)
+        simplificationInput = [simplificationInput, {'extra_support_function'}, {EXTRA_SUPPORT_FUNCTION}];
+    end
+    [newEqu, oldEqu] = doSimplification(simplificationInput{:});
+    
+    % Delete (or don't delete) unused
+    if strcmp(DELETE_UNUSED,'on')
+        % Delete blocks in the top-level system that don't contribute to output
+        blocks = find_system(logicSys,'FindAll','on','SearchDepth',1,'type','block'); % Doesn't delete blocks within SubSystems
+        deleteIfNoOut(blocks, true);
+    elseif strcmp(DELETE_UNUSED,'off')
+        % Do nothing
+    else
+        error(['Error in ' mfilename ', DELETE_UNUSED should be ''on'' or ''off''.']);
+    end
+    
+    %Fix the layout
+    automatic_layout(getfullname(logicSys))
+    
+    %Zoom on new system
+    set_param(getfullname(logicSys), 'Zoomfactor', '100');
+    
+    if ~strcmp(SUBSYSTEM_RULE, 'blackbox')
+        % Do layout and zoom on SubSystems as well
+        subsystems = find_system(logicSys, 'BlockType', 'SubSystem', 'Mask', 'off');
+        for i = 1:length(subsystems)
+            automatic_layout(getfullname(subsystems(i)));
+            set_param(getfullname(subsystems(i)), 'Zoomfactor', '100');
+        end
+    end
+    
+    % Save the resulting model - DO NOT MODIFY IT BELOW THIS
+    startDir = pwd;
+    resultsDir = 'Logic_Simplifier_Results';
+    mkdir(resultsDir) % Where we'll save results
+    addpath(resultsDir) % So that the saved model(s) is/are still on the path
+    saveGeneratedSystem(logicSys, startDir, resultsDir)
+    
+    % Handle verification if needed
+    if verify
+        % Create a copy of the original system (excluding blocks not
+        % being generated) and give that a harness.
+        % Create a copy of the simplified model and give that a harness.
         
+        %% Create copy of the original
+        copySys = copySystem(parent, origModel, 'orig_with_harness');
+        
+        % From the copy, delete blocks that weren't meant to be generated
+        % by the simplification
+        assert(all(strcmp(get_param(blocks{1}, 'Parent'), get_param(blocks,'Parent'))), ['Error in ' mfilename ', all blocks must be in the same system.'])
+        startSys = get_param(blocks{1}, 'Parent');
+        topSysBlocks = find_system(startSys, 'SearchDepth', '1');
+        topSysBlocks = topSysBlocks(2:end); % Remove startSys
+        if strcmpi(GENERATE_MODE, 'simplifiedonly')
+            if strcmp(BLOCKS_TO_SIMPLIFY, 'selected')
+                unsimplifiedBlocks = setdiff(topSysBlocks,blocks);
+                unsimplifiedBlocksHdls = get_param(unsimplifiedBlocks,'Handle');
+            elseif strcmp(BLOCKS_TO_SIMPLIFY, 'unselected')
+                unsimplifiedBlocks = blocks;
+                unsimplifiedBlocksHdls = get_param(unsimplifiedBlocks,'Handle');
+            else
+                error('Error, invalid blocks_to_simplify')
+            end
+            for i = 1:length(unsimplifiedBlocksHdls)
+                % For all blocks that weren't selected at top-level
+                
+                % Search for a corresponding block in the copied system
+                name = get_param(unsimplifiedBlocks{i}, 'Name');
+                copiedBlock = find_system(copySys, 'SearchDepth', 1, 'Type', 'Block', 'Name', name);
+                assert(length(copiedBlock) == 1)
+                
+                % Delete block and its lines
+                delete_block_lines(copiedBlock{1})
+                delete_block(copiedBlock{1})
+            end
+        elseif ~strcmpi(generate_mode, 'All')
+            error('Unexpected parameter value.')
+        end
+        
+        % Harness the copy
+        harnessSysForVerification(copySys)
+        
+        % Save harness
+        saveGeneratedSystem(copySys, startDir, resultsDir)
+        
+        %% Create a copy of the simplified system
+        vhLogicSys = copySystem(logicSys, origModel, 'newLogic_with_harness'); % vh - verification harness
+        
+        % Harness the copy
+        harnessSysForVerification(vhLogicSys)
+        
+        % Save harness
+        saveGeneratedSystem(vhLogicSys, startDir, resultsDir)
+
         % Call verification function on logicSys and copySys
-        makeVerificationModel([copySysName '_Verify'], copySysName, getfullname(logicSys), [startDir '/' resultsDir]);
+        makeVerificationModel([get_param(parent, 'Name') '_verify'], getfullname(copySys), getfullname(vhLogicSys), [startDir '/' resultsDir]);
     end
 end
 
+function copySys = copySystem(sys, origModel, suffix)
+    copySysName = [get_param(sys, 'Name') '_' suffix];
+    try
+        copySys = new_system_makenameunique(copySysName, 'Model', sys);
+    catch ME
+        if any(strcmp(ME.identifier, ...
+                        {'Simulink:LoadSave:InvalidBlockDiagramName', ...
+                        'Simulink:LoadSave:NameTooLong'}))
+            % Name invalid so use some default
+            copySysName = ['DefaultModel' '_' suffix];
+            copySys = new_system_makenameunique(copySysName, 'Model', sys);
+        else
+            rethrow(ME)
+        end
+    end
+    open_system(copySys)
+    setModelParams(copySys, origModel)
 end
 
 function automatic_layout(sys)
@@ -173,5 +192,33 @@ function automatic_layout(sys)
         warning(['Error occurred in Autolayout. ' ...
             mfilename 'continuing without automatic layout at ' sys ...
             '. The error message follows:' char(10) getReport(ME)])
+    end
+end
+
+function setModelParams(newSys, origModel)
+    set_param(newSys, 'Solver', get_param(origModel, 'Solver'));
+    set_param(newSys, 'SolverType', 'Fixed-step'); % Must be fixed-step for compatibility
+    set_param(newSys, 'ProdHWDeviceType', get_param(origModel, 'ProdHWDeviceType'));
+    set_param(newSys, 'UnderspecifiedInitializationDetection', get_param(origModel, 'UnderspecifiedInitializationDetection'));
+end
+
+function groundAndTerminatePorts(logicSys, SUBSYSTEM_RULE)
+    % Ground and terminate unconnected ports
+    if ~strcmp(SUBSYSTEM_RULE, 'blackbox')
+        ports = find_system(logicSys,'FindAll','on','type','port');
+    else
+        ports = find_system(logicSys, 'SearchDepth', 1, 'FindAll','on','type','port');
+    end
+    fulfillPorts(ports); % Ground and terminate
+end
+
+function saveGeneratedSystem(sys, startDir, resultsDir)
+    try
+        cd([startDir '/' resultsDir])
+        save_system(sys)
+        cd(startDir)
+    catch ME
+        cd(startDir)
+        rethrow(ME)
     end
 end
