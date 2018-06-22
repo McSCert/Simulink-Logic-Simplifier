@@ -126,6 +126,8 @@ end
 %% Create blocks for each equation
 s2e_blockHandles = createEquations(postSimpleEqus, lhsTable, startSys, endSys, subsystem_rule);
 
+swapBlockPattern(endSys, extraSupportFun);
+
 if strcmpi(generate_mode, 'simplifiedonly')
     unselectedBlocks = setdiff(topSysBlocks,blocks);
     unselectedBlocksHdls = get_param(unselectedBlocks,'Handle');
@@ -144,8 +146,6 @@ if strcmpi(generate_mode, 'simplifiedonly')
 elseif ~strcmpi(generate_mode, 'All')
     error('Unexpected parameter value.')
 end
-
-swapBlockPattern(endSys, extraSupportFun);
 
 finalEqus = postSimpleEqus;
 
