@@ -11,16 +11,7 @@ function deleteBlockChain(block, mode)
     sys = get_param(block, 'Parent');
     
     % Get source blocks for recursion
-    srcs = getSrcs(block);
-    srcBlocks = zeros(length(srcs),1);
-    for i = 1:length(srcs)
-        if strcmp(get_param(srcs{i}, 'Type'), 'port')
-            srcBlocks(i) = get_param(get_param(srcs{i}, 'Parent'), 'Handle');
-        else
-            srcBlocks(i) = get_param(srcs{i}, 'Handle');
-        end
-    end
-    srcBlocks = unique(srcBlocks); % No need for duplicates
+    srcBlocks = getSrcBlocks(block);
     
     % Delete block and the lines connected to it
     lines = get_param(block, 'LineHandles');
@@ -37,7 +28,7 @@ function deleteBlockChain(block, mode)
     % Recurse on the source blocks
     for i = 1:length(srcBlocks)
         if strcmp(mode, 'default')
-            if isempty(getDsts(srcBlocks(i))) ... % Must not impact others
+            if isempty(getDstObjs(srcBlocks(i))) ... % Must not impact others
                     && strcmp(get_param(srcBlocks(i), 'Parent'), sys) ... % Must be in starting system
                     && ~strcmp(get_param(srcBlocks(i), 'BlockType'), 'Inport') % Must not be an inport
                     % TODO: Should be allowed to impact others as long as
@@ -48,4 +39,31 @@ function deleteBlockChain(block, mode)
             deleteBlockChain(srcBlocks(i))
         end
     end
+end
+
+function srcBlocks = getSrcBlocks(block)
+    srcBlocks = getSrcs(block, 'IncludeImplicit', 'on', ...
+        'ExitSubsystems', 'off', 'EnterSubsystems', 'off', ...
+        'Method', 'ReturnSameType');
+end
+function srcBlocks = getSrcBlocks_old(block)
+    srcs = getSrcs(block);
+    srcBlocks = zeros(length(srcs),1);
+    for i = 1:length(srcs)
+        if strcmp(get_param(srcs{i}, 'Type'), 'port')
+            srcBlocks(i) = get_param(get_param(srcs{i}, 'Parent'), 'Handle');
+        else
+            srcBlocks(i) = get_param(srcs{i}, 'Handle');
+        end
+    end
+    srcBlocks = unique(srcBlocks); % No need for duplicates
+end
+
+function dstBlocks = getDstObjs(block)
+    dstBlocks = getDsts(block, 'IncludeImplicit', 'on', ...
+        'ExitSubsystems', 'off', 'EnterSubsystems', 'off', ...
+        'Method', 'ReturnSameType');
+end
+function dstObjs = getDstObjs_old(block)
+    dstObjs = getDsts(block);
 end
