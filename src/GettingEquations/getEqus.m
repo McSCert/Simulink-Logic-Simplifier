@@ -2,8 +2,7 @@ function [newEqus, handleID] = getEqus(startSys, h, blocks, lhsTable, subsystem_
     % GETEQUS Get a list of equations to represent the value of h. If an
     % equation has previously been done (indicated by lhsTable), then that
     % equation won't be generated again and won't be included in the output.
-    
-    
+        
     % Notes/rough overview:
     %   If h is an input port, then create an equation which sets it to the
     %       output port which sends a signal to h
@@ -49,36 +48,46 @@ function [newEqus, handleID] = getEqus(startSys, h, blocks, lhsTable, subsystem_
         inBlx = any(strcmp(blk, blocks));
         switch eType
             case 'blk'
-                [inExtraSupp, newEqus] = extraSupport(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
-                if ~inExtraSupp
-                    if inBlx && isMask && isSupp
-                        newEqus = getSuppMaskBlkEquation();
-                    elseif inBlx && isSupp
-                        newEqus = getSuppBlkEquation();
-                    else
-                        % Block is not supported or it isn't in blocks (blocks
-                        % designates the set of blocks we want to simplify)
-                        
-                        % Treat as blackbox
-                        newEqus = getBlackBoxEquation();
-                    end
+                if ~inBlx
+                    % Not selected for simplification so must be blackbox
+                    % Treat as blackbox
+                    newEqus = getBlackBoxEquation();
+                else
+                    [inExtraSupp, newEqus] = extraSupport(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
+                    if ~inExtraSupp
+                        if ~isSupp
+                            % Block is not supported by this function
+                            % Treat as blackbox
+                            newEqus = getBlackBoxEquation();
+                        else
+                            if isMask
+                                newEqus = getSuppMaskBlkEquation();
+                            else
+                                newEqus = getSuppBlkEquation();
+                            end
+                        end
+                    end % else use result from extraSupport
                 end
             case 'out'
-                [inExtraSupp, newEqus] = extraSupport(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
-                if ~inExtraSupp
-                    if ~inBlx || (isMask && ~isSupp) || (~isMask && ~isSupp)
-                        % Block is not supported or it isn't in blocks (blocks
-                        % designates the set of blocks we want to simplify)
-                        
-                        % Treat as blackbox
-                        newEqus = getBlackBoxEquation();
-                    else
-                        if isMask
-                            newEqus = getSuppMaskOutEquation();
+                if ~inBlx
+                    % Not selected for simplification so must be blackbox
+                    % Treat as blackbox
+                    newEqus = getBlackBoxEquation();
+                else
+                    [inExtraSupp, newEqus] = extraSupport(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport);
+                    if ~inExtraSupp
+                        if ~isSupp
+                            % Block is not supported by this function
+                            % Treat as blackbox
+                            newEqus = getBlackBoxEquation();
                         else
-                            newEqus = getSuppOutEquation();
+                            if isMask
+                                newEqus = getSuppMaskOutEquation();
+                            else
+                                newEqus = getSuppOutEquation();
+                            end
                         end
-                    end
+                    end % else use result from extraSupport
                 end
             case 'in'
                 % Get the source
