@@ -33,6 +33,23 @@ function harnessSysForVerification(model)
     % If a Read has no Write, then create a corresponding Write in the same
     % system
     
+    bTypes = {'From','Goto','DataStoreWrite','DataStoreRead'};
+    correspondingTypes = {{'Goto'},{'From'},{'DataStoreRead','DataStoreMemory'},{'DataStoreWrite','DataStoreMemory'}};
+    for i = bTypes
+        bType = i{1};
+        blocks = find_system_BlockType(model, bType);
+        for j = 1:length(blocks)
+            block = blocks{j};
+            for k = 1:length(correspondingTypes{i})
+                correspondingType = k{1};
+                correspondingBlocks = findCorrespondingBlocks(block, correspondingType);
+                if isempty(correspondingBlocks)
+                    createCorrespondingBlock(block, correspondingType);
+                end
+            end
+        end
+    end
+    
     % Find all ports at any system depth
     % Find which of those ports are unconnected
     % Delete any lines of ports which are unconnected
@@ -44,10 +61,20 @@ function harnessSysForVerification(model)
     %       it to the port.
     %   Find all unconnected ports at any system depth
     
+    [unconnectedInputPorts, unconnectedOutputPorts] = findUnconnectedPorts(model);
+    deletePortLines(union(unconnectedInputPorts, unconnectedOutputPorts))
+    while ~isempty(union(unconnectedInputPorts, unconnectedOutputPorts))
+        for i = 1:length(unconnectedInputPorts)
+            createAndConnectInOutportBlock(port, 'Inport');
+        end
+        for i = 1:length(unconnectedOutputPorts)
+            createAndConnectInOutportBlock(port, 'Outport');
+        end
+        [unconnectedInputPorts, unconnectedOutputPorts] = findUnconnectedPorts(model);
+    end
 end
 
-function [unconnectedInputPorts, unconnectedOutputPorts] = ...
-        findUnconnectedPorts(sys)
+function [unconnectedInputPorts, unconnectedOutputPorts] = findUnconnectedPorts(sys)
     
     ports = find_system(sys, ...
         'LookUnderMasks','All', ...
@@ -71,11 +98,33 @@ function [unconnectedInputPorts, unconnectedOutputPorts] = ...
 end
 
 function deletePortLines(ports)
-    % TODO
+    for i = 1:length(ports)
+        port = ports(i);
+        lh = get_param(port, 'Line');
+        if lh ~= -1
+            delete_line(lh)
+        end
+    end
 end
 
 function bool = isUnconnected(port)
-    % TODO
+    if strcmp(get_param(port, 'PortType'), 'outport')
+        srcdstPortHandle = 'DstPortHandle';
+    else
+        srcdstPortHandle = 'SrcPortHandle';
+    end
+    
+    lh = get_param(port, 'Line');
+    if lh == -1
+        bool = true;
+    else
+        ph = get_param(lh, srcdstPortHandle);
+        if all(ph == -1)
+            bool = true;
+        else
+            bool = false;
+        end
+    end
 end
 
 function blocks = find_system_BlockType(sys, bType)
@@ -112,6 +161,25 @@ function correspondingBlocks = findCorrespondingBlocks(block, correspondingType)
     end
 end
 
-function createCorrespondingBlock(block, correspondingType)
-    % TODO
+function handle = createCorrespondingBlock(block, correspondingType)
+    switch correspondingType
+        case {'DataStoreWrite', 'DataStoreRead', 'DataStoreMemory'}
+            param_vals = {'DataStoreName', get_param(block, 'DataStoreName')};
+        case {'Goto', 'From', 'GotoTagVisibility'}
+            param_vals = {'GotoTag', get_param(block, 'GotoTag')};
+        otherwise
+            param_vals = {};
+    end
+    handle = add_block(['built-in/' correspondingType], ...
+        ['Verify_Harness_' correspondingType], ...
+        'MakeNameUnique', 'On', ...
+        param_vals);
+end
+
+function handle = createAndConnectInOutportBlock(port, bType)
+    assert(any(strcmp(bType,{'Inport','Outport'})))
+    handle = createCorrespondingBlock('', bType);
+    ports = getPorts(handle, 'All');
+    assert(length(ports) == 1)
+    connectPorts(port, ports(1));
 end
