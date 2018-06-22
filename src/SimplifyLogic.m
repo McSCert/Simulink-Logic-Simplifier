@@ -112,7 +112,11 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
         % Create a copy of the simplified model and give that a harness.
         
         %% Create copy of the original
-        copySys = copySystem(parent, origModel, 'orig_with_harness');
+        if strcmp(origModel,parent)
+            copySys = copyModel(origModel, 'orig_with_harness');
+        else
+            copySys = copySystem(parent, origModel, 'orig_with_harness');
+        end
         
         % From the copy, delete blocks that weren't meant to be generated
         % by the simplification
@@ -139,8 +143,8 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
                 assert(length(copiedBlock) == 1)
                 
                 % Delete block and its lines
-                delete_block_lines(copiedBlock{1})
-                delete_block(copiedBlock{1})
+                delete_block_lines(copiedBlock(1))
+                delete_block(copiedBlock(1))
             end
         elseif ~strcmpi(generate_mode, 'All')
             error('Unexpected parameter value.')
@@ -153,7 +157,7 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
         saveGeneratedSystem(copySys, startDir, resultsDir)
         
         %% Create a copy of the simplified system
-        vhLogicSys = copySystem(logicSys, origModel, 'newLogic_with_harness'); % vh - verification harness
+        vhLogicSys = copyModel(logicSys, 'newLogic_with_harness'); % vh - verification harness
         
         % Harness the copy
         harnessSysForVerification(vhLogicSys)
@@ -166,17 +170,28 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
     end
 end
 
+function copyMdl = copyModel(model, suffix)
+    % Copy file
+    modelName = getfullname(model);
+    origFile = get_param(model, 'FileName');
+    copyMdl = [modelName '_' suffix];
+    newFile = regexprep(origFile, modelName, copyMdl);
+    copyfile(origFile, newFile);
+    open_system(copyMdl)
+    setModelParams(copyMdl, model)
+end
+
 function copySys = copySystem(sys, origModel, suffix)
     copySysName = [get_param(sys, 'Name') '_' suffix];
     try
-        copySys = new_system_makenameunique(copySysName, 'Model', sys);
+        copySys = new_system_makenameunique(copySysName, 'Model', get_param(sys, 'Handle'));
     catch ME
         if any(strcmp(ME.identifier, ...
                         {'Simulink:LoadSave:InvalidBlockDiagramName', ...
                         'Simulink:LoadSave:NameTooLong'}))
             % Name invalid so use some default
             copySysName = ['DefaultModel' '_' suffix];
-            copySys = new_system_makenameunique(copySysName, 'Model', sys);
+            copySys = new_system_makenameunique(copySysName, 'Model', get_param(sys, 'Handle'));
         else
             rethrow(ME)
         end

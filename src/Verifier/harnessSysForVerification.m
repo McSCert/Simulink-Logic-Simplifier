@@ -35,16 +35,16 @@ function harnessSysForVerification(model)
     
     bTypes = {'From','Goto','DataStoreWrite','DataStoreRead'};
     correspondingTypes = {{'Goto'},{'From'},{'DataStoreRead','DataStoreMemory'},{'DataStoreWrite','DataStoreMemory'}};
-    for i = bTypes
-        bType = i{1};
+    for i = 1:length(bTypes)
+        bType = bTypes{i};
         blocks = find_system_BlockType(model, bType);
         for j = 1:length(blocks)
             block = blocks{j};
             for k = 1:length(correspondingTypes{i})
-                correspondingType = k{1};
+                correspondingType = correspondingTypes{i}{k};
                 correspondingBlocks = findCorrespondingBlocks(block, correspondingType);
                 if isempty(correspondingBlocks)
-                    createCorrespondingBlock(block, correspondingType);
+                    createCorrespondingBlock(get_param(block, 'Parent'), block, correspondingType);
                 end
             end
         end
@@ -65,9 +65,11 @@ function harnessSysForVerification(model)
     deletePortLines(union(unconnectedInputPorts, unconnectedOutputPorts))
     while ~isempty(union(unconnectedInputPorts, unconnectedOutputPorts))
         for i = 1:length(unconnectedInputPorts)
+            port = unconnectedInputPorts(i);
             createAndConnectInOutportBlock(port, 'Inport');
         end
         for i = 1:length(unconnectedOutputPorts)
+            port = unconnectedOutputPorts(i);
             createAndConnectInOutportBlock(port, 'Outport');
         end
         [unconnectedInputPorts, unconnectedOutputPorts] = findUnconnectedPorts(model);
@@ -77,6 +79,7 @@ end
 function [unconnectedInputPorts, unconnectedOutputPorts] = findUnconnectedPorts(sys)
     
     ports = find_system(sys, ...
+        'FindAll','on', ...
         'LookUnderMasks','All', ...
         'IncludeCommented','off', ...
         'Variants','AllVariants', ...
@@ -133,6 +136,7 @@ function blocks = find_system_BlockType(sys, bType)
         'IncludeCommented','off', ...
         'Variants','AllVariants', ...
         'BlockType', bType);
+    blocks = inputToCell(blocks);
 end
 
 function correspondingBlocks = findCorrespondingBlocks(block, correspondingType)
@@ -161,7 +165,7 @@ function correspondingBlocks = findCorrespondingBlocks(block, correspondingType)
     end
 end
 
-function handle = createCorrespondingBlock(block, correspondingType)
+function handle = createCorrespondingBlock(sys, block, correspondingType)
     switch correspondingType
         case {'DataStoreWrite', 'DataStoreRead', 'DataStoreMemory'}
             param_vals = {'DataStoreName', get_param(block, 'DataStoreName')};
@@ -171,15 +175,16 @@ function handle = createCorrespondingBlock(block, correspondingType)
             param_vals = {};
     end
     handle = add_block(['built-in/' correspondingType], ...
-        ['Verify_Harness_' correspondingType], ...
+        [sys, '/Verify_Harness_' correspondingType], ...
         'MakeNameUnique', 'On', ...
-        param_vals);
+        param_vals{:});
 end
 
 function handle = createAndConnectInOutportBlock(port, bType)
     assert(any(strcmp(bType,{'Inport','Outport'})))
-    handle = createCorrespondingBlock('', bType);
+    sys = get_param(get_param(port, 'Parent'), 'Parent');
+    handle = createCorrespondingBlock(sys, '', bType);
     ports = getPorts(handle, 'All');
     assert(length(ports) == 1)
-    connectPorts(port, ports(1));
+    connectPorts(sys, port, ports(1));
 end

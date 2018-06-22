@@ -8,7 +8,7 @@
 #		see them as a black box for the sake of their simplification), 
 #	blackbox (subsystems will not be modified during simplification and there 
 #		output will not be assumed)
-subsystem_rule: full-simplify
+subsystem_rule: blackbox
 
 #BLOCKS_TO_SIMPLIFY Indicates which blocks to try to simplify.
 #Default is selected.
@@ -16,7 +16,7 @@ subsystem_rule: full-simplify
 #Acceptable parameter values are:
 #	selected (simplifies selected blocks),
 #	unselected (simplifies blocks in the system except the ones that are selected)
-generate_mode: selected
+blocks_to_simplify: selected
 
 #GENERATE_MODE Indicates which blocks to generate in the simplification.
 #Default is all.
