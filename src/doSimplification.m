@@ -147,6 +147,8 @@ elseif ~strcmpi(generate_mode, 'All')
     error('Unexpected parameter value.')
 end
 
+branchingImplicit2multipleImplicit(endSys);
+
 finalEqus = postSimpleEqus;
 
 %%
