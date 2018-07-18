@@ -1,38 +1,44 @@
 function harnessSysForVerification(model)
-    % Harness a model to prepare for verification.
-    %
-    % Harnessed system shall have no unconnected ports.
-    % Harnessed system shall have no Gotos without a From or vice versa.
-    % Likewise for Data Store Reads and Writes
-    %
-    % This function will connect ports to Inport/Outport blocks and
-    % Gotos/Froms/Data Store Reads/Data Store Writes/Data Store Memories
-    % will be created as necessary.
-    
-    % Find all Froms
-    % For each From, find its Goto
-    % If a From has no Goto, then create a corresponding local Goto in the
-    % same system
-    
-    % Find all Gotos
-    % For each Goto, find its Froms
-    % If a Goto has no From, then create a corresponding From in the same
-    % system
-    
-    % Find all Data Store Writes
-    % For each Write, find its Memory and its Reads
-    % If a Write has no Memory, then create a corresponding Memory in the
-    % same system
-    % If a Write has no Read, then create a corresponding Read in the
-    % same system
-    
-    % Find all Data Store Reads
-    % For each Read, find its Memory and its Writes
-    % If a Read has no Memory, then create a corresponding Memory in the
-    % same system
-    % If a Read has no Write, then create a corresponding Write in the same
-    % system
-    
+% HARNESSSYSFORVERIFICATION Harness a model to prepare it for verification.
+%
+%   Inputs:
+%       model   Simulink model to prepare for verification.
+
+
+% Summary of changes to the model:
+%
+% Harnessed system shall have no unconnected ports.
+% Harnessed system shall have no Gotos without a From or vice versa.
+% Likewise for Data Store Reads and Writes
+%
+% This function will connect ports to Inport/Outport blocks and
+% Gotos/Froms/Data Store Reads/Data Store Writes/Data Store Memories
+% will be created as necessary.
+
+% Find all Froms
+% For each From, find its Goto
+% If a From has no Goto, then create a corresponding local Goto in the
+% same system
+
+% Find all Gotos
+% For each Goto, find its Froms
+% If a Goto has no From, then create a corresponding From in the same
+% system
+
+% Find all Data Store Writes
+% For each Write, find its Memory and its Reads
+% If a Write has no Memory, then create a corresponding Memory in the
+% same system
+% If a Write has no Read, then create a corresponding Read in the
+% same system
+
+% Find all Data Store Reads
+% For each Read, find its Memory and its Writes
+% If a Read has no Memory, then create a corresponding Memory in the
+% same system
+% If a Read has no Write, then create a corresponding Write in the same
+% system
+
     bTypes = {'From','Goto','DataStoreWrite','DataStoreRead'};
     correspondingTypes = {{'Goto'},{'From'},{'DataStoreRead','DataStoreMemory'},{'DataStoreWrite','DataStoreMemory'}};
     for i = 1:length(bTypes)
@@ -49,7 +55,7 @@ function harnessSysForVerification(model)
             end
         end
     end
-    
+
     % Find all ports at any system depth
     % Find which of those ports are unconnected
     % Delete any lines of ports which are unconnected
@@ -60,7 +66,7 @@ function harnessSysForVerification(model)
     %       If the port is a block output, then create an Outport and connect
     %       it to the port.
     %   Find all unconnected ports at any system depth
-    
+
     [unconnectedInputPorts, unconnectedOutputPorts] = findUnconnectedPorts(model);
     deletePortLines(union(unconnectedInputPorts, unconnectedOutputPorts))
     while ~isempty(union(unconnectedInputPorts, unconnectedOutputPorts))
@@ -77,14 +83,14 @@ function harnessSysForVerification(model)
 end
 
 function [unconnectedInputPorts, unconnectedOutputPorts] = findUnconnectedPorts(sys)
-    
+
     ports = find_system(sys, ...
         'FindAll','on', ...
         'LookUnderMasks','All', ...
         'IncludeCommented','off', ...
         'Variants','AllVariants', ...
         'Type', 'port');
-    
+
     unconnectedInputPorts = zeros(1,length(ports));
     unconnectedOutputPorts = zeros(1,length(ports));
     for i = 1:length(ports)
@@ -116,7 +122,7 @@ function bool = isUnconnected(port)
     else
         srcdstPortHandle = 'SrcPortHandle';
     end
-    
+
     lh = get_param(port, 'Line');
     if lh == -1
         bool = true;

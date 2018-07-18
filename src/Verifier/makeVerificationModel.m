@@ -271,6 +271,7 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
         connectBlocks(verifySubsystem, equalityBlocks(i), proofBlocks(i));
     end
 
+    % Save the model and go to its location
     startDir = pwd;
     try
         cd(saveDir)
@@ -285,7 +286,7 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
 
     % Set SDV options and auto-run proving
     % Downside of auto-run is that it will still name a replacement model
-    % and any errors aren't really shown
+    % and any errors aren't really be shown
     % More on options here: https://www.mathworks.com/help/pdf_doc/sldv/sldv_ref.pdf
 %     opts = sldvoptions;
 %     opts.Mode = 'PropertyProving'; % Perform proof analysis
