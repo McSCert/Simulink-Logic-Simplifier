@@ -13,7 +13,7 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
 %                           model.
 %
 %   Example:
-%       makeVerificationModel('mdl_verify', 'mdl_original', 'mdl_newDesign', gcs);
+%       makeVerificationModel('mdl_verify', 'mdl_original', 'mdl_newDesign', pwd);
 
     % Check number of arguments
      assert(nargin == 4, 'Wrong number of arguments provided.')
