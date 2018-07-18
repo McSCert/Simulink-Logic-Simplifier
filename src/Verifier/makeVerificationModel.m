@@ -1,7 +1,7 @@
 function verificationModel = makeVerificationModel(address, model1, model2, saveDir)
-% MAKEVERIFICATIONMODEL Construct a model (.mdl) which can be used to verify 
+% MAKEVERIFICATIONMODEL Construct a model (.mdl) which can be used to verify
 %   equivalence between two models using Simulink Design Verifier.
-
+%
 %   Inputs:
 %       address     Verification model name.
 %       model1      First model to verify.
@@ -13,16 +13,16 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
 %                           model.
 %
 %   Example:
-%       makeVerificationModel('mdl_verify', 'mdl_original', 'mdl_newDesign');
+%       makeVerificationModel('mdl_verify', 'mdl_original', 'mdl_newDesign', gcs);
 
     % Check number of arguments
      assert(nargin == 4, 'Wrong number of arguments provided.')
-    
+
     % Check that SDV is present
     v = ver;
     assert(any(strcmp('Simulink Design Verifier', {v.Name})), ...
         'Simulink Design Verifier is not installed.');
-    
+
     % Load models
     if ~bdIsLoaded(model1)
         load_system(model1);
@@ -30,14 +30,14 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
     if ~bdIsLoaded(model2)
         load_system(model2);
     end
-    
+
     % Check that configuration paramter settings are consistent between the models
     % otherwise SDV will complain
     solver = get_param(model1, 'Solver'); % Save model1 info for later
     solverType = get_param(model1, 'SolverType');
     hwDevice = get_param(model1, 'ProdHWDeviceType');
     underspec = get_param(model1, 'UnderspecifiedInitializationDetection');
-    
+
     assert(strcmp(solver, get_param(model2, 'Solver')), ...
         'The Solver of both models must be the same. Please ensure this in the Model Configuration Parameters.');
     assert(strcmp(solverType, get_param(model2, 'SolverType')), ...
@@ -47,8 +47,8 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
     assert(strcmp(underspec, get_param(model2, 'UnderspecifiedInitializationDetection')), ...
         'The Underspecified Initialization Detection of both models must be the same. Please ensure this in the Model Configuration Parameters.');
     assert(~strcmp(solver, 'VariableStepAuto'), ...
-        'The Solver Type of both models cannot be Variable-step. Please ensure this in the Model Configuration Parameters.');   
-    
+        'The Solver Type of both models cannot be Variable-step. Please ensure this in the Model Configuration Parameters.');
+
     % Create model. Append number if it already exists
     verifyModel = address;
     if exist(verifyModel, 'file') == 4
@@ -60,30 +60,30 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
     end
     new_system(verifyModel);
     open_system(verifyModel);
-    
+
     % Set new model configuration parameters settings to be consistent
     set_param(verifyModel, 'Solver', solver);
     set_param(verifyModel, 'SolverType', solverType);
     set_param(verifyModel, 'ProdHWDeviceType', hwDevice);
     set_param(verifyModel, 'UnderspecifiedInitializationDetection', underspec);
-    
-    %% --- Add blocks ---   
+
+    %% --- Add blocks ---
     % Note: Not using the 'built-in' names because it results in strange block sizes
-    
+
     % Add verification subsystem
     verifySubsystemHandle = add_block('sldvlib/Verification Utilities/Verification Subsystem', ...
         [verifyModel '/Verification Subsystem'], 'Position', [170    28   265   112]);
-    Simulink.SubSystem.deleteContents(verifySubsystemHandle); % Delete the default blocks/annotations   
-    
+    Simulink.SubSystem.deleteContents(verifySubsystemHandle); % Delete the default blocks/annotations
+
     verifySubsystem = get_param(verifySubsystemHandle, 'Name');
     verifySubsystem = [verifyModel '/' verifySubsystem];
-    
+
     % Add model reference blocks inside verification subsystem
     modelRef1Block  = add_block('simulink/Ports & Subsystems/Model', ...
         [verifySubsystem '/Original Model'], 'ModelNameDialog', model1, 'Position', [230    29   410   101]);
     modelRef2Block  = add_block('simulink/Ports & Subsystems/Model', ...
         [verifySubsystem '/Simplified Model'], 'ModelNameDialog', model2, 'Position', [230   151   410   224]);
- 
+
     % Resize model reference blocks and move second below the first
     modelRef1Pos = get_param(modelRef1Block, 'Position');
     modelRef2Pos = get_param(modelRef2Block, 'Position');
@@ -92,7 +92,7 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
     newModelRefHeight2 = desiredHeightForPorts(modelRef2Block, 30, 30);
 
     newModelRefWidth1 = getBlockTextWidth(modelRef1Block);
-    newModelRefWidth2 = getBlockTextWidth(modelRef1Block);    
+    newModelRefWidth2 = getBlockTextWidth(modelRef1Block);
 
     modelRef1bottom = modelRef1Pos(2)+newModelRefHeight1;
     bufferYBetweenModelRefs = 30;
@@ -100,16 +100,16 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
         [modelRef1Pos(1), modelRef1Pos(2), modelRef1Pos(1)+newModelRefWidth1, modelRef1bottom]);
     set_param(modelRef2Block, 'Position', ...
         [modelRef2Pos(1), modelRef1bottom+bufferYBetweenModelRefs, modelRef2Pos(1)+newModelRefWidth2, modelRef1bottom+bufferYBetweenModelRefs+newModelRefHeight2]);
-    
+
     % Get model reference port handles
     modelRef1Handles = get_param(modelRef1Block, 'PortHandles');
     modelRef1InHandles = modelRef1Handles.Inport;
     modelRef1OutHandles = modelRef1Handles.Outport;
-    
+
     modelRef2Handles = get_param(modelRef2Block, 'PortHandles');
     modelRef2InHandles = modelRef2Handles.Inport;
     modelRef2OutHandles = modelRef2Handles.Outport;
-    
+
     % Add equality blocks and proof blocks
     numOut1 = length(modelRef1OutHandles);
     numOut2 = length(modelRef2OutHandles);
@@ -122,7 +122,7 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
         modelRefLeastOuts = modelRef1OutHandles;
         numOutports = numOut2;
     end
-    
+
     equalityBlocks = zeros(1, numOutports);
     proofBlocks = equalityBlocks;
     for i = 1:numOutports
@@ -131,11 +131,11 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
             [verifySubsystem '/Equality' num2str(i)], 'Operator', '==', 'ShowName', 'off');
         equalityBlocks(i) = newEquality;
         % Move equality blocks
-        moveToPort(newEquality, modelRefMostOuts(1), 0);        
+        moveToPort(newEquality, modelRefMostOuts(1), 0);
         newEqualityIn1 = get_param(newEquality, 'PortHandles');
         newEqualityIn1 = newEqualityIn1.Inport;
-        alignPorts(modelRefMostOuts(i), newEqualityIn1(1)); % Vertically align first inport of equality with the port it is connected to 
-        
+        alignPorts(modelRefMostOuts(i), newEqualityIn1(1)); % Vertically align first inport of equality with the port it is connected to
+
         % Add proof blocks
         newProof = add_block('sldvlib/Objectives and Constraints/Proof Objective', ...
             [verifySubsystem '/Proof Objective' num2str(i)], 'outEnabled', 'off');
@@ -145,7 +145,7 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
         equality1Outport = equality1Outport.Outport;
         moveToPort(newProof, equality1Outport(1), 0);
     end
-    
+
     % Add inports to reference models and connect
     % - Get info on number of ports
     numIn1 = length(modelRef1InHandles);
@@ -159,7 +159,7 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
         modelRefLeastIns = modelRef1InHandles;
         numInports = numIn2;
     end
-    
+
     % - Get names so we can match them up
     inportNames1 = strings(size(modelRefMostIns));
     inportNames2 = strings(size(modelRefLeastIns));
@@ -180,16 +180,16 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
     for i = 1:numInports
         in = add_block('simulink/Ports & Subsystems/In1', [verifySubsystem '/In' num2str(i)]);
         moveToPort(in, modelRefMostIns(i));
-        
+
         % Connect first model
         %newLine = connectBlocks(verifySubsystem, in, modelRefMostIns); % Connects to first available inport
         outPort = get_param(in, 'PortHandles');
         outPort = outPort.Outport;
         newLine = connectPorts(verifySubsystem, outPort, modelRefMostIns(i), 'autorouting', 'on');
-        
-        % Find matching inport in second model reference and connect     
-        % Note: Simplified models can have fewer inports  
-        for j = 1:length(inportsToConnect)            
+
+        % Find matching inport in second model reference and connect
+        % Note: Simplified models can have fewer inports
+        for j = 1:length(inportsToConnect)
             % If port names are the same
             if strcmp(inportNames1(i), inportNames2(j))
                 try
@@ -205,17 +205,17 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
             end
         end
     end
-    
+
     % Add inports at root and connect
     verifySubsystemInHandles = get_param(verifySubsystemHandle, 'PortHandles');
     verifySubsystemInHandles = verifySubsystemInHandles.Inport;
-    
+
     for i = 1:max(length(modelRef1InHandles), length(modelRef2InHandles))
         in = add_block('simulink/Ports & Subsystems/In1', [verifyModel '/In' num2str(i)]);
         moveToPort(in, verifySubsystemInHandles(i));
         connectBlocks(verifyModel, in, verifySubsystemHandle);
     end
-    
+
     % Connect equality and proof blocks
     % - Get names so we can match them up
     outportNames1 = strings(size(modelRefMostOuts));
@@ -232,15 +232,15 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
         n = n(end)+1;
         outportNames2(i) = temp(n:end);
     end
-    
+
     outportsToConnect = modelRefLeastOuts; % Will be removing elements during matching, so need a copy
-    for i = 1:length(equalityBlocks)       
+    for i = 1:length(equalityBlocks)
         inHandlesEq = get_param(equalityBlocks(i), 'PortHandles');
         inHandlesEq = inHandlesEq.Inport;
-        
+
         % Connect model reference to equality
         connectPorts(verifySubsystem, modelRefMostOuts(i), inHandlesEq(1));
-        
+
         % Find matching outport in other model reference and connect
         found = false;
         for j = 1:length(outportsToConnect)
@@ -255,7 +255,7 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
                     break;
                 catch
                     % Skip. Might already be connected
-                    break; 
+                    break;
                 end
             end
         end
@@ -270,7 +270,7 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
         % 2) Equality to proof
         connectBlocks(verifySubsystem, equalityBlocks(i), proofBlocks(i));
     end
-    
+
     startDir = pwd;
     try
         cd(saveDir)
@@ -280,9 +280,9 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
         cd(startDir)
         rethrow(ME)
     end
-    
+
     verificationModel = [saveDir '/' verifyModel '.mdl'];
-    
+
     % Set SDV options and auto-run proving
     % Downside of auto-run is that it will still name a replacement model
     % and any errors aren't really shown
@@ -295,4 +295,4 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
 %     opts.BlockReplacement = 'off'; % Do not replace unsupported blocks
 %     opts.OutputDir = 'VerifySimplification/$ModelName$';
 %     [status, files] = sldvrun(verifyModel, opts);
-end 
+end
