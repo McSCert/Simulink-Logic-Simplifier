@@ -102,6 +102,7 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
     startDir = pwd;
     resultsDir = 'Logic_Simplifier_Results';
     mkdir(resultsDir) % Where we'll save results
+    fullResultsDir = [pwd, '/', resultsDir];
     addpath(resultsDir) % So that the saved model(s) is/are still on the path
     saveGeneratedSystem(logicSys, startDir, resultsDir)
     
@@ -113,7 +114,7 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
         
         %% Create copy of the original
         if strcmp(origModel,parent)
-            copySys = copyModel(origModel, 'orig_with_harness');
+            copySys = copyModel(fullResultsDir, origModel, 'orig_with_harness');
         else
             copySys = copySystem(parent, origModel, 'orig_with_harness');
         end
@@ -146,7 +147,7 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
                 delete_block_lines(copiedBlock(1))
                 delete_block(copiedBlock(1))
             end
-        elseif ~strcmpi(generate_mode, 'All')
+        elseif ~strcmpi(GENERATE_MODE, 'All')
             error('Unexpected parameter value.')
         end
         
@@ -157,7 +158,7 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
         saveGeneratedSystem(copySys, startDir, resultsDir)
         
         %% Create a copy of the simplified system
-        vhLogicSys = copyModel(logicSys, 'newLogic_with_harness'); % vh - verification harness
+        vhLogicSys = copyModel(fullResultsDir, logicSys, 'with_harness'); % vh - verification harness
         
         % Harness the copy
         harnessSysForVerification(vhLogicSys)
@@ -166,16 +167,27 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
         saveGeneratedSystem(vhLogicSys, startDir, resultsDir)
 
         % Call verification function on logicSys and copySys
-        makeVerificationModel([get_param(parent, 'Name') '_verify'], getfullname(copySys), getfullname(vhLogicSys), [startDir '/' resultsDir]);
+        verify_model = [get_param(parent, 'Name') '_verify'];
+        if ~isvarname(verify_model)
+            % Name invalid so use some default
+            verify_model = ['DefaultModel' '_verify'];
+        end
+        makeVerificationModel(verify_model, getfullname(copySys), getfullname(vhLogicSys), [startDir '/' resultsDir]);
     end
 end
 
-function copyMdl = copyModel(model, suffix)
+function copyMdl = copyModel(dir, model, suffix)
     % Copy file
     modelName = getfullname(model);
     origFile = get_param(model, 'FileName');
+    
     copyMdl = [modelName '_' suffix];
-    newFile = regexprep(origFile, modelName, copyMdl);
+    
+    period_idx = regexp(origFile, '[.]');
+    filetype = origFile(period_idx(end):end);
+    
+    newFile = [dir, '/', copyMdl, filetype];
+    
     copyfile(origFile, newFile);
     open_system(copyMdl)
     setModelParams(copyMdl, model)
@@ -183,12 +195,26 @@ end
 
 function copySys = copySystem(sys, origModel, suffix)
     copySysName = [get_param(sys, 'Name') '_' suffix];
+    if ~isvarname(copySysName)
+        % Name invalid so use some default
+        copySysName = ['DefaultModel' '_' suffix];
+    end    
+    copySys = new_system_makenameunique(copySysName, 'Model', get_param(sys, 'Handle'));
+    
+    open_system(copySys)
+    setModelParams(copySys, origModel)
+end
+
+function copySys = copySystem_old(sys, origModel, suffix)
+    % Keeping old function in case unexpected bugs are found in the new one
+    % that are addressed here
+    copySysName = [get_param(sys, 'Name') '_' suffix];
     try
         copySys = new_system_makenameunique(copySysName, 'Model', get_param(sys, 'Handle'));
     catch ME
         if any(strcmp(ME.identifier, ...
-                        {'Simulink:LoadSave:InvalidBlockDiagramName', ...
-                        'Simulink:LoadSave:NameTooLong'}))
+                {'Simulink:LoadSave:InvalidBlockDiagramName', ...
+                'Simulink:LoadSave:NameTooLong'}))
             % Name invalid so use some default
             copySysName = ['DefaultModel' '_' suffix];
             copySys = new_system_makenameunique(copySysName, 'Model', get_param(sys, 'Handle'));
@@ -205,7 +231,7 @@ function automatic_layout(sys)
         AutoLayout(sys);
     catch ME
         warning(['Error occurred in Autolayout. ' ...
-            mfilename 'continuing without automatic layout at ' sys ...
+            mfilename ' continuing without automatic layout at ' sys ...
             '. The error message follows:' char(10) getReport(ME)])
     end
 end
