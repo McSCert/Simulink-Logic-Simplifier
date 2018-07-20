@@ -4,8 +4,8 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
 %
 %   Inputs:
 %       address     Verification model name.
-%       model1      First model to verify.
-%       model2      Second model to verify.
+%       model1      Fullpath of first model to verify.
+%       model2      Fullpath of second model to verify.
 %       saveDir     Fullpath of directory to save the constructed model in.
 %
 %   Outputs:
@@ -22,8 +22,21 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
     v = ver;
     assert(any(strcmp('Simulink Design Verifier', {v.Name})), ...
         'Simulink Design Verifier is not installed.');
+    
+    % Check address is valid model name
+    [~, name, ~] = fileparts(address);
+    if ~isvarname(name)
+        error(['Verification model name ' name ' is not a valid model name.']);
+    end
+    
+    % Check files exist and are models
+    if ~(exist(model1, 'file') == 4)
+        error(['Model ' model1 ' cannot be found.']);
+    elseif ~(exist(model2, 'file') == 4)
+        error(['Model ' model2 ' cannot be found.']);
+    end
 
-    % Load models
+    %% Load models
     if ~bdIsLoaded(model1)
         load_system(model1);
     end
@@ -31,7 +44,7 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
         load_system(model2);
     end
 
-    % Check that configuration paramter settings are consistent between the models
+    %% Check that configuration paramter settings are consistent between the models
     % otherwise SDV will complain
     solver = get_param(model1, 'Solver'); % Save model1 info for later
     solverType = get_param(model1, 'SolverType');
@@ -49,7 +62,7 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
     assert(~strcmpi(solverType, 'VariableStepAuto') && ~strcmpi(solverType, 'Variable-step'), ...
         'The Solver Type of both models cannot be Variable-step. Please ensure this in the Model Configuration Parameters.');
 
-    % Create model. Append number if it already exists
+    %% Create verification model. Append number if it already exists
     verifyModel = address;
     if exist(verifyModel, 'file') == 4
         n = 1;
