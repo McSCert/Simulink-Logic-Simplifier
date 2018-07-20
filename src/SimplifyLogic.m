@@ -188,7 +188,14 @@ function copyMdl = copyModel(dir, model, suffix)
     
     newFile = [dir, '/', copyMdl, filetype];
     
+    % Copy file
+    % Note an existing file named the same as newFile will be overwritten.
+    % This should be fine as the folder should be one made specifically for
+    % logic simplifier results.
+    % Can use exist(newFile,'file') == 4 to check if the file already
+    % exists.
     copyfile(origFile, newFile);
+    
     open_system(copyMdl)
     setModelParams(copyMdl, model)
 end
