@@ -174,19 +174,19 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
     end
 
     % - Get names so we can match them up
-    inportNames1 = strings(size(modelRefMostIns));
-    inportNames2 = strings(size(modelRefLeastIns));
+    inportNames1 = repmat({''},size(modelRefMostIns));
+    inportNames2 = repmat({''},size(modelRefLeastIns));
     for i = 1:length(modelRefMostIns)
         temp =  subport2inoutblock(modelRefMostIns(i));
         n = strfind(temp, '/');
         n = n(end)+1;
-        inportNames1(i) = temp(n:end);
+        inportNames1{i} = temp(n:end);
     end
     for i = 1:length(modelRefLeastIns)
         temp =  subport2inoutblock(modelRefLeastIns(i));
         n = strfind(temp, '/');
         n = n(end)+1;
-        inportNames2(i) = temp(n:end);
+        inportNames2{i} = temp(n:end);
     end
 
     inportsToConnect = modelRefLeastIns; % Will be removing elements during matching, so need a copy
@@ -204,7 +204,7 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
         % Note: Simplified models can have fewer inports
         for j = 1:length(inportsToConnect)
             % If port names are the same
-            if strcmp(inportNames1(i), inportNames2(j))
+            if strcmp(inportNames1{i}, inportNames2{j})
                 try
                     % Connect
                     branchToPort(verifySubsystem, newLine, inportsToConnect(j));
@@ -231,19 +231,19 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
 
     % Connect equality and proof blocks
     % - Get names so we can match them up
-    outportNames1 = strings(size(modelRefMostOuts));
-    outportNames2 = strings(size(modelRefLeastOuts));
+    outportNames1 = repmat({''},size(modelRefMostOuts));
+    outportNames2 = repmat({''},size(modelRefLeastOuts));
     for i = 1:length(modelRefMostOuts)
         temp =  subport2inoutblock(modelRefMostOuts(i));
         n = strfind(temp, '/');
         n = n(end)+1;
-        outportNames1(i) = temp(n:end);
+        outportNames1{i} = temp(n:end);
     end
     for i = 1:length(modelRefLeastOuts)
         temp =  subport2inoutblock(modelRefLeastOuts(i));
         n = strfind(temp, '/');
         n = n(end)+1;
-        outportNames2(i) = temp(n:end);
+        outportNames2{i} = temp(n:end);
     end
 
     outportsToConnect = modelRefLeastOuts; % Will be removing elements during matching, so need a copy
@@ -258,7 +258,7 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
         found = false;
         for j = 1:length(outportsToConnect)
             % If port names are the same
-            if strcmp(outportNames1(i), outportNames2(j))
+            if strcmp(outportNames1{i}, outportNames2{j})
                 found = true;
                 try
                     % Connect
