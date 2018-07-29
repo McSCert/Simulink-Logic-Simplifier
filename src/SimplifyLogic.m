@@ -75,8 +75,8 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
     % Delete (or don't delete) unused
     if strcmp(DELETE_UNUSED,'on')
         % Delete blocks in the top-level system that don't contribute to output
-        blocks = find_system(logicSys,'FindAll','on','SearchDepth',1,'type','block'); % Doesn't delete blocks within SubSystems
-        deleteIfNoOut(blocks, true);
+        topsysBlocks = find_system(logicSys,'FindAll','on','SearchDepth',1,'type','block'); % Doesn't delete blocks within SubSystems
+        deleteIfNoOut(topsysBlocks, true);
     elseif strcmp(DELETE_UNUSED,'off')
         % Do nothing
     else
@@ -235,7 +235,7 @@ end
 
 function automatic_layout(sys)
     try
-        AutoLayout(sys);
+        AutoLayoutSys(sys);
     catch ME
         warning(['Error occurred in Autolayout. ' ...
             mfilename ' continuing without automatic layout at ' sys ...
