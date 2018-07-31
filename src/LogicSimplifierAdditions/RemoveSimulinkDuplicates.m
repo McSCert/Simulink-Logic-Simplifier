@@ -46,7 +46,6 @@ function RemoveSimulinkDuplicates(blocks, varargin)
         % Get the current block
         block = blocks(1); % Delete from list at end of loop to ensure this is always different
         
-        getfullname(block)
         %% Remove duplicates of current block
         [deletedBlocks, retryBlocks] = removeDuplicates(block, DeleteDuplicateBlocks);
         % remove deleted blocks from the loop
