@@ -126,31 +126,43 @@ end
 %% Create blocks for each equation
 s2e_blockHandles = createEquations(postSimpleEqus, lhsTable, startSys, endSys, subsystem_rule);
 
+%
 swapBlockPattern(endSys, extraSupportFun);
 
+%
+unselectedBlocks = setdiff(topSysBlocks,blocks);
+unselectedBlocksHdls = get_param(unselectedBlocks,'Handle');
+e_unselected_handles = [];
+for i = 1:length(unselectedBlocksHdls)
+    % For all blocks that weren't selected at top-level
+    
+    % Search for a corresponding end block
+    if s2e_blockHandles.isKey(unselectedBlocksHdls{i})
+        e_unselected_handles(end+1) = s2e_blockHandles(unselectedBlocksHdls{i});
+    end
+end
+
+%
 if strcmpi(generate_mode, 'simplifiedonly')
-    unselectedBlocks = setdiff(topSysBlocks,blocks);
-    unselectedBlocksHdls = get_param(unselectedBlocks,'Handle');
-    for i = 1:length(unselectedBlocksHdls)
-        % For all blocks that weren't selected at top-level
-        
-        % Search for a corresponding end block
-        if s2e_blockHandles.isKey(unselectedBlocksHdls{i})
-            e_handle = s2e_blockHandles(unselectedBlocksHdls{i});
-            
-            % Delete block and its lines
-            delete_block_lines(e_handle)
-            delete_block(e_handle)
-        end
+    % Delete end blocks of start blocks that weren't selected
+    for i = 1:length(e_unselected_handles)
+        % Delete block and its lines
+        delete_block_lines(e_unselected_handles(i))
+        delete_block(e_handle(i))
     end
 elseif ~strcmpi(generate_mode, 'All')
     error('Unexpected parameter value.')
 end
 
-RemoveSimulinkDuplicates(blocks, 'DeleteDuplicateBlocks', 'on');
+%
+e_handles = find_system(endSys, 'SearchDepth', 1, 'FindAll', 'on', 'Type', 'Block');
+e_selected_handles = setdiff(e_handles, e_unselected_handles);
+RemoveSimulinkDuplicates(e_selected_handles, 'DeleteDuplicateBlocks', 'on');
 
+%
 branchingImplicit2multipleImplicit(endSys);
 
+%
 finalEqus = postSimpleEqus;
 
 %%
