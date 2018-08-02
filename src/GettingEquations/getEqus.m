@@ -265,6 +265,9 @@ function [newEqus, handleID] = getEqus(startSys, h, blocks, lhsTable, subsystem_
                 end
                 
                 neq = {equ};
+            case 'Ground'
+                equ = [handleID ' = ' '0'];
+                neq = {equ};
             case 'Logic'
                 % Get operator
                 operator = get_param(blk, 'Operator');
