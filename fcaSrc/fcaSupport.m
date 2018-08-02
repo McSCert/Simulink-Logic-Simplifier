@@ -71,7 +71,7 @@ function [isSupported, newEquations] = fcaSupport(sys, h, hID, blx, table, rule,
 %                 
 %                 equation = [hID ' = ' srcID];
 %                 newEquations = [{equation}, srcEquations];
-            case 'Switchasda'
+            case 'SwitchUp_Blk'
                 % TODO make other symbols work with the simplifier for switch
                 % won't work as it requires * and + operators
                 
@@ -82,18 +82,16 @@ function [isSupported, newEquations] = fcaSupport(sys, h, hID, blx, table, rule,
                 assert(length(srcHandles) == 3) % IfElseif requires condition, then case, and else case
                 
                 % Get source equations
-                [srcEqus1, srcID1] = getEqus(startSys, srcHandles(1), blocks, lhsTable, subsystem_rule, extraSupport);
-                [srcEqus2, srcID2] = getEqus(startSys, srcHandles(2), blocks, lhsTable, subsystem_rule, extraSupport);
-                [srcEqus3, srcID3] = getEqus(startSys, srcHandles(3), blocks, lhsTable, subsystem_rule, extraSupport);
+                [srcEqus1, srcID1] = getEqus(sys, srcHandles(1), blx, table, rule, extraSupport);
+                [srcEqus2, srcID2] = getEqus(sys, srcHandles(2), blx, table, rule, extraSupport);
+                [srcEqus3, srcID3] = getEqus(sys, srcHandles(3), blx, table, rule, extraSupport);
                 
-                criteria_param = get_param(blk, 'Criteria');
-%                 thresh = get_param(blk, 'Threshold');
-                thresh = '~= 0';
-                criteria = strrep(strrep(criteria_param, 'u2 ', ['(' srcID2 ')']), 'Threshold', thresh); % Replace 'u2 ' and 'Threshold'
+                criteria_param = 'u2 ~= 0';
+                criteria = strrep(criteria_param, 'u2 ', ['(' srcID2 ')']); % Replace 'u2 '
                 
                 % Record source equations
-                equ = [handleID ' = ' '(((' criteria ')&(' srcID1 '))|(~(' criteria ')&(' srcID3 ')))']; % srcID1 and 3 may not be logical so this doesn't work
-                neq = [{equ}, srcEqus1, srcEqus2, srcEqus3]; % Equations involved in this block's equations
+                equ = [hID ' = ' '(((' criteria ')&(' srcID1 '))|(~(' criteria ')&(' srcID3 ')))']; % srcID1 and 3 may not be logical so this doesn't work
+                newEquations = [{equ}, srcEqus1, srcEqus2, srcEqus3]; % Equations involved in this block's equations
             otherwise
                 isSupported = false;
                 newEquations = {};
