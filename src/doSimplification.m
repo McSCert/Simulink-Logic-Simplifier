@@ -148,7 +148,7 @@ if strcmpi(generate_mode, 'simplifiedonly')
     for i = 1:length(e_unselected_handles)
         % Delete block and its lines
         delete_block_lines(e_unselected_handles(i))
-        delete_block(e_handle(i))
+        delete_block(e_unselected_handles(i))
     end
 elseif ~strcmpi(generate_mode, 'All')
     error('Unexpected parameter value.')
