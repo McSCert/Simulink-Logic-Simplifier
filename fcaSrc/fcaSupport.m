@@ -71,6 +71,29 @@ function [isSupported, newEquations] = fcaSupport(sys, h, hID, blx, table, rule,
 %                 
 %                 equation = [hID ' = ' srcID];
 %                 newEquations = [{equation}, srcEquations];
+            case 'Switchasda'
+                % TODO make other symbols work with the simplifier for switch
+                % won't work as it requires * and + operators
+                
+                % Get the source ports of the blk (i.e. inports)
+                ph = get_param(blk, 'PortHandles');
+                srcHandles = ph.Inport;
+                
+                assert(length(srcHandles) == 3) % IfElseif requires condition, then case, and else case
+                
+                % Get source equations
+                [srcEqus1, srcID1] = getEqus(startSys, srcHandles(1), blocks, lhsTable, subsystem_rule, extraSupport);
+                [srcEqus2, srcID2] = getEqus(startSys, srcHandles(2), blocks, lhsTable, subsystem_rule, extraSupport);
+                [srcEqus3, srcID3] = getEqus(startSys, srcHandles(3), blocks, lhsTable, subsystem_rule, extraSupport);
+                
+                criteria_param = get_param(blk, 'Criteria');
+%                 thresh = get_param(blk, 'Threshold');
+                thresh = '~= 0';
+                criteria = strrep(strrep(criteria_param, 'u2 ', ['(' srcID2 ')']), 'Threshold', thresh); % Replace 'u2 ' and 'Threshold'
+                
+                % Record source equations
+                equ = [handleID ' = ' '(((' criteria ')&(' srcID1 '))|(~(' criteria ')&(' srcID3 ')))']; % srcID1 and 3 may not be logical so this doesn't work
+                neq = [{equ}, srcEqus1, srcEqus2, srcEqus3]; % Equations involved in this block's equations
             otherwise
                 isSupported = false;
                 newEquations = {};

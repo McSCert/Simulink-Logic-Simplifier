@@ -37,6 +37,7 @@
 	subport2inoutblock.m
 	delete_block_lines.m
 	
+	branching2multiple.m
 	cmp_objs.m
 	getCommonParent.m
 	getParentSystem.m

@@ -160,7 +160,7 @@ e_selected_handles = setdiff(e_handles, e_unselected_handles);
 RemoveSimulinkDuplicates(e_selected_handles, 'DeleteDuplicateBlocks', 'on');
 
 %
-branchingImplicit2multipleImplicit(endSys);
+branching2multiple(endSys, {'From', 'DataStoreRead', 'Constant'});
 
 %
 finalEqus = postSimpleEqus;

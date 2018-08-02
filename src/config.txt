@@ -24,7 +24,7 @@ blocks_to_simplify: selected
 #Acceptable parameter values are:
 #	all (generates all blocks in the system),
 #	simplifiedonly (generates only blocks that are being simplified i.e. the same set as chosed by BLOCKS_TO_SIMPLIFY)
-generate_mode: simplifiedonly
+generate_mode: all
 
 #EXTRA_SUPPORT_FUNCTION Indicates a function to use to generate expressions for 
 #	cases beyond what is supported by the default tool. Certain companies with a 
