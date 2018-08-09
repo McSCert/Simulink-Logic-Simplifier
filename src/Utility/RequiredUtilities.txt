@@ -1,4 +1,20 @@
 .../tools/Simulink/Tools/Utility/
+	Bounds/
+		annotationBounds.m
+		blockBounds.m
+		bounds_of_sim_objects.m
+		lineBounds.m
+		portBounds.m
+	
+	DataflowTracing/
+		getDstPorts.m
+		getDsts.m
+		getPorts.m
+		getSrcPorts.m
+		getSrcs.m
+		inoutblock2subport.m
+		subport2inoutblock.m
+	
 	FindingConnectedBlocks/
 		findDataStoreMemory.m
 		findFromsInScope.m
@@ -9,35 +25,35 @@
 		findVisibilityTag.m
 		findWritesInScope.m
 
+	GetCurrentFunctions/
+		gcbs.m
+		gcls.m
+	
+	InputHandling/
+		inputToCell.m
+		inputToNumeric.m
+	
 	PositionUtil/
-		alignPorts.m
 		branchToPort.m
 		connectBlocks.m
 		connectPorts.m
 		copy_block.m
 		move_block.m
 		moveToPort.m
+		Alignment/
+			alignPorts.m
 		
 	TextDimensions/
 		blockStringDims.m
 		getBlockTextWidth.m
 		getTextDims.m
-
-	find_in_models.m
-	fulfillPorts.m
-	gcbs.m
-	gcls.m
-	getDstPorts.m
-	getDsts.m
-	getPorts.m
-	getSrcPorts.m
-	getSrcs.m
-	inoutblock2subport.m
-	new_system_makenameunique.m
-	subport2inoutblock.m
-	delete_block_lines.m
 	
 	branching2multiple.m
 	cmp_objs.m
+	delete_block_lines.m
+	find_in_models.m
+	fulfillPorts.m
 	getCommonParent.m
 	getParentSystem.m
+	new_system_makenameunique.m
+	

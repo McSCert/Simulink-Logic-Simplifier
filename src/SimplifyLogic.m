@@ -72,31 +72,31 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
     end
     [newEqu, oldEqu] = doSimplification(simplificationInput{:});
     
-    % Delete (or don't delete) unused
-    if strcmp(DELETE_UNUSED,'on')
-        % Delete blocks in the top-level system that don't contribute to output
-        topsysBlocks = find_system(logicSys,'FindAll','on','SearchDepth',1,'type','block'); % Doesn't delete blocks within SubSystems
-        deleteIfNoOut(topsysBlocks, true);
-    elseif strcmp(DELETE_UNUSED,'off')
-        % Do nothing
-    else
-        error(['Error in ' mfilename ', DELETE_UNUSED should be ''on'' or ''off''.']);
-    end
-    
-    %Fix the layout
-    automatic_layout(getfullname(logicSys))
+%     % Delete (or don't delete) unused
+%     if strcmp(DELETE_UNUSED,'on')
+%         % Delete blocks in the top-level system that don't contribute to output
+%         topsysBlocks = find_system(logicSys,'FindAll','on','SearchDepth',1,'type','block'); % Doesn't delete blocks within SubSystems
+%         deleteIfNoOut(topsysBlocks, true);
+%     elseif strcmp(DELETE_UNUSED,'off')
+%         % Do nothing
+%     else
+%         error(['Error in ' mfilename ', DELETE_UNUSED should be ''on'' or ''off''.']);
+%     end
+%     
+%     %Fix the layout
+%     automatic_layout(getfullname(logicSys))
     
     %Zoom on new system
     set_param(getfullname(logicSys), 'Zoomfactor', '100');
     
-    if ~strcmp(SUBSYSTEM_RULE, 'blackbox')
-        % Do layout and zoom on SubSystems as well
-        subsystems = find_system(logicSys, 'BlockType', 'SubSystem', 'Mask', 'off');
-        for i = 1:length(subsystems)
-            automatic_layout(getfullname(subsystems(i)));
-            set_param(getfullname(subsystems(i)), 'Zoomfactor', '100');
-        end
-    end
+%     if ~strcmp(SUBSYSTEM_RULE, 'blackbox')
+%         % Do layout and zoom on SubSystems as well
+%         subsystems = find_system(logicSys, 'BlockType', 'SubSystem', 'Mask', 'off');
+%         for i = 1:length(subsystems)
+%             automatic_layout(getfullname(subsystems(i)));
+%             set_param(getfullname(subsystems(i)), 'Zoomfactor', '100');
+%         end
+%     end
     
     % Save the resulting model - DO NOT MODIFY IT BELOW THIS
     startDir = pwd;
@@ -237,7 +237,7 @@ function automatic_layout(sys)
     try
         AutoLayoutSys(sys);
     catch ME
-        warning(['Error occurred in Autolayout. ' ...
+        warning(['Error occurred in AutoLayout. ' ...
             mfilename ' continuing without automatic layout at ' sys ...
             '. The error message follows:' char(10) getReport(ME)])
     end

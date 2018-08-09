@@ -157,72 +157,93 @@ end
 %
 e_handles = find_system(endSys, 'SearchDepth', 1, 'FindAll', 'on', 'Type', 'Block');
 e_selected_handles = setdiff(e_handles, e_unselected_handles);
-RemoveSimulinkDuplicates(e_selected_handles, 'DeleteDuplicateBlocks', 'on');
+removedBlocks = RemoveSimulinkDuplicates(e_selected_handles, 'DeleteDuplicateBlocks', 'on');
+e_selected_handles = setdiff(e_selected_handles, removedBlocks);
 
 %
-branching2multiple(endSys, {'From', 'DataStoreRead', 'Constant'});
+addedBlocks = branching2multiple(e_selected_handles, {'From', 'DataStoreRead', 'Constant'});
+e_selected_handles = union(e_selected_handles, addedBlocks);
 
 %
 finalEqus = postSimpleEqus;
 
+% Auto Layout the simplified blocks
+automatic_layout(e_selected_handles, inputToCell(blocks))
+
+% Select simplified blocks
+for i = 1:length(e_selected_handles)
+    set_param(e_selected_handles(i), 'Selected', 'on')
+end
+
+end
+
+function automatic_layout(objs, old_objs)
+    startBounds = bounds_of_sim_objects(old_objs);
+    try
+        AutoLayout(objs, 'LayoutStartBounds', startBounds, 'ShiftAll', 'on');
+    catch ME
+        warning(['Error occurred in AutoLayout. ' ...
+            mfilename ' continuing without automatic layout' ...
+            '. The error message follows:' char(10) getReport(ME)])
+    end
 end
 
 function atomics = copySystemInports(startSys, endSys, atomics, predicates)
-inports = find_system(startSys, 'SearchDepth', 1, 'BlockType', 'Inport'); % List of inports in the system
-for i = 1:length(inports)
-    ports = get_param(inports{i}, 'PortHandles');
-    dstPort = ports.Outport;
-    assert(length(dstPort) == 1, 'Unexpected number of outports on block.')
-    
-    assert(strcmp(startSys, get_param(block, 'Parent')))
-    newIn = copy_block(inports{i}, endSys);
-    
-    if isKey(predicates, dstPort)
-        equationID = predicates(dstPort); % ID used to refer to this block in equations
-        atomics(equationID) = newIn;
-    end % else the inport isn't used
-end
+    inports = find_system(startSys, 'SearchDepth', 1, 'BlockType', 'Inport'); % List of inports in the system
+    for i = 1:length(inports)
+        ports = get_param(inports{i}, 'PortHandles');
+        dstPort = ports.Outport;
+        assert(length(dstPort) == 1, 'Unexpected number of outports on block.')
+        
+        assert(strcmp(startSys, get_param(block, 'Parent')))
+        newIn = copy_block(inports{i}, endSys);
+        
+        if isKey(predicates, dstPort)
+            equationID = predicates(dstPort); % ID used to refer to this block in equations
+            atomics(equationID) = newIn;
+        end % else the inport isn't used
+    end
 end
 
 function atomics = copySystemSubSystems(startSys, endSys, atomics, predicates)
-subsystems = find_system(startSys, 'SearchDepth', 1, 'BlockType', 'SubSystem', 'Parent', startSys); % List of SubSystems in the system
-for i = 1:length(subsystems)
-    newBlock = regexprep(subsystems{i},['^' startSys], endSys, 'ONCE');
-    newSub = add_block(subsystems{i}, newBlock);
-    
-    oldSubOutports = get_param(subsystems{i}, 'PortHandles');
-    oldSubOutports = oldSubOutports.Outport;
-    
-    subOutports = get_param(newSub, 'PortHandles');
-    subOutports = subOutports.Outport;
-    
-    assert(length(oldSubOutports) == length(subOutports))
-    for j = 1:length(subOutports)
-        if isKey(predicates, oldSubOutports(j))
-            equationID = predicates(oldSubOutports(j));
-            atomics(equationID) = subOutports(j);
+    subsystems = find_system(startSys, 'SearchDepth', 1, 'BlockType', 'SubSystem', 'Parent', startSys); % List of SubSystems in the system
+    for i = 1:length(subsystems)
+        newBlock = regexprep(subsystems{i},['^' startSys], endSys, 'ONCE');
+        newSub = add_block(subsystems{i}, newBlock);
+        
+        oldSubOutports = get_param(subsystems{i}, 'PortHandles');
+        oldSubOutports = oldSubOutports.Outport;
+        
+        subOutports = get_param(newSub, 'PortHandles');
+        subOutports = subOutports.Outport;
+        
+        assert(length(oldSubOutports) == length(subOutports))
+        for j = 1:length(subOutports)
+            if isKey(predicates, oldSubOutports(j))
+                equationID = predicates(oldSubOutports(j));
+                atomics(equationID) = subOutports(j);
+            end
         end
     end
-end
 end
 
 function atomics = copyBlackBoxes(startSys, endSys, atomics, predicates, blackBoxes)
-for i = 1:length(blackBoxes)
-    newBlock = regexprep(blackBoxes{i},['^' startSys], endSys, 'ONCE');
-    newBB = add_block(blackBoxes{i}, newBlock);
-    
-    oldBBOutports = get_param(blackBoxes{i}, 'PortHandles');
-    oldBBOutports = oldBBOutports.Outport;
-    
-    BBOutports = get_param(newBB, 'PortHandles');
-    BBOutports = BBOutports.Outport;
-    
-    assert(length(oldBBOutports) == length(BBOutports))
-    for j = 1:length(BBOutports)
-        if isKey(predicates, oldBBOutports(j))
-            equationID = predicates(oldBBOutports(j));
-            atomics(equationID) = BBOutports(j);
+    for i = 1:length(blackBoxes)
+        newBlock = regexprep(blackBoxes{i},['^' startSys], endSys, 'ONCE');
+        newBB = add_block(blackBoxes{i}, newBlock);
+        
+        oldBBOutports = get_param(blackBoxes{i}, 'PortHandles');
+        oldBBOutports = oldBBOutports.Outport;
+        
+        BBOutports = get_param(newBB, 'PortHandles');
+        BBOutports = BBOutports.Outport;
+        
+        assert(length(oldBBOutports) == length(BBOutports))
+        for j = 1:length(BBOutports)
+            if isKey(predicates, oldBBOutports(j))
+                equationID = predicates(oldBBOutports(j));
+                atomics(equationID) = BBOutports(j);
+            end
         end
     end
-end
 end
