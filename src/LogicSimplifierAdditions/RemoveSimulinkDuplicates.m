@@ -1,4 +1,4 @@
-function RemoveSimulinkDuplicates(blocks, varargin)
+function duplicates = RemoveSimulinkDuplicates(blocks, varargin)
     % REMOVESIMULINKDUPLICATES For blocks within a common parent system, if
     % a block was copied when its outputs could have been branched, then
     % automatically switch to branching instead.
@@ -18,6 +18,11 @@ function RemoveSimulinkDuplicates(blocks, varargin)
     %               duplicates of another block.
     %           'off' - Deletes lines connecting to blocks that are
     %               duplicates of another block.
+    %
+    % Output:
+    %   duplicates  Vector of block handles that were marked as duplicates
+    %               to delete or that were deleted because they were a
+    %               duplicate.
     
     % Handle parameter-value pairs
     DeleteDuplicateBlocks = 'on';
@@ -41,6 +46,7 @@ function RemoveSimulinkDuplicates(blocks, varargin)
     blocks = inputToNumeric(blocks);
     
     %%
+    duplicates = [];
     while ~isempty(blocks)
         %%
         % Get the current block
@@ -58,6 +64,9 @@ function RemoveSimulinkDuplicates(blocks, varargin)
         blocks = setdiff(blocks, block);
         
         %%
+        duplicates = [duplicates, deletedBlocks]; % duplicates is a complete list of the deletedBlocks returned by removeDuplicates
+        
+        %%
         % Note: we know this will terminate because on a given iteration
         % the blocks variable either decreased in size or at least one
         % block was deleted (or just had its lines removed) and can never
@@ -68,9 +77,11 @@ end
 function [deletedBlocks, retryBlocks] = removeDuplicates(block, DeleteDuplicateBlocks)
     %
     % Inputs:
+    %   block   A Simulink block handle.
     %
     % Output:
-    %   Vector of deleted block handles
+    %   deletedBlocks   Vector of deleted block handles (or blocks that
+    %                   would be deleted if DeleteDuplicateBlocks is 'on').
     
     %%
     % for all input ports
@@ -127,7 +138,7 @@ function [deletedBlocks, retryBlocks] = removeDuplicates(block, DeleteDuplicateB
                 deletedBlocks(end+1) = current_commmon_block;
                 delete_block(current_commmon_block);
             case 'off'
-                % Skip
+                deletedBlocks(end+1) = current_commmon_block; % This block can be considered deleted
             otherwise
                 error('Unexpected parameter value.')
         end
@@ -348,6 +359,9 @@ end
 
 function bool = paramsMatch(block1, block2)
     % 
+    % true if parameters of the 2 blocks match sufficiently that one can
+    % represent the internal logic of both.
+    
     block1 = get_param(block1, 'Handle');
     block2 = get_param(block2, 'Handle');
     
