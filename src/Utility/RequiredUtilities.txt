@@ -33,6 +33,9 @@
 		inputToCell.m
 		inputToNumeric.m
 	
+	Maps/
+		BiMap.m
+	
 	PositionUtil/
 		branchToPort.m
 		connectBlocks.m
