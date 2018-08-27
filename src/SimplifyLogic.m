@@ -20,11 +20,10 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
     %                   the simplification process.
     
     % Constants:
-    DELETE_UNUSED = getLogicSimplifierConfig('delete_unused', 'off'); % Indicates whether or not to delete blocks which are unused in the final model
     SUBSYSTEM_RULE = getLogicSimplifierConfig('subsystem_rule', 'blackbox'); % Indicates how to address subsystems in the simplification process
-    EXTRA_SUPPORT_FUNCTION = getLogicSimplifierConfig('extra_support_function', '');
-    GENERATE_MODE = getLogicSimplifierConfig('generate_mode', 'All'); % Indicates mode of generation (generate everything or only selected things)
     BLOCKS_TO_SIMPLIFY = getLogicSimplifierConfig('blocks_to_simplify', 'selected'); % Indicates which set of blocks to simplify
+    GENERATE_MODE = getLogicSimplifierConfig('generate_mode', 'All'); % Indicates mode of generation (generate everything or only selected things)
+    EXTRA_SUPPORT_FUNCTION = getLogicSimplifierConfig('extra_support_function', '');
     
     if nargin == 1
         verify = false;
