@@ -326,7 +326,7 @@ function [newEqus, handleID] = getEqus(startSys, h, blocks, lhsTable, subsystem_
                 neq = getNaryOpEquation(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport, '|');
             case 'RelationalOperator'
                 % Get operator
-                operator = get_param(blk, 'Operator');
+                operator = get_param(blk, 'RelOp');
                 
                 if any(strcmp(operator, {'~=', '==', '<=', '>=', '<', '>'}))
                     sym = operator;
@@ -417,7 +417,7 @@ function [newEqus, handleID] = getEqus(startSys, h, blocks, lhsTable, subsystem_
                 end
                 
                 % Get operator
-                operator = get_param(blk, 'Operator');
+                operator = get_param(blk, 'RelOp');
                 
                 if any(strcmp(operator, {'~=', '==', '<=', '>=', '<', '>'}))
                     sym = operator;
