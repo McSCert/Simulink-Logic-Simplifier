@@ -1,17 +1,12 @@
 %% Register custom menu function to beginning of Simulink Editor's context menu
 function sl_customization(cm)
-	cm.addCustomMenuFcn('Simulink:PreContextMenu', @getMcMasterTool);
+    cm.addCustomMenuFcn('Simulink:PreContextMenu', @getMcMasterTool);
 end
 
 %% Define custom menu function
 function schemaFcns = getMcMasterTool(callbackInfo)
-
-    % Check that at least 1 block is selected
-    if ~isempty(gcbs)
-        schemaFcns = {@LogicSimplifier};
-    else
-        schemaFcns = {};
-    end
+    
+    schemaFcns = {@LogicSimplifier};
 end
 
 %% Define first item
@@ -27,6 +22,15 @@ function schema = getSimplify(callbackInfo)
     schema.label = 'Simplify Logic';
     schema.userdata = 'simplifylogic';
     schema.callback = @SimplifyLogicCallback;
+    
+    % Check that at least 1 block is selected or that the tool is run on
+    % unselected blocks.
+    BLOCKS_TO_SIMPLIFY = getLogicSimplifierConfig('blocks_to_simplify', 'selected');
+    if ~isempty(gcbs) || strcmp(BLOCKS_TO_SIMPLIFY, 'unselected')
+        schema.state = 'Enabled';
+    else
+        schema.state = 'Disabled';
+    end
 end
 
 %% Define Simplify Logic With Verify Option
@@ -35,6 +39,15 @@ function schema = getSimplifyWithVerify(callbackInfo)
     schema.label = 'Simplify Logic and Verify Results';
     schema.userdata = 'simplifylogicandverify';
     schema.callback = @SimplifyLogicWithVerifyCallback;
+    
+    % Check that at least 1 block is selected or that the tool is run on
+    % unselected blocks.
+    BLOCKS_TO_SIMPLIFY = getLogicSimplifierConfig('blocks_to_simplify', 'selected');
+    if ~isempty(gcbs) || strcmp(BLOCKS_TO_SIMPLIFY, 'unselected')
+        schema.state = 'Enabled';
+    else
+        schema.state = 'Disabled';
+    end
 end
 
 %% Define Open Logic Simplifier Config Option
@@ -46,22 +59,30 @@ function schema = simplifierConfigMenu(callbackInfo)
 end
 
 function SimplifyLogicCallback(callbackInfo)
-    SimplifyLogic(gcbs);
+    try
+        SimplifyLogic(gcbs);
+    catch ME
+        getReport(ME)
+        rethrow(ME)
+    end
 end
 
 function SimplifyLogicWithVerifyCallback(callbackInfo)
-    verify = true;
-    SimplifyLogic(gcbs, verify);
+    try
+        verify = true;
+        SimplifyLogic(gcbs, verify);
+    catch ME
+        getReport(ME)
+        rethrow(ME)
+    end
 end
 
 function simplifierConfigCallback(callbackInfo)
-% % TODO Open GUI
-%     configGUI;
-
-% Open file
+    % % TODO Open GUI
+    %     configGUI;
+    
+    % Open file
     filePath = mfilename('fullpath');
-    name = mfilename;
-    filePath = filePath(1:end-length(name));
-    fileName = [filePath 'config.txt'];
+    fileName = [fileparts(filePath) '\config.txt'];
     open(fileName);
 end
