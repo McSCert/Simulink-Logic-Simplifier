@@ -39,7 +39,7 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
     origModel = bdroot(blocks{1});
     
     if ~(strcmp(get_param(origModel, 'UnderspecifiedInitializationDetection'), 'Classic'))
-        disp(['Warning: The ' mfilename ' function may result in unexpected results if the ''UnderspecifiedInitializationDetection'' model parameter is not set to ''Classic'', please check the results carefully.'])
+        warning(['The ' mfilename ' function may result in unexpected results if the ''UnderspecifiedInitializationDetection'' model parameter is not set to ''Classic'', please check the results carefully.'])
     end
     
     % Create model for the simplification
@@ -172,6 +172,7 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
             verify_model = ['DefaultModel' '_verify'];
         end
         makeVerificationModel(verify_model, getfullname(copySys), getfullname(vhLogicSys), [startDir '/' resultsDir]);
+        close_system({copySys, vhLogicSys});
     end
 end
 
@@ -180,19 +181,19 @@ function copyMdl = copyModel(dir, model, suffix)
     modelName = getfullname(model);
     origFile = get_param(model, 'FileName');
     
-    copyMdl = [modelName '_' suffix];
+    baseCopyMdl = [modelName '_' suffix];
     
     period_idx = regexp(origFile, '[.]');
     filetype = origFile(period_idx(end):end);
     
-    newFile = [dir, '/', copyMdl, filetype];
+    baseNewFile = [dir, '/', baseCopyMdl, filetype];
     
     % Copy file
     % Note an existing file named the same as newFile will be overwritten.
     % This should be fine as the folder should be one made specifically for
     % logic simplifier results.
-    % Can use exist(newFile,'file') == 4 to check if the file already
-    % exists.
+    newFile = find_available_filename(baseNewFile);
+    [~, copyMdl, ~] = fileparts(newFile);
     copyfile(origFile, newFile);
     
     open_system(copyMdl)
@@ -238,7 +239,7 @@ function automatic_layout(sys)
     catch ME
         warning(['Error occurred in AutoLayout. ' ...
             mfilename ' continuing without automatic layout at ' sys ...
-            '. The error message follows:' char(10) getReport(ME)])
+            '. The error message follows:' newline getReport(ME)])
     end
 end
 
