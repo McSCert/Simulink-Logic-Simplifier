@@ -1,13 +1,14 @@
-#SUBSYSTEM_RULE Indicates how to address subsystems in the simplification process.
+#SUBSYSTEM_RULE Indicates how to address subsystems in the simplification 
+#process.
 #Default is blackbox.
 #
 #Acceptable parameter values are:
-#	full-simplify (contents of subsystems will be integrated into the simplification
-#		of other blocks),
-#	part-simplify (contents of subsystems will be simplified, but other blocks will
-#		see them as a black box for the sake of their simplification), 
-#	blackbox (subsystems will not be modified during simplification and there 
-#		output will not be assumed)
+#	full-simplify (contents of subsystems will be integrated into the 
+#		simplification of other blocks),
+#	part-simplify (contents of subsystems will be simplified, but other blocks 
+#		will see them as a black-boxes for the sake of their simplification), 
+#	blackbox (subsystems will not be modified during simplification and their 
+#		output will not be assumed).
 subsystem_rule: blackbox
 
 #BLOCKS_TO_SIMPLIFY Indicates which blocks to try to simplify.
@@ -15,7 +16,8 @@ subsystem_rule: blackbox
 #
 #Acceptable parameter values are:
 #	selected (simplifies selected blocks),
-#	unselected (simplifies blocks in the system except the ones that are selected)
+#	unselected (simplifies blocks in the system except the ones that are 
+#		selected).
 blocks_to_simplify: selected
 
 #GENERATE_MODE Indicates which blocks to generate in the simplification.
@@ -23,12 +25,13 @@ blocks_to_simplify: selected
 #
 #Acceptable parameter values are:
 #	all (generates all blocks in the system),
-#	simplifiedonly (generates only blocks that are being simplified i.e. the same set as chosed by BLOCKS_TO_SIMPLIFY)
+#	simplifiedonly (generates only blocks that are being simplified i.e. the 
+#		same set as chosen by BLOCKS_TO_SIMPLIFY).
 generate_mode: all
 
-#EXTRA_SUPPORT_FUNCTION Indicates a function to use to generate expressions for 
-#	cases beyond what is supported by the default tool. Certain companies with a 
-#	wide variety of custom blocks may desire this functionality.
+#EXTRA_SUPPORT_FUNCTION Indicates a function to use to generate expressions for
+#	cases beyond what is supported by the default tool. Certain companies with 
+#	a wide variety of custom blocks may desire this functionality.
 #Default is nothing (leave the space blank)
 #
 #Acceptable parameter values:
@@ -36,25 +39,3 @@ generate_mode: all
 #	search path. When left blank defaultExtraSupport.m will be used and this
 #	corresponds with no added support from the main tool.
 extra_support_function: fcaSupport
-
-## THE REMAINING RULES NEED TO BE TESTED AGAIN, MAJOR CHANGES HAVE OCCURRED TO THE TOOL
-
-#DELETE_UNUSED Indicates whether or not to delete blocks which are unused in the
-#	final model.
-#Default is off.
-#
-#Acceptable parameter values are:
-#	on (blocks will be deleted if not a SubSystem and all of its outports are 
-#		unused, one way this could occur is if the original system has an Inport
-#		which feeds its signal into an if block that doesn't depend on that signal), 
-#	off (blocks that would have been deleted are left in the system for the user to
-#		decide what to do)
-delete_unused: off
-
-#GENERATED_BLOCK_REUSE_RULE
-#Default is reuse.
-#
-#Acceptable parameter values are:
-#	reuse (involves using branching connections if generated blocks are to be used more than once)
-#	single-use (involves generating additional blocks with the same signal as other generated blocks)
-generated_block_reuse_rule: reuse
