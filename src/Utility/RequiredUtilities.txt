@@ -1,3 +1,4 @@
+Require all of AutoLayout and its utilities. Also:
 .../tools/Simulink/Tools/Utility/
 	Bounds/
 		annotationBounds.m
@@ -5,9 +6,9 @@
 		bounds_of_sim_objects.m
 		lineBounds.m
 		portBounds.m
+		separate_objects_by_type.m
 	
 	DataflowTracing/
-		getDstPorts.m
 		getDsts.m
 		getPorts.m
 		getSrcPorts.m
@@ -28,6 +29,7 @@
 	GetCurrentFunctions/
 		gcbs.m
 		gcls.m
+		gcos.m
 	
 	InputHandling/
 		inputToCell.m
@@ -36,27 +38,33 @@
 	Maps/
 		BiMap.m
 	
+	matlab-strsplit/
+		strsplit.m
+	
 	PositionUtil/
 		branchToPort.m
 		connectBlocks.m
 		connectPorts.m
 		copy_block.m
-		move_block.m
 		moveToPort.m
 		Alignment/
 			alignPorts.m
+			facingPorts.m
+			getPortOrientation.m
 		
 	TextDimensions/
 		blockStringDims.m
 		getBlockTextWidth.m
 		getTextDims.m
 	
+	addCells2Map.m
 	branching2multiple.m
-	cmp_objs.m
+	current_function.m
 	delete_block_lines.m
+	find_available_filename.m
 	find_in_models.m
 	fulfillPorts.m
-	getCommonParent.m
 	getParentSystem.m
+	isBranching
 	new_system_makenameunique.m
 	
