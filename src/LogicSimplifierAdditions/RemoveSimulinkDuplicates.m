@@ -55,13 +55,14 @@ function duplicates = RemoveSimulinkDuplicates(blocks, varargin)
         %% Remove duplicates of current block
         [deletedBlocks, retryBlocks] = removeDuplicates(block, DeleteDuplicateBlocks);
         % remove deleted blocks from the loop
-        blocks = setdiff(blocks,deletedBlocks);
-        blocks = union(retryBlocks, blocks);
+        tmpBlocks1 = blocks;
+        tmpBlocks2 = setdiff(tmpBlocks1,deletedBlocks);
+        tmpBlocks3 = union(retryBlocks, tmpBlocks2);
         
         %%
         % remove the current block so as to not repeat it and to help
         % ensure termination
-        blocks = setdiff(blocks, block);
+        blocks = setdiff(tmpBlocks3, block);
         
         %%
         duplicates = [duplicates, deletedBlocks]; % duplicates is a complete list of the deletedBlocks returned by removeDuplicates
@@ -148,7 +149,7 @@ function [deletedBlocks, retryBlocks] = removeDuplicates(block, DeleteDuplicateB
         % check if the block is unused now that the line was deleted
         switch DeleteDuplicateBlocks
             case 'on'
-                deleteUnusedSource(src_oports); % Must call after deleting lines
+                deletedBlocks = [deletedBlocks, deleteUnusedSource(src_oports)]; % Must call after deleting lines
             case 'off'
                 % Skip
             otherwise
@@ -203,16 +204,20 @@ function duplicateSignals(block, opNum2dstPorts)
     end
 end
 
-function deleteUnusedSource(src_oports)
+function deletedBlocks = deleteUnusedSource(src_oports)
+    % delete blocks which don't use any of the given ports
+    
+    deletedBlocks = [];
     for i = 1:length(src_oports)
         % if current outport is unused,
         %   then assert it is the only outport on its block
         %   and delete that block
         if get_param(src_oports(i),'line') == -1 % port has no line
-            block = get_param(src_oports(i), 'Parent');
+            block = get_param(get_param(src_oports(i), 'Parent'), 'Handle');
             block_oports = getPorts(block, 'Out');
             assert(length(block_oports) == 1, 'Something went wrong.') % We should only end up calling this function if this would hold
             delete_block(block)
+            deletedBlocks(end+1) = block;
         end
     end
 end
