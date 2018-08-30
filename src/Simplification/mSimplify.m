@@ -11,7 +11,14 @@ function newExpr = mSimplify(expr)
 
     % MATLAB simplify
     identifiers = getIdentifiers(newExpr);
-    eval(['syms ' identifiers]);
+    identifiersArray = strsplit(identifiers, ' ');
+    for i = 1:length(identifiersArray)
+        id = identifiersArray{i};
+        if ~isempty(id)
+            eval([id ' = sym(id);']);
+        end
+    end
+    
     newExpr = eval(newExpr); % type will change
     if isa(newExpr, 'double')
         newExpr = num2str(newExpr);
