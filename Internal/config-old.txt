@@ -1,0 +1,21 @@
+## THE REMAINING RULES NEED TO BE TESTED AGAIN, MAJOR CHANGES HAVE OCCURRED TO THE TOOL
+
+#DELETE_UNUSED Indicates whether or not to delete blocks which are unused in the
+#	final model.
+#Default is off.
+#
+#Acceptable parameter values are:
+#	on (blocks will be deleted if not a SubSystem and all of its outports are 
+#		unused, one way this could occur is if the original system has an Inport
+#		which feeds its signal into an if block that doesn't depend on that signal), 
+#	off (blocks that would have been deleted are left in the system for the user to
+#		decide what to do)
+delete_unused: off
+
+#GENERATED_BLOCK_REUSE_RULE
+#Default is reuse.
+#
+#Acceptable parameter values are:
+#	reuse (involves using branching connections if generated blocks are to be used more than once)
+#	single-use (involves generating additional blocks with the same signal as other generated blocks)
+generated_block_reuse_rule: reuse
