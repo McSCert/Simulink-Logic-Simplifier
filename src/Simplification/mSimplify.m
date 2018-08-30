@@ -11,7 +11,11 @@ function newExpr = mSimplify(expr)
 
     % MATLAB simplify
     identifiers = getIdentifiers(newExpr);
-    identifiersArray = strsplit(identifiers, ' ');
+    if ~isempty(identifiers)
+        identifiersArray = strsplit(identifiers, ' ');
+    else
+        identifiersArray = {};
+    end
     for i = 1:length(identifiersArray)
         id = identifiersArray{i};
         if ~isempty(id)
