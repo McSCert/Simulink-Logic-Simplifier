@@ -64,6 +64,7 @@ Require all of AutoLayout and its utilities. Also:
 	find_available_filename.m
 	find_in_models.m
 	fulfillPorts.m
+	getDepthFromSys.m
 	getParentSystem.m
 	isBranching
 	new_system_makenameunique.m
