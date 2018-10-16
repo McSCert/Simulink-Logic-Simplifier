@@ -1,8 +1,7 @@
-function fulfillPorts(ports)
-% FULFILLPORTS For any unconnected ports, creates a dummy block to connect it to 
-% and does so. Outports are connected to terminators and Inports are connected
-% to grounds. Unconnected ports are probably indicative of a problem so this 
-% function shouldn't be used haphazardly as it may hide problems.
+function handles = fulfillPorts(ports)
+% FULFILLPORTS For unconnected ports, creates a Ground or Terminator block
+%   and connects to it with a signal line. Outports are connected to Terminators
+%   and Inports are connected to Grounds. Already connected ports are skipped.
 %
 %   Inputs:
 %       ports   Vector of port handles.
@@ -10,20 +9,21 @@ function fulfillPorts(ports)
 %   Outports:
 %       N/A
 
+    handles = ones(size(ports)) * -1; % -1 if no terminator/ground added
     for i = 1:length(ports)
-        
+
         % Find line if it exists
         line = get_param(ports(i), 'Line');
-        if line ~= -1        
+        if line ~= -1
             hasLine = true;
         else
             hasLine = false;
         end
-        
+
         % Get the port's system
         portSys = get_param(get_param(ports(i), 'Parent'), 'Parent');
-        
-        if strcmp(get_param(ports(i),'PortType'),'outport')
+
+        if strcmp(get_param(ports(i), 'PortType'), 'outport')
             % Find line destination if it exists
             if hasLine
                 if get_param(line,'DstPortHandle') ~= -1
@@ -34,16 +34,17 @@ function fulfillPorts(ports)
             else
                 hasDst = false;
             end
-            
+
             if ~hasDst
                 % Create terminator
                 bHandle = add_block('built-in/Terminator', ...
                     [portSys '/generated_terminator'], 'MakeNameUnique', 'on');
-                
+                handles(i) = bHandle;
+
                 % Get the terminator's inport
                 pHandles = get_param(bHandle, 'PortHandles');
                 inHandle = pHandles.Inport;
-                
+
                 % Connect terminator to ports(i)
                 if hasLine
                     delete(line)
@@ -51,10 +52,10 @@ function fulfillPorts(ports)
                 add_line(portSys, ports(i), inHandle);
             end
 
-        else
+        else % Inport, Trigger
             % Find line source if it exists
             if hasLine
-                if get_param(line,'SrcPortHandle') ~= -1
+                if get_param(line, 'SrcPortHandle') ~= -1
                     hasSrc = true;
                 else
                     hasSrc = false;
@@ -62,16 +63,17 @@ function fulfillPorts(ports)
             else
                 hasSrc = false;
             end
-            
+
             if ~hasSrc
                 % Create ground
                 bHandle = add_block('built-in/Ground', ...
                     [portSys '/generated_ground'], 'MakeNameUnique', 'on');
-                
+                 handles(i) = bHandle;
+
                 % Get the ground's inport
                 pHandles = get_param(bHandle, 'PortHandles');
                 outHandle = pHandles.Outport;
-                
+
                 % Connect ground to ports(i)
                 if hasLine
                     delete(line)
