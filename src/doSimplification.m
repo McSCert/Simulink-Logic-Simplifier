@@ -16,9 +16,10 @@ function [finalEqus, baseEqus] = doSimplification(sys, blocks, varargin)
     extraSupportFun = @defaultExtraSupport;
     generate_mode = 'All';
     blocks_to_simplify = 'selected';
+    startSys = ''; % Will always be updated before first use
     assert(mod(length(varargin),2) == 0, 'Even number of varargin arguments expected.')
     for i = 1:2:length(varargin)
-        param = varargin{i};
+        param = lower(varargin{i});
         value = varargin{i+1};
         
         switch param
@@ -36,14 +37,22 @@ function [finalEqus, baseEqus] = doSimplification(sys, blocks, varargin)
                 assert(any(strcmpi(value, {'Selected', 'Unselected'})), ...
                     'Unexpected parameter value.')
                 blocks_to_simplify = value;
+            case 'startsys'
+                assert(ischar(value), 'Unexpected parameter value.')
+                startSys = value; % Gets reset unless blocks is empty
             otherwise
                 error(['Error in ' mfilename ' unexpected Name for Name-Value pair input argument.'])
         end
     end
     
     endSys = getfullname(sys);
-    assert(all(strcmp(get_param(blocks{1}, 'Parent'), get_param(blocks,'Parent'))), ['Error in ' mfilename ', all blocks must be in the same system.'])
-    startSys = get_param(blocks{1}, 'Parent');
+    if ~isempty(blocks)
+        assert(all(strcmp(get_param(blocks{1}, 'Parent'), get_param(blocks,'Parent'))), ['Error in ' mfilename ', all blocks must be in the same system.'])
+        startSys = get_param(blocks{1}, 'Parent');
+    else
+        assert(~strcmp(startSys, ''), ['Error in ' mfilename ', must pass startSys parameter if blocks argument is empty.'])
+    end
+        
     
     % Keep a list of blocks/ports that we have equations for
     %   Note: handles are 'lookup' keys, and string identifiers are 'lookdown' keys
