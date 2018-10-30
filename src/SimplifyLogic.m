@@ -12,6 +12,7 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
     %       varargin{1} Bool indicating whether or not to verify the results.
     %                   Verifying involves creating an additional model within the
     %                   'Logic_Simplifier_Results' folder.
+    %       varargin{2} Char array naming the parent system of the blocks.
     %
     %   Outputs:
     %       oldEqu      Cell array of equations found for the blocks as
@@ -24,19 +25,24 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
     BLOCKS_TO_SIMPLIFY = getLogicSimplifierConfig('blocks_to_simplify', 'selected'); % Indicates which set of blocks to simplify
     GENERATE_MODE = getLogicSimplifierConfig('generate_mode', 'All'); % Indicates mode of generation (generate everything or only selected things)
     EXTRA_SUPPORT_FUNCTION = getLogicSimplifierConfig('extra_support_function', '');
+    HANDLE_UNUSED = getLogicSimplifierConfig('handle_unused', 'do-nothing');
     
+    %
+    assert(~isempty(blocks) || nargin == 3, ...
+        ['Error in ' mfilename ', 1st argument cannot be empty unless both optional arguments are given.']) % Otherwise the original model can't be determined
     if nargin == 1
         verify = false;
+        parent = get_param(blocks{1}, 'parent'); % Get name of system the blocks are in
     elseif nargin == 2
         verify = varargin{1};
+        parent = get_param(blocks{1}, 'parent'); % Get name of system the blocks are in
+    elseif nargin == 3
+        verify = varargin{1};
+        parent = varargin{2};
     else
-        error(['Error in ' mfilename ', 1 or 2 input arguments expected.']);
+        error(['Error in ' mfilename ', 1 or 2 or 3 input arguments expected.']);
     end
-    
-    assert(~isempty(blocks), ['Error in ' mfilename ', 1st argument cannot be empty.'])
-    
-    parent = get_param(blocks{1}, 'parent'); % Get name of system the blocks are in
-    origModel = bdroot(blocks{1});
+    origModel = bdroot(parent);
     
     if ~(strcmp(get_param(origModel, 'UnderspecifiedInitializationDetection'), 'Classic'))
         warning(['The ' mfilename ' function may result in unexpected results if the ''UnderspecifiedInitializationDetection'' model parameter is not set to ''Classic'', please check the results carefully.'])
@@ -66,24 +72,13 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
     % Perform the simplification and generate the simplification in logicSys
     simplificationInput = {logicSys, blocks, 'subsystem_rule', SUBSYSTEM_RULE, ...
         'generate_mode', GENERATE_MODE, 'blocks_to_simplify', BLOCKS_TO_SIMPLIFY};
+    if isempty(blocks)
+        simplificationInput = [simplificationInput, {'startSys'}, {parent}];
+    end
     if ~strcmp('', EXTRA_SUPPORT_FUNCTION)
         simplificationInput = [simplificationInput, {'extra_support_function'}, {EXTRA_SUPPORT_FUNCTION}];
     end
     [newEqu, oldEqu] = doSimplification(simplificationInput{:});
-    
-%     % Delete (or don't delete) unused
-%     if strcmp(DELETE_UNUSED,'on')
-%         % Delete blocks in the top-level system that don't contribute to output
-%         topsysBlocks = find_system(logicSys,'FindAll','on','SearchDepth',1,'type','block'); % Doesn't delete blocks within SubSystems
-%         deleteIfNoOut(topsysBlocks, true);
-%     elseif strcmp(DELETE_UNUSED,'off')
-%         % Do nothing
-%     else
-%         error(['Error in ' mfilename ', DELETE_UNUSED should be ''on'' or ''off''.']);
-%     end
-%     
-%     %Fix the layout
-%     automatic_layout(getfullname(logicSys))
     
     %Zoom on new system
     set_param(getfullname(logicSys), 'Zoomfactor', '100');
@@ -172,8 +167,24 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
             verify_model = ['DefaultModel' '_verify'];
         end
         makeVerificationModel(verify_model, getfullname(copySys), getfullname(vhLogicSys), [startDir '/' resultsDir]);
-        close_system({copySys, vhLogicSys});
+        close_system({getfullname(copySys), vhLogicSys});
     end
+    
+    % Delete (or don't delete) unused
+    if strcmp(HANDLE_UNUSED, 'delete')
+        % Delete blocks in the top-level system that don't contribute to output
+        topsysBlocks = find_system(logicSys,'FindAll','on','SearchDepth',1,'type','block'); % Doesn't delete blocks within SubSystems
+        deleteIfNoOut(topsysBlocks, true);
+    elseif strcmp(HANDLE_UNUSED,'do-nothing')
+        % Do nothing
+    elseif strcmp(HANDLE_UNUSED,'ground-and-terminate')
+        groundAndTerminatePorts(logicSys, SUBSYSTEM_RULE)
+    else
+        error(['Error in ' mfilename ', DELETE_UNUSED should be ''on'' or ''off''.']);
+    end
+    
+%     %Fix the layout
+%     automatic_layout(getfullname(logicSys))
 end
 
 function copyMdl = copyModel(dir, model, suffix)
