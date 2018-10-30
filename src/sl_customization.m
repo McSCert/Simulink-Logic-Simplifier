@@ -60,7 +60,9 @@ end
 
 function SimplifyLogicCallback(callbackInfo)
     try
-        SimplifyLogic(gcbs);
+        verify = false;
+        parent = gcs;
+        SimplifyLogic(gcbs, verify, parent);
     catch ME
         getReport(ME)
         rethrow(ME)
