@@ -1,5 +1,5 @@
 #SUBSYSTEM_RULE Indicates how to address subsystems in the simplification 
-#process.
+#   process.
 #Default is blackbox.
 #
 #Acceptable parameter values are:
@@ -39,3 +39,15 @@ generate_mode: all
 #	search path. When left blank defaultExtraSupport.m will be used and this
 #	corresponds with no added support from the main tool.
 extra_support_function: fcaSupport
+
+#HANDLE_UNUSED Indicates how to handle blocks that do not impact output 
+#   (identified as blocks with only unconnected outports).
+#Default is do-nothing
+#
+# Acceptable parameter values are:
+#   do-nothing (unconnected ports are left as-is in the generated model),
+#   delete (delete blocks in the top-level system that don't contribute to 
+#       output),
+#   ground-and-terminate (connects unconnected ports to a Ground or 
+#       Terminator block - this applies to all levels of the generated system).
+handle_unused: do-nothing
