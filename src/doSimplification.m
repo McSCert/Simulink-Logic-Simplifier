@@ -52,7 +52,7 @@ function [finalEqus, baseEqus] = doSimplification(sys, blocks, varargin)
     else
         assert(~strcmp(startSys, ''), ['Error in ' mfilename ', must pass startSys parameter if blocks argument is empty.'])
     end
-        
+    
     
     % Keep a list of blocks/ports that we have equations for
     %   Note: handles are 'lookup' keys, and string identifiers are 'lookdown' keys
@@ -179,6 +179,17 @@ function [finalEqus, baseEqus] = doSimplification(sys, blocks, varargin)
     % Auto Layout the simplified blocks
     automatic_layout(e_selected_handles, inputToCell(blocks))
     
+    % Reorder inputs of Logic blocks, == blocks, and ~= blocks to improve line
+    % routing.
+    logicBlocks = find_blocks(e_selected_handles, 'BlockType', 'Logic');
+    eqBlocks = find_blocks(e_selected_handles, 'BlockType', 'RelationalOperator', 'Operator', '==');
+    neqBlocks = find_blocks(e_selected_handles, 'BlockType', 'RelationalOperator', 'Operator', '~=');
+    commutativeBlocks = union(union(logicBlocks, eqBlocks), neqBlocks);
+    for i = 1:length(commutativeBlocks)
+        ReorderInputs(getfullname(commutativeBlocks(i)))
+    end
+    automatic_layout(e_selected_handles, inputToCell(blocks))
+    
     % Select simplified blocks
     for i = 1:length(e_selected_handles)
         set_param(e_selected_handles(i), 'Selected', 'on')
@@ -253,6 +264,60 @@ function atomics = copyBlackBoxes(startSys, endSys, atomics, predicates, blackBo
                 equationID = predicates(oldBBOutports(j));
                 atomics(equationID) = BBOutports(j);
             end
+        end
+    end
+end
+
+function blocks = find_blocks(allBlocks, varargin)
+    % allBlocks - vector of block handles.
+    % varargin - parameter-value pairs
+    % blocks - blocks in allBlocks satisfying each parameter value pair in
+    %   order (order of parameters is relevant for avoiding errors)
+    
+    allBlocks = inputToNumeric(allBlocks);
+    blocks = [];
+    for i = 1:length(allBlocks)
+        blockPassing = true; % Current status of whether or not a block satisfies the conditions indicated by varargin.
+        for j = 1:2:length(varargin)
+            param = varargin{j};
+            desiredValue = varargin{j+1};
+            value = get_param(allBlocks(i), param);
+            % Check if value is the expected value (converts num to string if
+            % one is a num and the other a string).
+            if isnumeric(value)
+                if isnumeric(desiredValue)
+                    if value ~= desiredValue
+                        blockPassing = false;
+                        break
+                    end
+                elseif ischar(desiredValue)
+                    if ~strcmp(num2str(value), desiredValue)
+                        blockPassing = false;
+                        break
+                    end
+                else
+                    error('Case unhandled.')
+                end
+            elseif ischar(value)
+                if isnumeric(desiredValue)
+                    if ~strcmp(value, num2str(desiredValue))
+                        blockPassing = false;
+                        break
+                    end
+                elseif ischar(desiredValue)
+                    if ~strcmp(value, desiredValue)
+                        blockPassing = false;
+                        break
+                    end
+                else
+                    error('Case unhandled.')
+                end
+            else
+                error('Case unhandled.')
+            end
+        end
+        if blockPassing
+            blocks(end+1) = allBlocks(i);
         end
     end
 end
