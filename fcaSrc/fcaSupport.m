@@ -40,21 +40,28 @@ function [isSupported, newEquations] = fcaSupport(sys, h, hID, blx, table, rule,
                 ph = get_param(blk, 'PortHandles');
                 srcHandles = ph.Inport;
                 
-                assert(length(srcHandles) == 3) % IfElseif requires condition, then case, and else case
-                
-                % Get source equations
-                [srcEqus1, srcID1] = getEqus(sys, srcHandles(1), blx, table, rule, extraSupport);
-                [srcEqus2, srcID2] = getEqus(sys, srcHandles(2), blx, table, rule, extraSupport);
-                [srcEqus3, srcID3] = getEqus(sys, srcHandles(3), blx, table, rule, extraSupport);
-                
-                % Record source equations
-                mult_add_available = false; % This can be made true/removed once * and + are accepted
-                if mult_add_available
-                    equ = [hID ' = ' '(((' srcID1 ')*(' srcID2 '))+(~(' srcID1 ')*(' srcID3 ')))']; % This block/port's equations with respect to its 1st source
+                if length(srcHandles) ~= 3
+                    isSupported = false;
+                    newEquations = {};
                 else
-                    equ = [hID ' = ' '(((' srcID1 ')&(' srcID2 '))|(~(' srcID1 ')&(' srcID3 ')))']; % srcID2 and 3 may not be logical so this doesn't work
+                    % IfElseif only supported with condition, then case,
+                    % and else case (no elseif options accounted for).
+                    
+                    
+                    % Get source equations
+                    [srcEqus1, srcID1] = getEqus(sys, srcHandles(1), blx, table, rule, extraSupport);
+                    [srcEqus2, srcID2] = getEqus(sys, srcHandles(2), blx, table, rule, extraSupport);
+                    [srcEqus3, srcID3] = getEqus(sys, srcHandles(3), blx, table, rule, extraSupport);
+                    
+                    % Record source equations
+                    mult_add_available = false; % This can be made true/removed once * and + are accepted
+                    if mult_add_available
+                        equ = [hID ' = ' '(((' srcID1 ')*(' srcID2 '))+(~(' srcID1 ')*(' srcID3 ')))']; % This block/port's equations with respect to its 1st source
+                    else
+                        equ = [hID ' = ' '(((' srcID1 ')&(' srcID2 '))|(~(' srcID1 ')&(' srcID3 ')))']; % srcID2 and 3 may not be logical so this doesn't work
+                    end
+                    newEquations = [{equ}, srcEqus1, srcEqus2, srcEqus3]; % Equations involved in this block's equations
                 end
-                newEquations = [{equ}, srcEqus1, srcEqus2, srcEqus3]; % Equations involved in this block's equations
 %             case 'Set'
 %                 % Set is a pass through so it's equation is essentially just
 %                 % 'x = y'. This can be modified to be blackbox by simply
