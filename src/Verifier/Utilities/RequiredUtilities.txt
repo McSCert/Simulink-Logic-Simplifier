@@ -1,0 +1,21 @@
+Require all of AutoLayout and its utilities. Also:
+.../tools/Simulink/Tools/Utility/	
+	DataflowTracing/
+		subport2inoutblock.m
+	
+	PositionUtil/
+		connectBlocks.m
+		connectPorts.m
+		moveToPort.m
+		Alignment/
+			alignPorts.m
+			facingPorts.m
+			getPortOrientation.m
+		
+	TextDimensions/
+		blockStringDims.m
+		getBlockTextWidth.m
+		getTextDims.m
+	
+	find_in_models.m
+	
