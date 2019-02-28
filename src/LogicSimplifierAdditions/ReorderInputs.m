@@ -28,7 +28,7 @@ function ReorderInputs(block)
                 if (j == 1)
                     orderArray = [i orderArray];
                 else
-                    orderArray = [orderArray(j-1) i orderArray(j:end)];
+                    orderArray = [orderArray(1:j-1) i orderArray(j:end)];
                 end
                 break
             elseif (j == length(orderArray))
@@ -36,6 +36,7 @@ function ReorderInputs(block)
             end
         end
     end
+    assert(length(orderArray) == length(inLines))
     
     % Redraw lines
     for i = 1:length(orderArray)
