@@ -186,7 +186,8 @@ function [finalEqus, baseEqus] = doSimplification(sys, blocks, varargin)
     neqBlocks = find_blocks(e_selected_handles, 'BlockType', 'RelationalOperator', 'Operator', '~=');
     commutativeBlocks = union(union(logicBlocks, eqBlocks), neqBlocks);
     for i = 1:length(commutativeBlocks)
-        ReorderInputs(getfullname(commutativeBlocks(i)))
+        cBlockName = getfullname(commutativeBlocks(i));
+        ReorderInputs(cBlockName);
     end
     automatic_layout(e_selected_handles, inputToCell(blocks))
     
