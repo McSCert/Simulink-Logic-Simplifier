@@ -95,8 +95,12 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
     % Save the resulting model - DO NOT MODIFY IT BELOW THIS
     startDir = pwd;
     resultsDir = 'Logic_Simplifier_Results';
-    mkdir(resultsDir) % Where we'll save results
-    fullResultsDir = [pwd, '/', resultsDir];
+    fullResultsDir = [pwd, filesep, resultsDir];
+    
+    if ~isfolder(fullResultsDir)
+        mkdir(resultsDir)
+    end
+    
     addpath(resultsDir) % So that the saved model(s) is(are) still on the path
     saveGeneratedSystem(logicSys, startDir, resultsDir)
     
