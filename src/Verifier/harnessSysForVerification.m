@@ -1,4 +1,4 @@
-function harnessSysForVerification(model)
+function harnessBlocks = harnessSysForVerification(model)
     % HARNESSSYSFORVERIFICATION Harness a model to prepare it for verification.
     %
     %   Inputs:
@@ -36,6 +36,7 @@ function harnessSysForVerification(model)
     % If a Read has no Write, then create a corresponding Write in the same
     % system
     
+    harnessBlocks = [];
     bTypes = {'From','Goto','DataStoreWrite','DataStoreRead'};
     correspondingTypes = {{'Goto'},{'From'},{'DataStoreRead','DataStoreMemory'},{'DataStoreWrite','DataStoreMemory'}};
     for i = 1:length(bTypes)
@@ -47,7 +48,7 @@ function harnessSysForVerification(model)
                 correspondingType = correspondingTypes{i}{k};
                 correspondingBlocks = findCorrespondingBlocks(block, correspondingType);
                 if isempty(correspondingBlocks)
-                    createCorrespondingBlock(get_param(block, 'Parent'), block, correspondingType);
+                    harnessBlocks = [harnessBlocks; createCorrespondingBlock(get_param(block, 'Parent'), block, correspondingType)];
                 end
             end
         end
@@ -68,11 +69,11 @@ function harnessSysForVerification(model)
     while ~isempty(union(unconnectedInputPorts, unconnectedOutputPorts))
         for i = 1:length(unconnectedInputPorts)
             port = unconnectedInputPorts(i);
-            createAndConnectInOutportBlock(port, 'Inport');
+            harnessBlocks = [harnessBlocks; createAndConnectInOutportBlock(port, 'Inport')];
         end
         for i = 1:length(unconnectedOutputPorts)
             port = unconnectedOutputPorts(i);
-            createAndConnectInOutportBlock(port, 'Outport');
+            harnessBlocks = [harnessBlocks; createAndConnectInOutportBlock(port, 'Outport')];
         end
         [unconnectedInputPorts, unconnectedOutputPorts] = findUnconnectedPorts(model);
     end
