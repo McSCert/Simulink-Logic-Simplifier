@@ -150,9 +150,10 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
         end
         
         % Harness the copy
-        harnessSysForVerification(copySys)
+        harnessBlocks = harnessSysForVerification(copySys);
         add_harness_note(copySys, origModel);
         set_param(getfullname(copySys), 'Zoomfactor', 'Fit to view');
+        automatic_layout_objs(harnessBlocks, harnessBlocks); % Functionally this is just resizing blocks
         
         % Save harness
         saveGeneratedSystem(copySys, startDir, resultsDir)
@@ -161,9 +162,10 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
         vhLogicSys = copyModel(fullResultsDir, logicSys, 'with_harness'); % vh - verification harness
         
         % Harness the copy
-        harnessSysForVerification(vhLogicSys)
+        harnessBlocks = harnessSysForVerification(vhLogicSys);
         add_harness_note(vhLogicSys, getfullname(logicSys));
         set_param(getfullname(vhLogicSys), 'Zoomfactor', 'Fit to view');
+        automatic_layout_objs(harnessBlocks, harnessBlocks); % Functionally this is just resizing blocks
         
         % Save harness
         saveGeneratedSystem(vhLogicSys, startDir, resultsDir)
@@ -254,11 +256,21 @@ end
 
 function automatic_layout(sys)
     try
-        AutoLayoutSys(sys);
+        AutoLayoutSys(sys); % This is an AutoLayout function
     catch ME
         warning(['Error occurred in AutoLayout. ' ...
             mfilename ' continuing without automatic layout at ' sys ...
             '. The error message follows:' newline getReport(ME)])
+    end
+end
+function automatic_layout_objs(objs, old_objs)
+    startBounds = bounds_of_sim_objects(old_objs);
+    try
+        AutoLayout(objs, 'LayoutStartBounds', startBounds, 'ShiftAll', 'on'); % This is an AutoLayout function
+    catch ME
+        warning(['Error occurred in AutoLayout. ' ...
+            mfilename ' continuing without automatic layout' ...
+            '. The error message follows:' char(10) getReport(ME)])
     end
 end
 
