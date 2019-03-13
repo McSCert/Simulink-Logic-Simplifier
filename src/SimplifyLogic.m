@@ -81,14 +81,14 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
     [newEqu, oldEqu] = doSimplification(simplificationInput{:});
     
     %Zoom on new system
-    set_param(getfullname(logicSys), 'Zoomfactor', '100');
+    set_param(getfullname(logicSys), 'Zoomfactor', 'Fit to view');
     
 %     if ~strcmp(SUBSYSTEM_RULE, 'blackbox')
 %         % Do layout and zoom on SubSystems as well
 %         subsystems = find_system(logicSys, 'BlockType', 'SubSystem', 'Mask', 'off');
 %         for i = 1:length(subsystems)
 %             automatic_layout(getfullname(subsystems(i)));
-%             set_param(getfullname(subsystems(i)), 'Zoomfactor', '100');
+%             set_param(getfullname(subsystems(i)), 'Zoomfactor', 'Fit to view');
 %         end
 %     end
     
@@ -151,6 +151,8 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
         
         % Harness the copy
         harnessSysForVerification(copySys)
+        add_harness_note(copySys, origModel);
+        set_param(getfullname(copySys), 'Zoomfactor', 'Fit to view');
         
         % Save harness
         saveGeneratedSystem(copySys, startDir, resultsDir)
@@ -160,6 +162,8 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
         
         % Harness the copy
         harnessSysForVerification(vhLogicSys)
+        add_harness_note(vhLogicSys, getfullname(logicSys));
+        set_param(getfullname(vhLogicSys), 'Zoomfactor', 'Fit to view');
         
         % Save harness
         saveGeneratedSystem(vhLogicSys, startDir, resultsDir)
@@ -284,4 +288,18 @@ function saveGeneratedSystem(sys, startDir, resultsDir)
         cd(startDir)
         rethrow(ME)
     end
+end
+
+function add_harness_note(newModel, oldModel)
+% Add an annotation indicating that this is a harnessed version
+% intended just for verification.
+note = Simulink.Annotation([newModel ...
+    '/This model is intended only for verification purposes.' ...
+    char(10) 'The model was harnessed from ' oldModel '.']);
+objs = [];
+objs = [objs; find_system(newModel, 'SearchDepth', '1', 'FindAll', 'on', 'Type', 'Block')];
+objs = [objs; find_system(newModel, 'SearchDepth', '1', 'FindAll', 'on', 'Type', 'Line')];
+objs = [objs; find_system(newModel, 'SearchDepth', '1', 'FindAll', 'on', 'Type', 'Annotation')];
+bounds = bounds_of_sim_objects(objs); % This is an AutoLayout function
+placeAnnotationsRightOfBounds(bounds, note.handle) % This is an AutoLayout function
 end
