@@ -97,8 +97,14 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
     resultsDir = 'Logic_Simplifier_Results';
     fullResultsDir = [pwd, filesep, resultsDir];
     
-    if ~isfolder(fullResultsDir)
-        mkdir(resultsDir)
+    try
+        if ~isfolder(fullResultsDir) % 2017b+
+            mkdir(resultsDir)
+        end
+    catch
+        if ~exist(fullResultsDir, 'dir')
+            mkdir(resultsDir)
+        end
     end
     
     addpath(resultsDir) % So that the saved model(s) is(are) still on the path
@@ -176,7 +182,7 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
             % Name invalid so use some default
             verify_model = ['DefaultModel' '_verify'];
         end
-        makeVerificationModel(verify_model, getfullname(copySys), getfullname(vhLogicSys), [startDir '/' resultsDir]);
+        makeVerificationModel(verify_model, getfullname(copySys), getfullname(vhLogicSys), [startDir filesep resultsDir]);
         close_system({getfullname(copySys), vhLogicSys});
     end
     
@@ -207,7 +213,7 @@ function copyMdl = copyModel(dir, model, suffix)
     period_idx = regexp(origFile, '[.]');
     filetype = origFile(period_idx(end):end);
     
-    baseNewFile = [dir, '/', baseCopyMdl, filetype];
+    baseNewFile = [dir, filesep, baseCopyMdl, filetype];
     
     % Copy file
     % Note an existing file named the same as newFile will be overwritten.
@@ -293,7 +299,7 @@ end
 
 function saveGeneratedSystem(sys, startDir, resultsDir)
     try
-        cd([startDir '/' resultsDir])
+        cd([startDir filesep resultsDir])
         save_system(sys)
         cd(startDir)
     catch ME
