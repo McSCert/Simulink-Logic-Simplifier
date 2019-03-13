@@ -136,9 +136,6 @@ function [finalEqus, baseEqus] = doSimplification(sys, blocks, varargin)
     s2e_blockHandles = createEquations(postSimpleEqus, lhsTable, startSys, endSys, subsystem_rule);
     
     %
-    swapBlockPattern(endSys, extraSupportFun);
-    
-    %
     unselectedBlocks = setdiff(topSysBlocks,blocks);
     unselectedBlocksHdls = get_param(unselectedBlocks,'Handle');
     e_unselected_handles = [];
@@ -150,6 +147,12 @@ function [finalEqus, baseEqus] = doSimplification(sys, blocks, varargin)
             e_unselected_handles(end+1) = s2e_blockHandles(unselectedBlocksHdls{i});
         end
     end
+    
+    % Swap block patterns for simpler ones
+    e_handles = find_system(endSys, 'SearchDepth', 1, 'FindAll', 'on', 'Type', 'Block');
+    e_selected_handles = setdiff(e_handles, e_unselected_handles);
+    % (This will only swap blocks on the top-level)
+    swapBlockPattern(endSys, e_selected_handles, extraSupportFun);
     
     %
     if strcmpi(generate_mode, 'simplifiedonly')
@@ -190,6 +193,9 @@ function [finalEqus, baseEqus] = doSimplification(sys, blocks, varargin)
         ReorderInputs(cBlockName);
     end
     automatic_layout(e_selected_handles, inputToCell(blocks))
+    % The following will undo line routing done previously by automatic_layout.
+    blockLines = get_block_lines(e_handles); % Lines connected to the given blocks
+    automatic_line_routing(blockLines);
     
     % Select simplified blocks
     for i = 1:length(e_selected_handles)
@@ -201,10 +207,20 @@ end
 function automatic_layout(objs, old_objs)
     startBounds = bounds_of_sim_objects(old_objs);
     try
-        AutoLayout(objs, 'LayoutStartBounds', startBounds, 'ShiftAll', 'on');
+        AutoLayout(objs, 'LayoutStartBounds', startBounds, 'ShiftAll', 'on'); % This is an AutoLayout function
     catch ME
         warning(['Error occurred in AutoLayout. ' ...
             mfilename ' continuing without automatic layout' ...
+            '. The error message follows:' char(10) getReport(ME)])
+    end
+end
+
+function automatic_line_routing(blockLines)
+    try
+        autolayout_lines(blockLines); % This is an AutoLayout function
+    catch ME
+        warning(['Error occurred in AutoLayout''s line routing. ' ...
+            mfilename ' continuing anyway' ...
             '. The error message follows:' char(10) getReport(ME)])
     end
 end
