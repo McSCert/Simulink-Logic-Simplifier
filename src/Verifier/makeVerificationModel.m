@@ -17,17 +17,17 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
 
     % Check number of arguments
      assert(nargin == 4, 'Wrong number of arguments provided.')
-     
+
     % Check that SDV is installed
-    assert(license('test', 'Simulink Design Verifier'), ...
+    assert(logical(license('test', 'Simulink Design Verifier')), ...
         'Simulink Design Verifier must be installed in order to verify results.');
-    
+
     % Check address is valid model name
     [~, name, ~] = fileparts(address);
     if ~isvarname(name)
         error(['Verification model name ' name ' is not a valid model name.']);
     end
-    
+
     % Check files exist and are models
     if ~(exist(model1, 'file') == 4)
         error(['Model ' model1 ' cannot be found.']);
