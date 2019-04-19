@@ -19,7 +19,7 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
      assert(nargin == 4, 'Wrong number of arguments provided.')
 
     % Check that SDV is installed
-    assert(logical(license('test', 'Simulink Design Verifier')), ...
+    assert(logical(license('test', 'Simulink_Design_Verifier')), ...
         'Simulink Design Verifier must be installed in order to verify results.');
 
     % Check address is valid model name
