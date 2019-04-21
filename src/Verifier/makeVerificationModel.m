@@ -318,8 +318,7 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
         rethrow(ME)
     end
 
-    % TODO: Fix this because on Windows '\' is used
-    verificationModel = [saveDir '/' verifyModel '.mdl'];
+    verificationModel = [saveDir filesep verifyModel '.mdl'];
 
     % Set SDV options and auto-run proving
     % Downside of auto-run is that it will still name a replacement model
