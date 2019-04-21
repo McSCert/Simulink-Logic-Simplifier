@@ -2,6 +2,8 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
 % MAKEVERIFICATIONMODEL Construct a model (.mdl) which can be used to verify
 %   equivalence between two models using Simulink Design Verifier.
 %
+%   Node: Simulink Design Verifier must be installed to run this function.
+%
 %   Inputs:
 %       address     Verification model name.
 %       model1      Fullpath of first model to verify.
@@ -320,9 +322,9 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
 
     verificationModel = [saveDir filesep verifyModel '.mdl'];
 
-    % Set SDV options and auto-run proving
+    %% Set SDV options and auto-run proving
     % Downside of auto-run is that it will still name a replacement model
-    % and any errors aren't really be shown
+    % and any errors aren't really shown
     % More on options here: https://www.mathworks.com/help/pdf_doc/sldv/sldv_ref.pdf
 %     opts = sldvoptions;
 %     opts.Mode = 'PropertyProving'; % Perform proof analysis
