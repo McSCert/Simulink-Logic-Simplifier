@@ -89,11 +89,11 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
 
     verifySubsystem = get_param(verifySubsystemHandle, 'Name');
     verifySubsystem = [verifyModel '/' verifySubsystem];
-
+    
     % Add model reference blocks inside verification subsystem
-    modelRef1Block  = add_block('simulink/Ports & Subsystems/Model', ...
+    modelRef1Block = add_block('simulink/Ports & Subsystems/Model', ...
         [verifySubsystem '/Original Model'], 'ModelNameDialog', model1, 'Position', [230    29   410   101]);
-    modelRef2Block  = add_block('simulink/Ports & Subsystems/Model', ...
+    modelRef2Block = add_block('simulink/Ports & Subsystems/Model', ...
         [verifySubsystem '/Simplified Model'], 'ModelNameDialog', model2, 'Position', [230   151   410   224]);
 
     % Resize model reference blocks and move second below the first
@@ -112,7 +112,7 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
         [modelRef1Pos(1), modelRef1Pos(2), modelRef1Pos(1)+newModelRefWidth1, modelRef1bottom]);
     set_param(modelRef2Block, 'Position', ...
         [modelRef2Pos(1), modelRef1bottom+bufferYBetweenModelRefs, modelRef2Pos(1)+newModelRefWidth2, modelRef1bottom+bufferYBetweenModelRefs+newModelRefHeight2]);
-
+    
     % Get model reference port handles
     modelRef1Handles = get_param(modelRef1Block, 'PortHandles');
     modelRef1InHandles = modelRef1Handles.Inport;
@@ -176,13 +176,13 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
     inportNames1 = repmat({''},size(modelRefMostIns));
     inportNames2 = repmat({''},size(modelRefLeastIns));
     for i = 1:length(modelRefMostIns)
-        temp =  subport2inoutblock(modelRefMostIns(i));
+        temp = subport2inoutblock(modelRefMostIns(i));
         n = strfind(temp, '/');
         n = n(end)+1;
         inportNames1{i} = temp(n:end);
     end
     for i = 1:length(modelRefLeastIns)
-        temp =  subport2inoutblock(modelRefLeastIns(i));
+        temp = subport2inoutblock(modelRefLeastIns(i));
         n = strfind(temp, '/');
         n = n(end)+1;
         inportNames2{i} = temp(n:end);
@@ -217,6 +217,15 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
             end
         end
     end
+
+    % Resize verification subsystem:
+    % This is done here (i.e. much later than its creation) so that we can
+    % account for the inports that get added inside, resulting in ports, and
+    % utlimately making the subsystem longer
+    verifySubsystemPos = get_param(verifySubsystemHandle, 'Position');
+    newVerifySubsystemPos = desiredHeightForPorts(verifySubsystemHandle, 30, 30);
+    set_param(verifySubsystemHandle, 'Position', ...
+    [verifySubsystemPos(1), verifySubsystemPos(2), verifySubsystemPos(3), verifySubsystemPos(2)+newVerifySubsystemPos]);
 
     % Add inports at root and connect
     verifySubsystemInHandles = get_param(verifySubsystemHandle, 'PortHandles');
