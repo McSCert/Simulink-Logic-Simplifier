@@ -49,17 +49,28 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
     solverType = get_param(model1, 'SolverType');
     hwDevice = get_param(model1, 'ProdHWDeviceType');
     underspec = get_param(model1, 'UnderspecifiedInitializationDetection');
+    modelRef = get_param(model1, 'ModelReferenceNumInstancesAllowed');
+    divSlope = get_param(model1, 'UseDivisionForNetSlopeComputation');
+    ProdLongMode = get_param(model1, 'ProdLongLongMode');
+    TargLongMode = get_param(model1, 'TargetLongLongMode');
 
+    % TODO: More parameters need to be added (e.g., all Hardware Implementation params) 
     assert(strcmp(solver, get_param(model2, 'Solver')), ...
-        'The Solver of both models must be the same. Please ensure this in the Model Configuration Parameters.');
+        'The ''Solver'' parameter of both models must be the same. Please ensure this in Model Configuration Parameters > Solver.');
     assert(strcmp(solverType, get_param(model2, 'SolverType')), ...
-        'The Solver Type of both models must be the same. Please ensure this in the Model Configuration Parameters.');
+        'The ''Solver type'' parameter of both models must be the same. Please ensure this in Model Configuration Parameters > Solver.');
     assert(strcmp(hwDevice, get_param(model2, 'ProdHWDeviceType')), ...
-        'The Production Device Vendor and Type of both models must be the same. Please ensure this in the Model Configuration Parameters.');
+        'The ''Device vendor'' parameter of both models must be the same. Please ensure this in Model Configuration Parameters > Hardware Implementation.');
     assert(strcmp(underspec, get_param(model2, 'UnderspecifiedInitializationDetection')), ...
-        'The Underspecified Initialization Detection of both models must be the same. Please ensure this in the Model Configuration Parameters.');
-    assert(~strcmpi(solverType, 'VariableStepAuto') && ~strcmpi(solverType, 'Variable-step'), ...
-        'The Solver Type of both models cannot be Variable-step. Please ensure this in the Model Configuration Parameters.');
+        'The ''Underspecified initialization detection'' parameter of both models must be the same. Please ensure this in Model Configuration Parameters > Diagonostics > Data Validity > Advanced parameters.');
+    assert(strcmpi(modelRef, get_param(model2, 'ModelReferenceNumInstancesAllowed')), ...
+        'The ''Total number of instances allowed per top model'' parameter of both models must be the same. Please ensure this in Model Configuration Parameters > Model Referencing.');
+    assert(strcmpi(divSlope, get_param(model2, 'UseDivisionForNetSlopeComputation')), ...
+        'The ''Use division for fixed-point net slope computation'' must be the same for both models. Please ensure this in Model Configuration Parameters > Math and Data Types.');
+    assert(strcmp(ProdLongMode, get_param(model2, 'ProdLongLongMode')), ...
+        'The ''Support long long'' parameter of both models must be the same. Please ensure this in Model Configuration Parameters > Hardware Implementation > Device details.');
+    assert(strcmp(TargLongMode, get_param(model2, 'TargetLongLongMode')), ...
+        'The ''Support long long'' parameter of both models must be the same. Please ensure this in Model Configuration Parameters > Hardware Implementation > Advanced parameters.');
 
     %% Create verification model. Append number if it already exists
     verifyModel = address;
@@ -78,6 +89,10 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
     set_param(verifyModel, 'SolverType', solverType);
     set_param(verifyModel, 'ProdHWDeviceType', hwDevice);
     set_param(verifyModel, 'UnderspecifiedInitializationDetection', underspec);
+    set_param(verifyModel, 'ModelReferenceNumInstancesAllowed', modelRef);
+    set_param(verifyModel, 'UseDivisionForNetSlopeComputation', divSlope);
+    set_param(verifyModel, 'ProdLongLongMode', ProdLongMode);
+    set_param(verifyModel, 'TargetLongLongMode', TargLongMode);
 
     %% --- Add blocks ---
     % Note: Not using the 'built-in' names because it results in strange block sizes
