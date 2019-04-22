@@ -2,7 +2,7 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
 % MAKEVERIFICATIONMODEL Construct a model (.mdl) which can be used to verify
 %   equivalence between two models using Simulink Design Verifier.
 %
-%   Node: Simulink Design Verifier must be installed to run this function.
+%   Note: Simulink Design Verifier must be installed to run this function.
 %
 %   Inputs:
 %       address     Verification model name.
@@ -45,34 +45,17 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
         load_system(model2);
     end
 
-    %% Check that configuration paramter settings are consistent between the models
-    % otherwise SDV will complain
-    solver = get_param(model1, 'Solver'); % Save model1 info for later
-    solverType = get_param(model1, 'SolverType');
-    hwDevice = get_param(model1, 'ProdHWDeviceType');
-    underspec = get_param(model1, 'UnderspecifiedInitializationDetection');
-    modelRef = get_param(model1, 'ModelReferenceNumInstancesAllowed');
-    divSlope = get_param(model1, 'UseDivisionForNetSlopeComputation');
-    ProdLongMode = get_param(model1, 'ProdLongLongMode');
-    TargLongMode = get_param(model1, 'TargetLongLongMode');
-
-    % TODO: More parameters need to be added (e.g., all Hardware Implementation params) 
-    assert(strcmp(solver, get_param(model2, 'Solver')), ...
-        'The ''Solver'' parameter of both models must be the same. Please ensure this in Model Configuration Parameters > Solver.');
-    assert(strcmp(solverType, get_param(model2, 'SolverType')), ...
-        'The ''Solver type'' parameter of both models must be the same. Please ensure this in Model Configuration Parameters > Solver.');
-    assert(strcmp(hwDevice, get_param(model2, 'ProdHWDeviceType')), ...
-        'The ''Device vendor'' parameter of both models must be the same. Please ensure this in Model Configuration Parameters > Hardware Implementation.');
-    assert(strcmp(underspec, get_param(model2, 'UnderspecifiedInitializationDetection')), ...
-        'The ''Underspecified initialization detection'' parameter of both models must be the same. Please ensure this in Model Configuration Parameters > Diagonostics > Data Validity > Advanced parameters.');
-    assert(strcmpi(modelRef, get_param(model2, 'ModelReferenceNumInstancesAllowed')), ...
-        'The ''Total number of instances allowed per top model'' parameter of both models must be the same. Please ensure this in Model Configuration Parameters > Model Referencing.');
-    assert(strcmpi(divSlope, get_param(model2, 'UseDivisionForNetSlopeComputation')), ...
-        'The ''Use division for fixed-point net slope computation'' must be the same for both models. Please ensure this in Model Configuration Parameters > Math and Data Types.');
-    assert(strcmp(ProdLongMode, get_param(model2, 'ProdLongLongMode')), ...
-        'The ''Support long long'' parameter of both models must be the same. Please ensure this in Model Configuration Parameters > Hardware Implementation > Device details.');
-    assert(strcmp(TargLongMode, get_param(model2, 'TargetLongLongMode')), ...
-        'The ''Support long long'' parameter of both models must be the same. Please ensure this in Model Configuration Parameters > Hardware Implementation > Advanced parameters.');
+    %% Check model configuration parameter settings
+    % Not variable step
+    solverType1 = get_param(model1, 'SolverType');
+    solverType2 = get_param(model2, 'SolverType');
+    variableStep = (strcmpi(solverType1, 'VariableStepAuto') || strcmpi(solverType1, 'Variable-step')) || ...
+        (strcmpi(solverType2, 'VariableStepAuto') || strcmpi(solverType2, 'Variable-step'));
+    assert(~variableStep, 'The Solver Type of both models cannot be Variable-step. Please ensure this in the Model Configuration Parameters.');
+    
+    % Consistency between the models   
+    [noncompatible, all_params] = checkParamCompatibility(model1, model2);
+    assert(isempty(noncompatible), 'Model Configuration Parameters must be the same between both models. Please see checkParamCompatibility.m');
 
     %% Create verification model. Append number if it already exists
     verifyModel = address;
@@ -87,14 +70,13 @@ function verificationModel = makeVerificationModel(address, model1, model2, save
     open_system(verifyModel);
 
     % Set new model configuration parameters settings to be consistent
-    set_param(verifyModel, 'Solver', solver);
-    set_param(verifyModel, 'SolverType', solverType);
-    set_param(verifyModel, 'ProdHWDeviceType', hwDevice);
-    set_param(verifyModel, 'UnderspecifiedInitializationDetection', underspec);
-    set_param(verifyModel, 'ModelReferenceNumInstancesAllowed', modelRef);
-    set_param(verifyModel, 'UseDivisionForNetSlopeComputation', divSlope);
-    set_param(verifyModel, 'ProdLongLongMode', ProdLongMode);
-    set_param(verifyModel, 'TargetLongLongMode', TargLongMode);
+    for i = 1:length(all_params)
+        try
+            set_param(verifyModel, all_params{i}, get_param(model1, all_params{i}));
+        catch
+            % Sometimes parameters are disabled based on other parameters
+        end
+    end
 
     %% --- Add blocks ---
     % Note: Not using the 'built-in' names because it results in strange block sizes
