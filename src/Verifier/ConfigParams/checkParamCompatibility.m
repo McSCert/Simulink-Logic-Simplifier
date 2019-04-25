@@ -1,11 +1,11 @@
 function [noncompatible, all_params] = checkParamCompatibility(sys1, sys2)
 % Check that Model Configuration Parameters are consistent between the models.
-
-    sys1 = bdroot(sys1);
-    sys2 = bdroot(sys2);
     
     load_system(sys1);
     load_system(sys2);
+    
+    sys1 = bdroot(sys1);
+    sys2 = bdroot(sys2);
     
     [params_solver, all_solver] = configSolver(sys1, sys2);
     [params_hw, all_hw] = configHw(sys1, sys2);
