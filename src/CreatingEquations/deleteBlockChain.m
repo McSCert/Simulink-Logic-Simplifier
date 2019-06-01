@@ -1,28 +1,28 @@
 function deleteBlockChain(block, mode, delBlocks)
-    % DELETEBLOCKCHAIN Deletes input block, and then recursively deletes
-    % the chain of blocks which only impacted the input block.
-    %
-    %   Input:
-    %       block       Block name or handle at the head of a deletion chain.
-    %       mode        TODO: Currently has no impact [Optional]
-    %       delBlocks   Upper bound for which blocks may be deleted. If not
-    %                   provided, it is assumed that any block sharing a
-    %                   system with block may be deleted. [Optional]
-    
+% DELETEBLOCKCHAIN Delete the input block, and then recursively delete the chain
+% of blocks which only impacted the input block.
+%
+%   Inputs:
+%       block       Block name or handle at the head of a deletion chain.
+%       mode        TODO: Currently has no impact [Optional]
+%       delBlocks   Upper bound for which blocks may be deleted. If not
+%                   provided, it is assumed that any block sharing a
+%                   system with block may be deleted. [Optional]
+
     mode = 'default'; % TODO: Define mode to change the conditions on recursing
-    
+
     sys = get_param(block, 'Parent');
     block = get_param(block, 'Handle');
-    
+
     if nargin < 3
         delBlocks = [];
     else
         delBlocks = inputToNumeric(delBlocks);
     end
-    
+
     % Get source blocks for recursion
     srcBlocks = getSrcBlocks(block);
-    
+
     % Delete block and the lines connected to it
     if isempty(delBlocks) || any(block == delBlocks)
         lines = get_param(block, 'LineHandles');
@@ -36,7 +36,7 @@ function deleteBlockChain(block, mode, delBlocks)
         end
         delete_block(block);
     end % else not allowed to delete the block. Lines not deleted now may still be deleted in recursive calls.
-    
+
     % Recurse on the source blocks
     for i = 1:length(srcBlocks)
         if strcmp(mode, 'default')

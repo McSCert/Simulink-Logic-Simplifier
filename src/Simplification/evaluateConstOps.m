@@ -21,20 +21,20 @@ function newExpr = evaluateConstOps(expression)
 %       evaluateConstOps('1 == 2 & a')
 %       --> '0&a'
 
-% Remove whitespace
-newExpr = regexprep(expression,'\s','');
+    % Remove whitespace
+    newExpr = regexprep(expression,'\s','');
 
-% Apply brackets appropriately for the precedence
-newExpr = bracketForPrecedence(newExpr, true);
+    % Apply brackets appropriately for the precedence
+    newExpr = bracketForPrecedence(newExpr, true);
 
-[~, newExpr] = reduceR(newExpr);
+    [~, newExpr] = reduceR(newExpr);
 
-% Remove outer brackets
-%% TODO - for implementation below consider '(a)&(b)'
-% while strcmp(newExpr(1),'(')
-%     assert(strcmp(newExpr(end),')'));
-%     newExpr = newExpr(2:end-1);
-% end
+    % Remove outer brackets
+    %% TODO - for implementation below consider '(a)&(b)'
+    % while strcmp(newExpr(1),'(')
+    %     assert(strcmp(newExpr(end),')'));
+    %     newExpr = newExpr(2:end-1);
+    % end
 end
 
 function [isAtomic, newStr] = reduceR(str)
@@ -65,93 +65,105 @@ function [isAtomic, newStr] = reduceR(str)
 % else if first char is '~|-' recurse on everything after
 % else is variable or value
 
-if strcmp(str(1), '(')
-    % The form of the expression is either:
-    %   '(expr)' or '(expr1)OP(expr2)OP...OP(exprN)'
-    %   where OP is a binary operator of constant precedence
-    %   and expr,expr1,expr2,...,exprN are expressions
-    
-    matchIndex = findMatchingParen(str,1);
-    if matchIndex == length(str) % expression is of form '(expr)'
-        [isAtomic, newStr] = reduceFullBracket(str);
-    else % expression is of form '(expr1)OP(expr2)OP...OP(exprN)'
-        [isAtomic, newStr] = reduceOps(str);
-    end
-elseif ~isempty(regexp(str(1),'~|-', 'once')) % is ~ or -
-    [subIsAtomic, subStr] = reduceR(str(2:end));
-    
-    newStr = [str(1), subStr];
-    
-    if subIsAtomic
-        [isAtomic, newStr] = evalInEmptyWS(newStr);
-    else
-        isAtomic = false;
-    end
-else
-    %newStr = str;
-    [~, newStr] = evalInEmptyWS(str);
-    isAtomic = true;
-end
+    if strcmp(str(1), '(')
+        % The form of the expression is either:
+        %   '(expr)' or '(expr1)OP(expr2)OP...OP(exprN)'
+        %   where OP is a binary operator of constant precedence
+        %   and expr,expr1,expr2,...,exprN are expressions
 
+        matchIndex = findMatchingParen(str,1);
+        if matchIndex == length(str) % expression is of form '(expr)'
+            [isAtomic, newStr] = reduceFullBracket(str);
+        else % expression is of form '(expr1)OP(expr2)OP...OP(exprN)'
+            [isAtomic, newStr] = reduceOps(str);
+        end
+    elseif ~isempty(regexp(str(1),'~|-', 'once')) % is ~ or -
+        [subIsAtomic, subStr] = reduceR(str(2:end));
+
+        newStr = [str(1), subStr];
+
+        if subIsAtomic
+            [isAtomic, newStr] = evalInEmptyWS(newStr);
+        else
+            isAtomic = false;
+        end
+    else
+        %newStr = str;
+        [~, newStr] = evalInEmptyWS(str);
+        isAtomic = true;
+    end
 end
 
 function [isAtomic, newStr] = reduceFullBracket(str)
 % Reduces expressions of the form '(expr)' where expr is another expression
 
-% Recurse over 'expr'
-[subIsAtomic, subStr] = reduceR(str(2:end-1));
-if subIsAtomic
-    newStr = subStr;
-    isAtomic = true;
-else
-    newStr = [str(1), subStr, str(end)];
-    isAtomic = false;
-end
+    % Recurse over 'expr'
+    [subIsAtomic, subStr] = reduceR(str(2:end-1));
+    if subIsAtomic
+        newStr = subStr;
+        isAtomic = true;
+    else
+        newStr = [str(1), subStr, str(end)];
+        isAtomic = false;
+    end
 end
 
 function [isAtomic, newStr] = reduceOps(str)
 % Reduces expressions of the form '(expr1)OP(expr2)OP...OP(exprN)'
 % where expr1..N are sub-expressions
 
-newStr = str;
+    newStr = str;
+    isAtomic = false; % Init as false since true is a particular case here
 
-isAtomic = false; % Init as false since true is a particular case here
+    % First see how far the chain can simply evaluate
+    ops = {}; % Ordered list of operators at the current bracketing level. I.e. '(1&0)<(5)==(1|0)~=(1|1|1)>=(a|b)' gives: <,==,~=,>=
 
-% First see how far the chain can simply evaluate
+    close = findMatchingParen(newStr,1);
+    valid = true;
+    while close ~= length(newStr)
+        ops{end+1} = regexp(newStr(close+1:end),'^[><]=?|[~=]=|&|\|', 'once', 'match');
+        assert(strcmp(newStr(close + length(ops{end}) + 1),'(')) % There are brackets on either side of the operator
 
-ops = {}; % Ordered list of operators at the current bracketing level. I.e. '(1&0)<(5)==(1|0)~=(1|1|1)>=(a|b)' gives: <,==,~=,>=
+        open = close + length(ops{end}) + 1;
+        close = findMatchingParen(newStr,open);
 
-close = findMatchingParen(newStr,1);
-valid = true;
-while close ~= length(newStr)
-    ops{end+1} = regexp(newStr(close+1:end),'^[><]=?|[~=]=|&|\|', 'once', 'match');
-    assert(strcmp(newStr(close + length(ops{end}) + 1),'(')) % There are brackets on either side of the operator
-    
-    open = close + length(ops{end}) + 1;
-    close = findMatchingParen(newStr,open);
-    
-    [success, subStr] = evalInEmptyWS(newStr(1:close));
-    if valid && success
-        ops(end) = [];
-        if close == length(newStr)
-            newStr = ['(', subStr, ')'];
-            close = length(newStr); % This time close is just updated to end the loop since the end of the string has been reached
-            isAtomic = true; % Each OP fully evaluated (every other case in this function is false)
+        [success, subStr] = evalInEmptyWS(newStr(1:close));
+        if valid && success
+            ops(end) = [];
+            if close == length(newStr)
+                newStr = ['(', subStr, ')'];
+                close = length(newStr); % This time close is just updated to end the loop since the end of the string has been reached
+                isAtomic = true; % Each OP fully evaluated (every other case in this function is false)
+            else
+                newStr = ['(', subStr, ')', newStr(close+1:end)]; % Adding brackets here to make the algorithm slightly simpler later on
+                close = length(subStr)+2; % This time close just represents the index before the next operator
+            end
         else
-            newStr = ['(', subStr, ')', newStr(close+1:end)]; % Adding brackets here to make the algorithm slightly simpler later on
-            close = length(subStr)+2; % This time close just represents the index before the next operator
+            valid = 0;
         end
-    else
-        valid = 0;
     end
-end
 
-% Next, find reduced form of the remaining sub-expressions.
-% Start from right and work toward the left to minimize changing indices
-close = length(newStr);
-open = findMatchingParen(newStr, close);
-count = 1;
-while open > 1
+    % Next, find reduced form of the remaining sub-expressions.
+    % Start from right and work toward the left to minimize changing indices
+    close = length(newStr);
+    open = findMatchingParen(newStr, close);
+    count = 1;
+    while open > 1
+        subStr = newStr(open:close);
+        [subIsAtomic, subStr] = reduceFullBracket(subStr);
+        if subIsAtomic
+            newStr = [newStr(1:open-1), subStr, newStr(close+1:end)];
+        else
+            newStr = [newStr(1:open), subStr, newStr(close:end)];
+        end
+
+        assert(strcmp(newStr(open - length(ops{end+1-count}) - 1),')')) % There are brackets on either side of the operator
+
+        close = open - length(ops{end+1-count}) - 1;
+        open = findMatchingParen(newStr,close);
+
+        count = count + 1;
+    end
     subStr = newStr(open:close);
     [subIsAtomic, subStr] = reduceFullBracket(subStr);
     if subIsAtomic
@@ -159,22 +171,6 @@ while open > 1
     else
         newStr = [newStr(1:open), subStr, newStr(close:end)];
     end
-    
-    assert(strcmp(newStr(open - length(ops{end+1-count}) - 1),')')) % There are brackets on either side of the operator
-    
-    close = open - length(ops{end+1-count}) - 1;
-    open = findMatchingParen(newStr,close);
-    
-    count = count + 1;
-end
-subStr = newStr(open:close);
-[subIsAtomic, subStr] = reduceFullBracket(subStr);
-if subIsAtomic
-    newStr = [newStr(1:open-1), subStr, newStr(close+1:end)];
-else
-    newStr = [newStr(1:open), subStr, newStr(close:end)];
-end
-
 end
 
 function [valid, result] = evalInEmptyWS(expression)
@@ -196,22 +192,22 @@ function [valid, result] = evalInEmptyWS(expression)
 % invalid (cannot evaluate).
 % Else if expression does not evaluate to a logical or numerical value,
 % then the expression is invalid (unexpected expression type).
-try
-    % Variable in expression -> invalid
-    % The only variable in the workspace is expression so:
-    assert(isempty(strfind(expression,'expression'))) % Didn't use contains since that doesn't exist in 2011
-    
-    % Expression does not evaluate -> invalid
-    result = eval(expression); % Assumes no variables in the workspace appear in it because we've already checked
-    
-    % Result is not logical or numerical -> invalid
-    result = num2str(result);
-    
-    valid = true;
-catch
-    result = expression;
-    valid = false;
-end
+    try
+        % Variable in expression -> invalid
+        % The only variable in the workspace is expression so:
+        assert(isempty(strfind(expression,'expression'))) % Didn't use contains since that doesn't exist in 2011
+
+        % Expression does not evaluate -> invalid
+        result = eval(expression); % Assumes no variables in the workspace appear in it because we've already checked
+
+        % Result is not logical or numerical -> invalid
+        result = num2str(result);
+
+        valid = true;
+    catch
+        result = expression;
+        valid = false;
+    end
 end
 
 % function [isAtomic, newStr] = handleOps1(str,matchIndex)

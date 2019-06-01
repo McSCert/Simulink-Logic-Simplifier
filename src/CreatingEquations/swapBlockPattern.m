@@ -4,7 +4,7 @@ function swapBlockPattern(sys, blocks, extraSupport)
 % in such a way that is equivalent to a Switch block thus this connection
 % pattern will be recognized and the blocks will be replaced with a Switch.
 %
-%   Input:
+%   Inputs:
 %       sys             Simulink system containing the blocks being
 %                       swapped.
 %       blocks          Simulink blocks that can be used in the swaps.
@@ -13,7 +13,7 @@ function swapBlockPattern(sys, blocks, extraSupport)
 %                       don't know what this is (requires
 %                       defaultExtraSupport.m to exist).
 %
-%   Output:
+%   Outputs:
 %       N/A
 
 % % TODO
@@ -62,7 +62,7 @@ for z = 1:length(orBlock)
     catch
         continue
     end
-    
+
     ph = getSrcPorts(orBlock{z});
 
     andBlocks = {};
@@ -79,7 +79,7 @@ for z = 1:length(orBlock)
         end
     end
     andBlocks = unique(andBlocks);
-    
+
     % Get equations for the AND blocks
     % subsystem_rule is passed as 'blackbox' because we don't want to
     %   look under subsystems to determine if the inputs satisfy a
@@ -87,14 +87,14 @@ for z = 1:length(orBlock)
     lhsTable = BiMap('double','char'); % Updates in function calls
     equs = getEqusForBlocks(sys, setdiff(blocks, andBlocks), blocks, lhsTable, 'blackbox', extraSupport);
     subEqus = substituteEqus(equs, andBlocks, lhsTable, 'blackbox'); % Substitute equations
-    
+
     andEqus = cell(1,length(andBlocks));
     for i = 1:length(subEqus)
         [lhs, rhs] = getEquationLhsRhs(subEqus{i});
         if strcmp('port', get_param(lhsTable.lookdown(lhs), 'Type')) ...
                 && strcmp('inport', get_param(lhsTable.lookdown(lhs), 'PortType')) ...
                 && any(strcmp(get_param(lhsTable.lookdown(lhs), 'Parent'), andBlocks))
-            
+
             andi = find(strcmp(get_param(lhsTable.lookdown(lhs), 'Parent'), andBlocks),1);
             andEqus{andi}{end+1} = subEqus{i};
         end
@@ -103,13 +103,13 @@ for z = 1:length(orBlock)
     for i = 1:length(andEqus) % for each AND
         for j = 1:length(andEqus{i}) % for each input
             for k = i+1:length(andEqus)
-                % Check if any of the outgoing AND signals 
+                % Check if any of the outgoing AND signals
                 idx = findExprComplement(andEqus{i}{j}, andEqus{k});
                 if idx ~= -1
                     % Add switch
                     switchBlk = add_block(['built-in/' 'Switch'], getGenBlockName(sys, 'Switch'), 'MAKENAMEUNIQUE','ON', 'Criteria','u2 ~= 0');
                     switchIns = getPorts(switchBlk, 'Inport');
-                    
+
                     % First switch input
                     equ = andEqus{i}{(j==1)+1};
                     [lhs, ~] = getEquationLhsRhs(equ);
@@ -131,14 +131,14 @@ for z = 1:length(orBlock)
                     switchSrc3 = getSrcPorts(andIn3);
                     delete_line(sys, switchSrc3, andIn3)
                     connectPorts(sys, switchSrc3, switchIns(3));
-                    
+
                     % Delete old logic and extra blocks
                     orDsts = getDsts(orBlock{z}, ...
                         'IncludeImplicit', 'off', 'ExitSubsystems', 'off', ...
                         'EnterSubsystems', 'off', 'Method', 'RecurseUntilTypes', ...
                         'RecurseUntilTypes', {'Inport'}); % Will need this later
                     deleteBlockChain(orBlock{z}, 'default', blocks);
-                    
+
                     % Connect switch outport
                     switchOut = getPorts(switchBlk,'Outport');
                     for m = 1:length(orDsts)
@@ -155,7 +155,7 @@ for z = 1:length(orBlock)
             break
         end
     end
-    
+
     %     if length(ph) == 2
     %         parent = get_param(ph, 'Parent');
     %         outType = get_param(parent, 'OutDataTypeStr');
@@ -191,7 +191,7 @@ function swapBlockPattern_sys(sys, extraSupport)
 % %% Swap Constant -> Unary Minus -> X for -1*Constant -> X
 % %   i.e. Constant followed by Unary Minus block will be replaced with a
 % %       single constant.
-% 
+%
 % unMinus = find_system(sys, 'BlockType', 'UnaryMinus');
 % for i = 1:length(unMinus)
 %     ph = getSrcPorts(unMinus{i});
@@ -199,7 +199,7 @@ function swapBlockPattern_sys(sys, extraSupport)
 %     parent = get_param(ph, 'Parent');
 %     if strcmp(get_param(parent, 'BlockType'), 'Constant')
 %         outType = get_param(parent, 'OutDataTypeStr');
-%         
+%
 % %         TODO
 %         if strcmp(outType, 'boolean')
 %             val = logical(get_param(parent, 'Value'));
@@ -223,14 +223,14 @@ for z = 1:length(orBlock)
     catch
         continue
     end
-    
+
     ph = getSrcPorts(orBlock{z});
-    
+
     lhsTable = BiMap('double','char');
-    
+
     sysBlocks = find_system(sys, 'SearchDepth', '1');
     sysBlocks = sysBlocks(2:end); % Remove sys
-    
+
     andBlocks = {};
     for i = 1:length(ph)
         parent = get_param(ph(i), 'Parent');
@@ -244,21 +244,21 @@ for z = 1:length(orBlock)
         end
     end
     andBlocks = unique(andBlocks);
-    
+
     % Get equations for the AND blocks
     % subsystem_rule is passed as 'blackbox' because we don't want to
     %   look under subsystems to determine if the inputs satisfy a
     %   switch block.
     equs = getEqusForBlocks(sys, setdiff(sysBlocks, andBlocks), sysBlocks, lhsTable, 'blackbox', extraSupport);
     subEqus = substituteEqus(equs, andBlocks, lhsTable, 'blackbox'); % Substitute equations
-    
+
     andEqus = cell(1,length(andBlocks));
     for i = 1:length(subEqus)
         [lhs, rhs] = getEquationLhsRhs(subEqus{i});
         if strcmp('port', get_param(lhsTable.lookdown(lhs), 'Type')) ...
                 && strcmp('inport', get_param(lhsTable.lookdown(lhs), 'PortType')) ...
                 && any(strcmp(get_param(lhsTable.lookdown(lhs), 'Parent'), andBlocks))
-            
+
             andi = find(strcmp(get_param(lhsTable.lookdown(lhs), 'Parent'), andBlocks),1);
             andEqus{andi}{end+1} = subEqus{i};
         end
@@ -266,14 +266,14 @@ for z = 1:length(orBlock)
     idx = -1;
     for i = 1:length(andEqus) % for each AND
         for j = 1:length(andEqus{i}) % for each input
-            for k = i+1:length(andEqus) 
+            for k = i+1:length(andEqus)
                 idx = findExprComplement(andEqus{i}{j}, andEqus{k});
                 if idx ~= -1
                     % Add switch
                     switchBlk = add_block(['built-in/' 'Switch'], getGenBlockName(sys, 'Switch'), 'MAKENAMEUNIQUE','ON', 'Criteria','u2 ~= 0');
                     switchIns = getPorts(switchBlk, 'Inport');
-                    
-                    % First switch input 
+
+                    % First switch input
                     equ = andEqus{i}{(j==1)+1};
                     [lhs, ~] = getEquationLhsRhs(equ);
                     andIn1 = lhsTable.lookdown(lhs);
@@ -294,14 +294,14 @@ for z = 1:length(orBlock)
                     switchSrc3 = getSrcPorts(andIn3);
                     delete_line(sys, switchSrc3, andIn3)
                     connectPorts(sys, switchSrc3, switchIns(3));
-                    
+
                     % Delete old logic and extra blocks
                     orDsts = getDsts(orBlock{z}, ...
                             'IncludeImplicit', 'off', 'ExitSubsystems', 'off', ...
                             'EnterSubsystems', 'off', 'Method', 'RecurseUntilTypes', ...
                             'RecurseUntilTypes', {'Inport'}); % Will need this later
                     deleteBlockChain(orBlock{z});
-                    
+
                     % Connect switch outport
                     switchOut = getPorts(switchBlk,'Outport');
                     for m = 1:length(orDsts)
@@ -318,11 +318,11 @@ for z = 1:length(orBlock)
             break
         end
     end
-    
+
 %     if length(ph) == 2
 %         parent = get_param(ph, 'Parent');
 %         outType = get_param(parent, 'OutDataTypeStr');
-%         
+%
 %         if strcmp(outType, 'boolean')
 %             val = logical(get_param(parent, 'Value'));
 %         else
@@ -335,14 +335,14 @@ end
 end
 
 function index = findExprComplement(equ, equs)
-    % FINDEXPRCOMPLEMENT Finds the index of the complement of a given
-    %   expression (i.e. equation rhs) within a list of equations. If there
-    %   is no complement, a value of -1 is returned.
-    
+% FINDEXPRCOMPLEMENT Find the index of the complement of a given
+%   expression (i.e. equation rhs) within a list of equations. If there
+%   is no complement, a value of -1 is returned.
+
     index = -1; % Assume nothing will be found
-    
+
     [~, rhs1] = getEquationLhsRhs(equ);
-    
+
     for i = 1:length(equs)
         [~, rhs2] = getEquationLhsRhs(equs{i});
         negCmp = simplifyExpression(['(' rhs1 ') == ~(' rhs2 ')']);

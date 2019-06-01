@@ -1,21 +1,21 @@
 function expr = simplifyExpression(expr)
-    % SIMPLIFYEXPRESSION Simplifies a given expression.
-    %   Notes: 'simple' is ill defined so results may not be strictly
-    %           'simpler'.
-    %           Expression must be of an appropriate form (TODO: define
-    %           this form).
-    %
-    %   Inputs:
-    %       expr    A string representing an expression. E.g. A symbolic
-    %               expression in MATLAB will work if given as a string.
-    %               Cell array of elements of the above format will also
-    %               work.
-    %
-    %   Outputs:
-    %       expr    A simplified form of the original expression. If the
-    %               input was a cell array, output will be a cell array of
-    %               the simplified forms.
-    
+% SIMPLIFYEXPRESSION Simplifies a given expression.
+%   Notes: 'simple' is ill defined so results may not be strictly
+%           'simpler'.
+%           Expression must be of an appropriate form (TODO: define
+%           this form).
+%
+%   Inputs:
+%       expr    A string representing an expression. E.g. A symbolic
+%               expression in MATLAB will work if given as a string.
+%               Cell array of elements of the above format will also
+%               work.
+%
+%   Outputs:
+%       expr    A simplified form of the original expression. If the
+%               input was a cell array, output will be a cell array of
+%               the simplified forms.
+
     % Examples/Tests:
 %     simplifyExpression('~(A <= 1)')
 %     exprs = {'3', 'x', ...
@@ -39,7 +39,7 @@ function expr = simplifyExpression(expr)
 %     for i = 1:length(exprs)
 %         disp([exprs{i} ' --> ' newExprs{i}])
 %     end
-    
+
     if iscell(expr)
         % If input is a cell array, instead of char array then simplify
         % each cell.
@@ -47,30 +47,30 @@ function expr = simplifyExpression(expr)
             expr{i} = simplifyExpression(expr{i});
         end
     else
-        
+
         %% Modify the form of expr for the actual simplification
-        
+
         % Evaluate parts that MATLAB can already evaluate
         truePat = identifierPattern('true|TRUE'); % final output uses TRUE
         falsePat = identifierPattern('false|FALSE'); % final output uses FALSE
         expr = regexprep(expr, truePat, '1'); % Replace TRUE/FALSE with 1/0 so that MATLAB can evaluate them
         expr = regexprep(expr, falsePat, '0');
         expr = evaluateConstOps(expr);
-        
+
         % Add brackets to remove potential ambiguity
         expr = bracketForPrecedence(expr, true);
         expr = removeSpareBrackets(expr); % Removing brackets for easier debugging
-        
+
         % Swap logical 1/0 for TRUE/FALSE (determine if 1/0 is logical from context)
         % This is done because symengine will assume 1/0 are numerical
         expr = makeBoolsTorF(expr,'lower');
-        
+
         %% Perform the simplification
         n = 2; % arbitrary number of times to try simplifying
         for i = 1:n
             expr = lsSimplify(expr);
-            
-            %% Do final bracketing 
+
+            %% Do final bracketing
             %  Purpose is to allow other functions to ignore operator
             %  precedence as long as they respect brackets.
             expr = bracketForPrecedence(expr, true);
@@ -85,14 +85,14 @@ function newExpr = lsSimplify(expr)
     initMappings = cell(1,length(ids)); initMappings(:) = {''};
     % Add ids to idMap with empty values to indicate that an id doesn't represent anything
     addCells2Map(idMap,ids,initMappings);
-    
+
     % Simplify and when new ids are added to idMap, also add the simplified
     % expression they represent.
     newExpr = lsSimplifyAux(expr, idMap);
-    
+
     % Swap idMap keys for values
     newExpr = swapIdMapIdentifiers(newExpr, idMap);
-    
+
 end
 
 function expr = swapIdMapIdentifiers(expr, idMap)
@@ -111,7 +111,7 @@ function expr = swapIdMapIdentifiers(expr, idMap)
             expr = swapKey4Val(expr,ikey,ival);
         end
     end
-    
+
     function ex = swapKey4Val(ex,key,val)
         pat = ['(?<=(^|\W))' key '(?=(\W|$))']; % match identifier when the character before and after isn't valid in an identifier
         ex = regexprep(ex, pat, ['(' val ')']);
@@ -119,17 +119,17 @@ function expr = swapIdMapIdentifiers(expr, idMap)
 end
 
 function newExpr = lsSimplifyAux(expr, idMap)
-    
+
     assert(isempty(regexp(expr,'\s', 'once')))
-    
+
     % Notes of things to account for:
     % (X>Y) == ((X~=Y) & (~(Y>X))) or equivalently ((X>Y)&(Y>X))==False
     % (X<2)&(1>X) -> X<1
-    
+
     %% TODO try reimplementing this by starting with these:
     %subexprs = findNextSubexpressions(expr);
     %[startIdx, endIdx] = findLastOp(expr, 'alt');
-    
+
     if strcmp(expr(1), '(') && findMatchingParen(expr, 1) == length(expr)
         % expr is of form "(subexpr)", so run lsSimplify(subexpr)
         newExpr = lsSimplifyAux(expr(2:end-1), idMap);
@@ -144,10 +144,10 @@ function newExpr = lsSimplifyAux(expr, idMap)
                 % expr is of form "~subexpr"
                 % (due to precedence ~ will otherwise not be the last op)
                 %   mSimplify(~lsSimplify(subexpr))
-                
+
                 subExpr = expr(endIdx+1:end); % endIdx == 1
 
-                % The cases below were added to "flip" relational operators 
+                % The cases below were added to "flip" relational operators
                 [idx1, idx2] = findLastOp(subExpr);
                 switch getLastOp(subExpr,idx1,idx2)
                     case '<'
@@ -187,12 +187,12 @@ function newExpr = lsSimplifyAux(expr, idMap)
                 else
                     lhs = removeSpareBrackets(expr(1:startIdx-1));
                     rhs = removeSpareBrackets(expr(endIdx+1:end));
-                    
+
                     [lhsIdx1, lhsIdx2] = findLastOp(lhs);
                     lhsOp = getLastOp(lhs,lhsIdx1,lhsIdx2);
                     [rhsIdx1, rhsIdx2] = findLastOp(rhs);
                     rhsOp = getLastOp(rhs,rhsIdx1,rhsIdx2);
-                    
+
                     if any(strcmp(lhsOp,{'>','>=','<','<=','==','~='})) ...
                             && any(strcmp(rhsOp,{'>','>=','<','<=','==','~='}))
                         lhsLeft = lsSimplifyAux(lhs(1:lhsIdx1-1), idMap);
@@ -203,7 +203,7 @@ function newExpr = lsSimplifyAux(expr, idMap)
                                 && (isValueTerm(rhsLeft) || isValueTerm(rhsRight)) ...
                             % left side of expr or right side of expr is
                             % value term for lhs and rhs
-                            
+
                             % Find A,B,op1,op2,x,y to structure the
                             % expression as: A op1 x op B op2 y
                             % I.e. use lhs/rhs left/right and flip operator
@@ -226,14 +226,14 @@ function newExpr = lsSimplifyAux(expr, idMap)
                                 B = removeSpareBrackets(rhsLeft);
                                 y = removeSpareBrackets(rhsRight);
                             end
-                            
+
                             if strcmp(A, B)
                                 % left of lhs and rhs is the same, right of
                                 % lhs and rhs is a value, and lhs and rhs
                                 % use a relational operator
-                                
+
                                 % expression can now be represented as: A op1 x OP A op2 y
-                                
+
                                 if str2num(x) < str2num(y)
                                     xRy = '<';
                                     yRx = '>';
@@ -244,9 +244,9 @@ function newExpr = lsSimplifyAux(expr, idMap)
                                     xRy = '>';
                                     yRx = '<';
                                 end
-                                
+
                                 if strcmp(op,'&')
-                                    % Starting expression looks like: 
+                                    % Starting expression looks like:
                                     %   A op1 x & A op2 y where x xRy y
                                     if isImplied(op2,op1,xRy) % Means that A op1 x & x xRy y ==> A op2 y
                                         newExpr = [A op1 x]; % Since this implies A op2 y
@@ -262,9 +262,9 @@ function newExpr = lsSimplifyAux(expr, idMap)
                                         newExpr = mSimplify([lhs op rhs]);
                                     end
                                 elseif strcmp(op,'|')
-                                    % Starting expression looks like: 
+                                    % Starting expression looks like:
                                     %   A op1 x | A op2 y where x xRy y
-                                    
+
                                     if isImplied(op2,op1,xRy) % Means that A op1 x & x xRy y ==> A op2 y
                                         newExpr = [A op2 y]; % Since this occurs whenever A op1 x does
                                     elseif isImplied(op2,negateRelOp(op1),xRy) % Means that ~(A op1 x) & x xRy y ==> A op2 y
@@ -301,24 +301,24 @@ function newExpr = lsSimplifyAux(expr, idMap)
             end
         end
     end
-    
+
     % Replace TRUE/FALSE with true/false for recursive iterations where mSimplify may be used
     upperTruePat = identifierPattern('TRUE');
     upperFalsePat = identifierPattern('FALSE');
     newExpr = regexprep(newExpr, upperTruePat, 'true');
     newExpr = regexprep(newExpr, upperFalsePat, 'false');
-    
+
     % % Let MATLAB simplify the expression as a condition
     % prev = expr; % Can use this to check equivalence between steps
     % expr = evalin(symengine, ['simplify(' prev ', condition)']);
     % expr = char(expr); % Convert from symbolic type to string
     % % Note the above converts 'X == 1 | X == 2' to 'X in {1, 2}'
-    
+
     % Let MATLAB simplify the expression as a logical expression
     %prev = expr; % Can use this to check equivalence between steps
     %expr = evalin(symengine, ['simplify(' prev ', logic)']);
     %expr = char(expr); % Convert from symbolic type to string
-    
+
     % %Let MATLAB simplify the expression using a different function
     % prev = expr; % Can use this to check equivalence between steps
     % expr = evalin(symengine, ['Simplify(' prev ')']);
@@ -328,14 +328,14 @@ end
 function newExpr = relSimplify(lhs, op, rhs, idMap)
     % Wrapper for relational simplifications and if the operator remains
     % then replaces the expression with a unique id
-    
+
     [lhs, op, rhs, replaceBool] = relSimplifyAux(lhs,op,rhs);
-    
+
     if replaceBool
         % if op has not been simplified out, then return with unique id
         % since mSimplify may produce unexpected results for relational
         % operators.
-        
+
         keys = idMap.keys;
         vals = idMap.values;
         for i = 1:length(keys)
@@ -376,15 +376,15 @@ function [newLhs, newOp, newRhs, replaceBool] = relSimplifyAux(lhs, op, rhs)
     %   the op was not simplified out of the expression)
     % if ~replaceBool, then newOp and newRhs are '' and the new expression
     %   is entirely in newLhs
-    
+
     % expr = [lhs, op, rhs];
-    
+
     % TODO
     % Try to simplify expr better
     % Compare lhs and rhs logically
     % E.g. if lhs = 'X<Y' and rhs = 'Y>X', then we can use a
     % single id to better simplify
-    
+
     %%
     % if (~A) == B or (~A) ~= B, then simplify to A ~= B or A == B
     [opLeft1, opLeft2] = findLastOp(lhs);
@@ -400,7 +400,7 @@ function [newLhs, newOp, newRhs, replaceBool] = relSimplifyAux(lhs, op, rhs)
             lhs = [lhs(1:opLeft1-1) lhs(opLeft2+1:end)];
         end
     end
-    
+
     %%
     % if A == (~B) or A ~= (~B), then simplify to A ~= B or A == B
     [opRight1, opRight2] = findLastOp(rhs);
@@ -416,15 +416,15 @@ function [newLhs, newOp, newRhs, replaceBool] = relSimplifyAux(lhs, op, rhs)
             rhs = [rhs(1:opRight1-1) rhs(opRight2+1:end)];
         end
     end
-    
+
     %%
     lhs = removeSpareBrackets(lhs);
     rhs = removeSpareBrackets(rhs);
-    
+
     % These functions will be useful in conditions below
     eqTrue = @(expr) any(strcmp(removeSpareBrackets(expr),{'true','1'}));
     eqFalse = @(expr) any(strcmp(removeSpareBrackets(expr),{'false','0'}));
-    
+
     if any(strcmp(op, {'==','~='})) && ...
             (eqTrue(lhs) || eqTrue(rhs) || eqFalse(lhs) || eqFalse(rhs) || strcmp(lhs, rhs))
         %%
@@ -483,7 +483,7 @@ function [newLhs, newOp, newRhs, replaceBool] = relSimplifyAux(lhs, op, rhs)
         %
         % We know X is logical when it contains an operator (i.e.
         % &,|,<,<=,>,>=,==,~=,~)
-        
+
         % Put lhs op rhs into the form X op y
         if isLogExpr(lhs) && isValueTerm(rhs)
             y = str2num(removeSpareBrackets(rhs));
@@ -493,7 +493,7 @@ function [newLhs, newOp, newRhs, replaceBool] = relSimplifyAux(lhs, op, rhs)
             X = rhs;
             op = flipOp(op);
         end
-        
+
         if any(strcmp(op, {'>=', negateRelOp('>=')})) % >= or <
             newOp = ''; newRhs = ''; replaceBool = false; % the op will be removed
             % Assume >= to start, then negate if <
@@ -582,7 +582,7 @@ function op = getLastOp(expr, varargin)
     % varargin{1} is startIdx
     % varargin{2} is endIdx - varargin{2} must be given if varargin{1} is
     %   given
-    
+
     if nargin == 1
         [startIdx, endIdx] = findLastOp(expr);
     else
@@ -597,7 +597,7 @@ function op = getLastOp(expr, varargin)
 end
 
 function expr = swap4Symengine(expr)
-    
+
     if ~isLsNewerVer()
         expr = strrep(expr, '~=', '<>'); % This line must go before the unary negation swap
         expr = strrep(expr, '~', ' not ');
@@ -608,7 +608,7 @@ function expr = swap4Symengine(expr)
 end
 
 function expr = swap4Simulink(expr)
-    
+
     if ~isLsNewerVer()
         expr = regexprep(expr, '(^|\s) not \s', '~');
         expr = strrep(expr, ' or ', '|'); % Without the spaces 'or' could be part of a variable name

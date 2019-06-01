@@ -1,39 +1,38 @@
 function newEqus = getNaryOpEquation(startSys, h, handleID, blocks, lhsTable, ...
         subsystem_rule, extraSupport, op, varargin)
-    % GETNARYOPEQUATION Get the equation for an operator op which can be
-    %   used in the following way:
-    %       expr op ... op expr
-    %   where expr is an arbitrary expression.
-    %   Thus the operator is for 2 to N arguments (1 argument will not be
-    %   an error, but the op won't be applied).
-    %   The first equation in newEqus will be the one with the main
-    %   equation (i.e. using the operator).
-    %
-    % Inputs:
-    %   startSys
-    %   h
-    %   handleID
-    %   blocks
-    %   lhsTable
-    %   subsystem_rule
-    %   extraSupport
-    %   op          Char array representing a valid operator for the
-    %               expression.
-    %   varargin{1} Cell array of values to input to the operator (the
-    %               values should be given as valid char arrays for an
-    %               equation). If there are inputs to the block
-    %               corresponding to the given handle h, they are the first
-    %               inputs to the operator, after that, elements of
-    %               varargin act as inputs to the operator until varargin
-    %               is empty.
-    %
-    % Outputs:
-    %   newEqus     Set of new equations used to represent the handle h
-    %
-    
+% GETNARYOPEQUATION Get the equation for an operator op which can be used in
+%   the following way:
+%       expr op ... op expr
+%   where expr is an arbitrary expression.
+%   Thus the operator is for 2 to N arguments (1 argument will not be
+%   an error, but the op won't be applied).
+%   The first equation in newEqus will be the one with the main
+%   equation (i.e. using the operator).
+%
+% Inputs:
+%   startSys
+%   h
+%   handleID
+%   blocks
+%   lhsTable
+%   subsystem_rule
+%   extraSupport
+%   op          Char array representing a valid operator for the
+%               expression.
+%   varargin{1} Cell array of values to input to the operator (the
+%               values should be given as valid char arrays for an
+%               equation). If there are inputs to the block
+%               corresponding to the given handle h, they are the first
+%               inputs to the operator, after that, elements of
+%               varargin act as inputs to the operator until varargin
+%               is empty.
+%
+% Outputs:
+%   newEqus     Set of new equations used to represent the handle h
+
     % Get the block
     blk = getBlock(h);
-    
+
     % Get the source ports of the blk (i.e. inport, enable, ifaction, etc.)
     ph = get_param(blk, 'PortHandles');
     pfields = fieldnames(ph);
@@ -41,7 +40,7 @@ function newEqus = getNaryOpEquation(startSys, h, handleID, blocks, lhsTable, ..
     for i=setdiff(1:length(pfields), 2) % for all inport field types
         srcHandles = [srcHandles, ph.(pfields{i})];
     end
-    
+
     % Calculate arity of the expression (number of inputs)
     if isempty(varargin)
         extraIns = {};
@@ -49,7 +48,7 @@ function newEqus = getNaryOpEquation(startSys, h, handleID, blocks, lhsTable, ..
         extraIns = varargin{1};
     end
     arity = length(srcHandles) + length(extraIns);
-    
+
     % Set default output
     newEqus = {};
     equ = [handleID ' = ('];
@@ -74,6 +73,6 @@ function newEqus = getNaryOpEquation(startSys, h, handleID, blocks, lhsTable, ..
             equ = [equ ' ' op ' ('];
         end
     end
-    
+
     newEqus = [{equ}, newEqus]; % Equations involved in this block's equations
 end

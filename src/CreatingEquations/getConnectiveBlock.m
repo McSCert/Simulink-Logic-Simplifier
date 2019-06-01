@@ -1,5 +1,5 @@
 function [opType, type] = getConnectiveBlock(connective)
-%Gets information for the connective block representing the connective
+% GETCONNECTIVEDBLOCK Get information for the connective block representing the connective.
 
 % type = 2 -> unary
 % type = 1 -> relational
@@ -29,4 +29,3 @@ function [opType, type] = getConnectiveBlock(connective)
             end
     end
 end
-

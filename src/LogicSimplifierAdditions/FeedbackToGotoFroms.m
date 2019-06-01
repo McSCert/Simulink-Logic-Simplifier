@@ -1,9 +1,15 @@
 function FeedbackToGotoFroms(model)
-%FEEDBACKTOGOTOFROMS -Turns feedback signals in a model to goto/froms
+% FEEDBACKTOGOTOFROMS Turn feedback signals into Goto/From connections.
+%
+%   Inputs:
+%       model   Model name.
+%
+%    Outputs:
+%       N/A
 
     % Get the start blocks
     startBlocks = getStartBlocks(model);
-    
+
     % Find line feedbacks by traversing forward through model and finding
     % revisited blocks. This uses a breadth first search of the model.
     visitedBlocks = {};
@@ -37,12 +43,10 @@ function FeedbackToGotoFroms(model)
             end
         end
     end
-    
+
     for i = 1:length(feedbackLines)
         try
             line2Goto(model, feedbackLines(i), ['Feedback_' num2str(i)])
         end
     end
-
 end
-

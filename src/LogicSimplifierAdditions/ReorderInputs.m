@@ -1,12 +1,12 @@
 function ReorderInputs(block)
-%REORDERINPUTS - Reorders which lines go to which input in a block to
-%reduce line crossings. WARNING: only use on blocks where order of inputs
-%does not matter.
+% REORDERINPUTS Reorders which lines go to which input in a block to
+% reduce line crossings. WARNING: only use on blocks where order of inputs
+% does not matter.
 
     sys = get_param(block, 'parent');
     blockLineHandles = get_param(block, 'LineHandles');
     inLines = blockLineHandles.Inport;
-    
+
     % Get line initial heights and source ports, delete lines
     initHeights = [];
     srcPorts = [];
@@ -19,7 +19,7 @@ function ReorderInputs(block)
         dstPorts(end + 1) = get_param(inLines(i), 'DstPortHandle');
         delete_line(inLines(i));
     end
-    
+
     % Find the correct ordering of the lines
     orderArray = [1];
     for i = 2:length(initHeights)
@@ -37,12 +37,9 @@ function ReorderInputs(block)
         end
     end
     assert(length(orderArray) == length(inLines))
-    
+
     % Redraw lines
     for i = 1:length(orderArray)
         add_line(sys, srcPorts(orderArray(i)), dstPorts(i));
     end
-
-
 end
-
