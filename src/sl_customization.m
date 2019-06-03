@@ -43,7 +43,7 @@ function schema = getSimplifyWithVerify(callbackInfo)
     % Check that at least 1 block is selected or that the tool is run on
     % unselected blocks.
     BLOCKS_TO_SIMPLIFY = getLogicSimplifierConfig('blocks_to_simplify', 'selected');
-    if (~isempty(gcbs) || strcmp(BLOCKS_TO_SIMPLIFY, 'unselected')) && license('test', 'Simulink Design Verifier')
+    if (~isempty(gcbs) || strcmp(BLOCKS_TO_SIMPLIFY, 'unselected')) && license('test', 'Simulink_Design_Verifier')
         schema.state = 'Enabled';
     else
         schema.state = 'Disabled';
