@@ -1,11 +1,13 @@
 function str = makeWellFormed(str)
-% MAKEWELLFORMED
+% MAKEWELLFORMED Edits an expression to be formatted as needed for the Logic
+% Simplifier Tool.
 %
 %   Inputs:
-%       str
+%       str     Original expression.
 %
 %   Outputs:
-%       str
+%       str     "Well formed" expression.
+%
 
     str = regexprep(str, '([^&|~><=()]+)', '($1)');
 

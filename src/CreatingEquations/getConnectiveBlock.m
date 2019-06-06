@@ -1,5 +1,19 @@
 function [opType, type] = getConnectiveBlock(connective)
-% GETCONNECTIVEDBLOCK Get information for the connective block representing the connective.
+% GETCONNECTIVEDBLOCK Get information for the connective block representing the
+% given connective.
+%
+%   Inputs:
+%       connective  Char array representing an operator. Supported operators
+%                   are: {'&', '|', '~=', '<', '>', '==', '>=', '<=', '~', '-'}.
+%                   The operators represent the usual ones in MATLAB.
+%
+%   Outputs:
+%       opType      Char array representing the Operator parameter used in the
+%                   corresponding Simulink block to do the equivalent
+%                   functionality as the given connective.
+%       type        0, 1, or 2 indicating how the connective needs to be
+%                   handled.
+%
 
 % type = 2 -> unary
 % type = 1 -> relational

@@ -15,6 +15,7 @@ function swapBlockPattern(sys, blocks, extraSupport)
 %
 %   Outputs:
 %       N/A
+%
 
 % % TODO
 % %% Swap Constant -> Unary Minus -> X for -1*Constant -> X
