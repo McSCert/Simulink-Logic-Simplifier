@@ -3,6 +3,11 @@ function harnessBlocks = harnessSysForVerification(model)
     %
     %   Inputs:
     %       model   Simulink model to prepare for verification.
+    %
+    %   Outports:
+    %       harnessBlocks   Column-vector of block handles added to the model
+    %                       for the harness.
+    %
     
     % Harnessed system shall have no unconnected ports.
     % Harnessed system shall have no Gotos without a From or vice versa.
