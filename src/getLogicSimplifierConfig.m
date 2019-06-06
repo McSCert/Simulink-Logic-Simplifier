@@ -1,5 +1,5 @@
 function val = getLogicSimplifierConfig(parameter, default)
-%% GETLOGICSIMPLIFIERCONFIG Get a parameter from the tool configuration file.
+% GETLOGICSIMPLIFIERCONFIG Get a parameter from the tool configuration file.
 %
 %   Inputs:
 %       parameter   Configuration parameter to retrieve value for.
@@ -7,6 +7,7 @@ function val = getLogicSimplifierConfig(parameter, default)
 %
 %   Outputs:
 %       val         Char configuration value.
+%
 
     val = default;
     filePath = mfilename('fullpath');

@@ -6,22 +6,24 @@ function type = equationType(h)
 %       h       Simulink object handle. Must be for a block or a port.
 %
 %   Output:
-%       type    Types of equation: 'blk', 'in', 'out'
-
-hType = get_param(h,'Type');
-
-switch hType
-    case 'block'
-        type = 'blk';
-    case 'port'
-        if strcmp('outport', get_param(h, 'PortType'))
-            type = 'out';
-        else % inport, ifaction, trigger, etc.
-            type = 'in';
-        end
-    otherwise
-        % Lines and annotations not valid
-        error(['Error unexpected handle type.'])
-end
-
+%       type    Type of the equation that would correspond with h, one of:
+%               {'blk', 'in', 'out'}.
+%
+    
+    hType = get_param(h,'Type');
+    
+    switch hType
+        case 'block'
+            type = 'blk';
+        case 'port'
+            if strcmp('outport', get_param(h, 'PortType'))
+                type = 'out';
+            else % inport, ifaction, trigger, etc.
+                type = 'in';
+            end
+        otherwise
+            % Lines and annotations not valid
+            error(['Error unexpected handle type.'])
+    end
+    
 end

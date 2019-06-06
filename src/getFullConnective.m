@@ -3,8 +3,8 @@ function connective = getFullConnective(str, idx)
 %   position of the connective is at idx.
 %
 %   Input:
-%       str     String to check.
-%       idx     Starting index of the connective in str 
+%       str     Char array to check.
+%       idx     Starting index of the connective in str.
 %
 %   Output:
 %       connective  Largest connective in str, starting at idx.

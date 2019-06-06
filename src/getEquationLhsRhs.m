@@ -9,16 +9,17 @@ function [lhs, rhs] = getEquationLhsRhs(equ)
 %   Output:
 %       lhs     Left-hand-side of equ.
 %       rhs     Right-hand-side of equ.
-
-% Create pattern for lhs:
-% Start with any amount of not "=" ending with not whitespace,
-% followed by any whitespace, then "=", opionally "?",
-% any whitespace, then followed by anything until the end.
-% Make token before and after the "="/"=?".
-patLhsRhs = '^([^=]*[^=\s])\s*=[?]?\s*(.*)$';
-
-lhsrhs = regexp(equ, patLhsRhs, 'tokens', 'once');
-
-lhs = lhsrhs{1};
-rhs = lhsrhs{2};
+%
+    
+    % Create pattern for lhs:
+    % Start with any amount of not "=" ending with not whitespace,
+    % followed by any whitespace, then "=", opionally "?",
+    % any whitespace, then followed by anything until the end.
+    % Make token before and after the "="/"=?".
+    patLhsRhs = '^([^=]*[^=\s])\s*=[?]?\s*(.*)$';
+    
+    lhsrhs = regexp(equ, patLhsRhs, 'tokens', 'once');
+    
+    lhs = lhsrhs{1};
+    rhs = lhsrhs{2};
 end

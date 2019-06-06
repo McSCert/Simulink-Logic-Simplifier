@@ -1,24 +1,25 @@
 function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
-    % SIMPLIFYLOGIC A function that takes a set of logic blocks and simplifies
-    %   them. Results are saved in a new model in a folder called
-    %   'Logic_Simplifier_Results'.
-    %
-    %   Input:
-    %       blocks      Cell array of blocks (indicated by fullname). All blocks
-    %                   should be in the same system/subsystem. Input blocks should
-    %                   be the outputs of the simplification (i.e. if the only only
-    %                   block is an outport, it will simplify the blocks that
-    %                   impact it).
-    %       varargin{1} Bool indicating whether or not to verify the results.
-    %                   Verifying involves creating an additional model within the
-    %                   'Logic_Simplifier_Results' folder.
-    %       varargin{2} Char array naming the parent system of the blocks.
-    %
-    %   Outputs:
-    %       oldEqu      Cell array of equations found for the blocks as
-    %                   given.
-    %       newEqu      Cell array of equations found for the blocks after
-    %                   the simplification process.
+% SIMPLIFYLOGIC A function that takes a set of logic blocks and simplifies them.
+%   Results are saved in a new model in a folder called
+%   'Logic_Simplifier_Results'.
+%
+%   Input:
+%       blocks      Cell array of blocks (indicated by fullname). All blocks
+%                   should be in the same system/subsystem. Input blocks should
+%                   be the outputs of the simplification (i.e. if the only only
+%                   block is an outport, it will simplify the blocks that
+%                   impact it).
+%       varargin{1} Bool indicating whether or not to verify the results.
+%                   Verifying involves creating an additional model within the
+%                   'Logic_Simplifier_Results' folder.
+%       varargin{2} Char array naming the parent system of the blocks.
+%
+%   Outputs:
+%       oldEqu      Cell array of equations found for the blocks as
+%                   given.
+%       newEqu      Cell array of equations found for the blocks after
+%                   the simplification process.
+%
     
     % Constants:
     SUBSYSTEM_RULE = getLogicSimplifierConfig('subsystem_rule', 'blackbox'); % Indicates how to address subsystems in the simplification process
@@ -83,14 +84,14 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
     %Zoom on new system
     set_param(getfullname(logicSys), 'Zoomfactor', 'Fit to view');
     
-%     if ~strcmp(SUBSYSTEM_RULE, 'blackbox')
-%         % Do layout and zoom on SubSystems as well
-%         subsystems = find_system(logicSys, 'BlockType', 'SubSystem', 'Mask', 'off');
-%         for i = 1:length(subsystems)
-%             automatic_layout(getfullname(subsystems(i)));
-%             set_param(getfullname(subsystems(i)), 'Zoomfactor', 'Fit to view');
-%         end
-%     end
+    %     if ~strcmp(SUBSYSTEM_RULE, 'blackbox')
+    %         % Do layout and zoom on SubSystems as well
+    %         subsystems = find_system(logicSys, 'BlockType', 'SubSystem', 'Mask', 'off');
+    %         for i = 1:length(subsystems)
+    %             automatic_layout(getfullname(subsystems(i)));
+    %             set_param(getfullname(subsystems(i)), 'Zoomfactor', 'Fit to view');
+    %         end
+    %     end
     
     % Save the resulting model - DO NOT MODIFY IT BELOW THIS
     startDir = pwd;
@@ -175,7 +176,7 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
         
         % Save harness
         saveGeneratedSystem(vhLogicSys, startDir, resultsDir)
-
+        
         % Call verification function on logicSys and copySys
         verify_model = [get_param(parent, 'Name') '_verify'];
         if ~isvarname(verify_model)
@@ -199,8 +200,8 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
         error(['Error in ' mfilename ', DELETE_UNUSED should be ''on'' or ''off''.']);
     end
     
-%     %Fix the layout
-%     automatic_layout(getfullname(logicSys))
+    %     %Fix the layout
+    %     automatic_layout(getfullname(logicSys))
 end
 
 function copyMdl = copyModel(dir, model, suffix)
@@ -232,7 +233,7 @@ function copySys = copySystem(sys, origModel, suffix)
     if ~isvarname(copySysName)
         % Name invalid so use some default
         copySysName = ['DefaultModel' '_' suffix];
-    end    
+    end
     copySys = new_system_makenameunique(copySysName, 'Model', get_param(sys, 'Handle'));
     
     open_system(copySys)
@@ -309,15 +310,15 @@ function saveGeneratedSystem(sys, startDir, resultsDir)
 end
 
 function add_harness_note(newModel, oldModel)
-% Add an annotation indicating that this is a harnessed version
-% intended just for verification.
-note = Simulink.Annotation([newModel ...
-    '/This model is intended only for verification purposes.' ...
-    char(10) 'The model was harnessed from ' oldModel '.']);
-objs = [];
-objs = [objs; find_system(newModel, 'SearchDepth', '1', 'FindAll', 'on', 'Type', 'Block')];
-objs = [objs; find_system(newModel, 'SearchDepth', '1', 'FindAll', 'on', 'Type', 'Line')];
-objs = [objs; find_system(newModel, 'SearchDepth', '1', 'FindAll', 'on', 'Type', 'Annotation')];
-bounds = bounds_of_sim_objects(objs); % This is an AutoLayout function
-placeAnnotationsRightOfBounds(bounds, note.handle) % This is an AutoLayout function
+    % Add an annotation indicating that this is a harnessed version
+    % intended just for verification.
+    note = Simulink.Annotation([newModel ...
+        '/This model is intended only for verification purposes.' ...
+        char(10) 'The model was harnessed from ' oldModel '.']);
+    objs = [];
+    objs = [objs; find_system(newModel, 'SearchDepth', '1', 'FindAll', 'on', 'Type', 'Block')];
+    objs = [objs; find_system(newModel, 'SearchDepth', '1', 'FindAll', 'on', 'Type', 'Line')];
+    objs = [objs; find_system(newModel, 'SearchDepth', '1', 'FindAll', 'on', 'Type', 'Annotation')];
+    bounds = bounds_of_sim_objects(objs); % This is an AutoLayout function
+    placeAnnotationsRightOfBounds(bounds, note.handle) % This is an AutoLayout function
 end

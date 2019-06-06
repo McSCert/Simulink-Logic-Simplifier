@@ -1,7 +1,20 @@
 function pNum = getEquPortNumber(equ, lhsTable)
-% Returns the port number of the handle associated with the LHS of the given
-% equation.
-% pNum == 0 -> equation type is blk; no associated pNum
+% GETEQUPORTNUMBER Get port number of the handle associated with the LHS of the
+%   given equation.
+%   pNum == 0 -> equation type is blk; no associated pNum.
+%
+%   Inputs:
+%       equ         Cell array of equations to simplify.
+%       lhsTable    A BiMap object (see BiMap.m) that records object handles and
+%                   their representation within equations. The BiMap is updated
+%                   with new handles and their representations as equations for
+%                   them are found.
+%                   - This function should not update lhsTable.
+%
+%   Outputs:
+%       pNum        Port number corresponding to the lhs of equ or 0 if there is
+%                   no port number.
+%
 
 [lhs, ~] = getEquationLhsRhs(equ);
 

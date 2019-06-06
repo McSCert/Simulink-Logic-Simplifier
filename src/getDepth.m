@@ -1,10 +1,18 @@
 function depth = getDepth(startSys, block)
-    % GETDEPTH Gets the depth of block relative to an initial system. If
-    % the block is directly within the system, then its depth is 0. If the
-    % block is not directly within the system, then its depth is that of
-    % its parent subsystem plus 1.
-    %
-    % Assumes: block is somewhere within startSys
+% GETDEPTH Gets the depth of block relative to an initial system. If the block
+%   is directly within the system, then its depth is 0. If the block is not
+%   directly within the system, then its depth is that of its parent subsystem
+%   plus 1.
+%
+%   Inputs:
+%       startSys    Simulink system fullname or handle.
+%       block       Block contained within startSys at some depth.
+%
+%   Outputs:
+%       depth
+%
+%   Assumptions: block is somewhere within startSys.
+%
     
     startSys = getfullname(startSys); % If startSys is a handle
     

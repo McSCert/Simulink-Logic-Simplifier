@@ -1,41 +1,42 @@
 function [startIdx, endIdx] = findLastOp(expr, varargin)
-    % FINDLASTOP Finds the starting index in a given expression of the last
-    %   operator to evaluate. The significance of the operator is that it
-    %   determines the substructure of the expression. If there are no
-    %   operators, return startIdx = 0, endIdx = 0.
-    %
-    %   Inputs:
-    %       expr
-    %       varargin 'alt' to call findLastOp_alt instead
-    %
-    %   Outputs:
-    %       startIdx
-    %       endIdx
-    %
-    %   Example 1:
-    %       expr = '~x <= y';
-    %       [startIdx, endIdx] = getLastOp(expr) -> startIdx = 4, endIdx = 5
-    %   Example 2:
-    %       expr = '~x & y < 1 | (((TRUE)) == ((0 < z)) ~= FALSE) & ~TRUE & 0 < 1 & (TRUE == FALSE | 0 == y)';
-    %       %                  | <- this is the last
-    %       [startIdx, endIdx] = getLastOp(expr)
-    %       startIdx == 12 && endIdx == 12
-    %   Example 3:
-    %       expr = '~x & y < 1 | (((TRUE)) == ((0 < z)) ~= FALSE) & ~TRUE & 0 < 1 & (TRUE == FALSE | 0 == y) | x < y';
-    %       %                                                                            this is the last -> |
-    %       [startIdx, endIdx] = getLastOp(expr)
-    %   Example 4:
-    %       expr = '(~(x & y < 1) >= (((TRUE)) == ((0 < z)) ~= FALSE) & (~TRUE) & (0 < 1 & (TRUE == FALSE | 0 == y)) == x < y)';
-    %       %                                               this is the last -> &
-    %       [startIdx, endIdx] = getLastOp(expr)
-    %   Example 5:
-    %       expr = '~~x';
-    %       %       ~ <- this is the last
-    %       [startIdx, endIdx] = getLastOp(expr)
-    %   Example 6:
-    %       expr = 'x';
-    %       % no op so return 0
-    %       [startIdx, endIdx] = getLastOp(expr)
+% FINDLASTOP Finds the starting index in a given expression of the last
+%   operator to evaluate. The significance of the operator is that it
+%   determines the substructure of the expression. If there are no
+%   operators, return startIdx = 0, endIdx = 0.
+%
+%   Inputs:
+%       expr            Logic Simplifier expression.
+%       varargin{1}     'alt' to call findLastOp_alt instead.
+%
+%   Outputs:
+%       startIdx        Starting index of the last operator.
+%       endIdx          Ending index of the last operator.
+%
+%   Example 1:
+%       expr = '~x <= y';
+%       [startIdx, endIdx] = getLastOp(expr) -> startIdx = 4, endIdx = 5
+%   Example 2:
+%       expr = '~x & y < 1 | (((TRUE)) == ((0 < z)) ~= FALSE) & ~TRUE & 0 < 1 & (TRUE == FALSE | 0 == y)';
+%       %                  | <- this is the last
+%       [startIdx, endIdx] = getLastOp(expr)
+%       startIdx == 12 && endIdx == 12
+%   Example 3:
+%       expr = '~x & y < 1 | (((TRUE)) == ((0 < z)) ~= FALSE) & ~TRUE & 0 < 1 & (TRUE == FALSE | 0 == y) | x < y';
+%       %                                                                            this is the last -> |
+%       [startIdx, endIdx] = getLastOp(expr)
+%   Example 4:
+%       expr = '(~(x & y < 1) >= (((TRUE)) == ((0 < z)) ~= FALSE) & (~TRUE) & (0 < 1 & (TRUE == FALSE | 0 == y)) == x < y)';
+%       %                                               this is the last -> &
+%       [startIdx, endIdx] = getLastOp(expr)
+%   Example 5:
+%       expr = '~~x';
+%       %       ~ <- this is the last
+%       [startIdx, endIdx] = getLastOp(expr)
+%   Example 6:
+%       expr = 'x';
+%       % no op so return 0
+%       [startIdx, endIdx] = getLastOp(expr)
+%
     
     % http://www.ele.uri.edu/~daly/106/precedence.html
     % Reference for order of precedence in MATLAB (1 is highest precedence):

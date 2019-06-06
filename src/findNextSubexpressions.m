@@ -1,24 +1,24 @@
 function subexprs = findNextSubexpressions(expr)
-    % FINDSUBEXPRESSIONS Finds the immediate subexpressions for a given
-    %   expression.
-    %   E.g. (x&y)|z is an expression which we say has the following
-    %   subexpressions:
-    %       x, y, z, x&y, (x&y)
-    %   We refer to (x&y) and z as the "immediate" subexpressions as they
-    %   form a minimal set of subexpressions needed to determine all other
-    %   subexpressions of (x&y)|z.
-    %   E.g. (expr) is an expression with immediate subexpression of expr.
-    %   I.e. parentheses are considered to create a new subexpression.
-    %   E.g. x is an expression with the no immediate subexpression.
-    %
-    %   Input:
-    %       expr        Char array of an expression.
-    %
-    %   Output:
-    %       subexprs    Cell array of immediate subexpressions of expr.
-    %                   Given in order from left-to-right within the
-    %                   expression.
-    %
+% FINDSUBEXPRESSIONS Finds the immediate subexpressions for a given
+%   expression.
+%   E.g. (x&y)|z is an expression which we say has the following
+%   subexpressions:
+%       x, y, z, x&y, (x&y)
+%   We refer to (x&y) and z as the "immediate" subexpressions as they
+%   form a minimal set of subexpressions needed to determine all other
+%   subexpressions of (x&y)|z.
+%   E.g. (expr) is an expression with immediate subexpression of expr.
+%   I.e. parentheses are considered to create a new subexpression.
+%   E.g. x is an expression with the no immediate subexpression.
+%
+%   Input:
+%       expr        Char array of an expression.
+%
+%   Output:
+%       subexprs    Cell array of immediate subexpressions of expr.
+%                   Given in order from left-to-right within the
+%                   expression.
+%
     
     if strcmp(expr(1), '(') && findMatchingParen(expr,1) == length(expr)
         % Get rid of excess outer parentheses

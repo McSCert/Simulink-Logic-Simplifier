@@ -5,11 +5,11 @@ function [newEqus, handleID] = getEqus(startSys, h, blocks, lhsTable, subsystem_
 % This is a recursive function.
 %
 %   Inputs:
-%       startSys    The parent system of the blocks that are being used to find
-%                   an equation for h.
-%       h           Handle of a block to find an equation for.
-%       blocks      Blocks to not treat as blackbox while finding an equation
-%                   for h.
+%       startSys        The parent system of the blocks that are being used to
+%                       find an equation for h.
+%       h               Handle of a block to find an equation for.
+%       blocks          Blocks to not treat as blackbox while finding an
+%                       equation for h.
 %       subsystem_rule  A config option indicating how to address subsystems in 
 %                       the simplification process.
 %       extraSupport    A function determined by a config option that allows the

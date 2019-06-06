@@ -1,14 +1,14 @@
 function [idsChar, idsCell] = getIdentifiers(expr)
-    % GETIDENTIFIERS Gets the identifiers/variables in expr
-    %
-    %   Input:
-    %       expr    A character array representing an expression
-    %
-    %   Output:
-    %       idsChar     Character array of the identifiers. Identifiers are
-    %                   separated by spaces.
-    %       idsCell     Cell array of the identifiers
-    %
+% GETIDENTIFIERS Gets the identifiers/variables in expr.
+%
+%   Input:
+%       expr        A character array representing an expression.
+%
+%   Output:
+%       idsChar     Character array of the identifiers. Identifiers are
+%                   separated by spaces.
+%       idsCell     Cell array of the identifiers.
+%
     
     % Example:
     % expr = 'h 2 _3 TRUE e2l>lo h TRUE2 as 1a1 1_1 FALSE aFALSE 1a|)qwe'
