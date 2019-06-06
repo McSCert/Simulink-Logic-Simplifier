@@ -1,7 +1,14 @@
 function ReorderInputs(block)
 % REORDERINPUTS Reorders which lines go to which input in a block to
-% reduce line crossings. WARNING: only use on blocks where order of inputs
-% does not matter.
+%   reduce line crossings. WARNING: only use on blocks where order of inputs
+%   does not matter.
+%
+%   Inputs:
+%       block  Simulink block fullname or handle. 
+%
+%   Outputs:
+%       N/A
+%
 
     sys = get_param(block, 'parent');
     blockLineHandles = get_param(block, 'LineHandles');

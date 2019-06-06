@@ -1,28 +1,28 @@
 function duplicates = RemoveSimulinkDuplicates(blocks, varargin)
-% REMOVESIMULINKDUPLICATES For blocks within a common parent system, if
-% a block was copied when its outputs could have been branched, then
-% automatically switch to branching instead.
-% By default the duplicate blocks will be deleted.
-% Only counts things as duplicates if they have at least one input port
-% (e.g. two From blocks where only one is necessary will be untouched).
-% May not handle certain cases with feedback.
+% REMOVESIMULINKDUPLICATES For blocks within a common parent system, if a block
+%   was copied when its outputs could have been branched, then automatically
+%   switch to branching instead.
+%   By default the duplicate blocks will be deleted.
+%   Only counts things as duplicates if they have at least one input port
+%   (e.g. two From blocks where only one is necessary will be untouched).
+%   May not handle certain cases with feedback.
 %
-% Inputs:
-%   blocks      Cell array or vector of Simulink blocks with a common
-%               parent system.
-%   varargin	Parameter-Value pairs as detailed below.
+%   Inputs:
+%       blocks      Cell array or vector of Simulink blocks with a common
+%                   parent system.
+%       varargin	Parameter-Value pairs as detailed below.
 %
-% Parameter-Value pairs:
-%   Parameter: 'DeleteDuplicateBlocks'
-%   Value:  'on' - (Default) Delete blocks and lines that are
-%               duplicates of another block.
-%           'off' - Deletes lines connecting to blocks that are
-%               duplicates of another block.
+%   Parameter-Value pairs:
+%       Parameter: 'DeleteDuplicateBlocks'
+%       Value:  'on' - (Default) Delete blocks and lines that are
+%                   duplicates of another block.
+%               'off' - Deletes lines connecting to blocks that are
+%                   duplicates of another block.
 %
-% Output:
-%   duplicates  Vector of block handles that were marked as duplicates
-%               to delete or that were deleted because they were a
-%               duplicate.
+%   Output:
+%       duplicates  Vector of block handles that were marked as duplicates
+%                   to delete or that were deleted because they were a
+%                   duplicate.
 
     % Handle parameter-value pairs
     DeleteDuplicateBlocks = 'on';
