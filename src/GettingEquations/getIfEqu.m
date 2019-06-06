@@ -1,23 +1,36 @@
 function [newEqus, handleID] = getIfEqu(startSys, h, handleID, blocks, lhsTable, subsystem_rule, extraSupport)
 % GETIFEQU Parse the conditions of the if block in order to produce a logical
-% equation indicative of the if block.
-
-% Assumed that subsystem_rule is 'full_simplify', for other cases If blocks
-% should actually be treated as blackbox because of the way they interact
-% with SubSystems.
+%   equation indicative of the if block.
+%   Assumed that subsystem_rule is 'full_simplify', for other cases If blocks
+%   should actually be treated as blackbox because of the way they interact
+%   with SubSystems.
 %
 %   Inputs:
-%       startSys
-%       h
-%       handleID
-%       blocks
-%       lhsTable
-%       subsystem_rule
-%       extraSupport
+%       startSys        Starting system.
+%       h               Handle of a block to find an equation for.
+%       handleID        Char array representation for h used in equations.
+%       blocks          Blocks to not treat as blackbox while finding an
+%                       equation for h.
+%       subsystem_rule  A config option indicating how to address subsystems in 
+%                       the simplification process.
+%       extraSupport    A function determined by a config option that allows the
+%                       Logic Simplifier Tool to provide support for blocks that
+%                       are not otherwise handled by the Logic Simplifier Tool.
+%
+%   Updates: (input and output)
+%       lhsTable    A BiMap object (see BiMap.m) that records object handles and
+%                   their representation within equations. The BiMap is updated
+%                   with new handles and their representations as equations for
+%                   them are found.
 %
 %   Outputs:
-%       newEqus
-%       handleID
+%       newEqus     Equations found during the current recursive iteration that
+%                   were not already found. If the left hand side of an equation
+%                   is in lhsTable when this is called, then it was already
+%                   found.
+%       handleID    Char array representation for h used in equations. (This
+%                   never gets set - will be removed in a future version)
+%
 
     blk = getBlock(h);
 

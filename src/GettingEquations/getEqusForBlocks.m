@@ -10,7 +10,7 @@ function equs = getEqusForBlocks(startSys, blocks, sysBlocks, lhsTable, subsyste
 %   dependencies will still be represented on the rhs.
 %
 %   Inputs:
-%       startSys    Starting system
+%       startSys    Starting system.
 %       blocks      Blocks we want equations for. Other blocks will be
 %                   treated as blackboxes (we still generate an equation for 
 %                   blackboxes, but they will be treated differently).
@@ -22,8 +22,8 @@ function equs = getEqusForBlocks(startSys, blocks, sysBlocks, lhsTable, subsyste
 %                       extra block types.
 %
 %   Updates: (input and output)
-%       lhsTable    Records object handles and their representation within 
-%                   equations.
+%       lhsTable    A BiMap object (see BiMap.m) that records object handles and
+%                   their representation within equations.
 %
 %   Outputs:
 %       equs        List of equations. Cell array of chars.

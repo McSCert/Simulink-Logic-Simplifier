@@ -2,6 +2,33 @@ function [newEqus, handleID] = getEqus(startSys, h, blocks, lhsTable, subsystem_
 % GETEQUS Get a list of equations to represent the value of h. If an
 % equation has previously been done (indicated by lhsTable), then that
 % equation won't be generated again and won't be included in the output.
+% This is a recursive function.
+%
+%   Inputs:
+%       startSys    The parent system of the blocks that are being used to find
+%                   an equation for h.
+%       h           Handle of a block to find an equation for.
+%       blocks      Blocks to not treat as blackbox while finding an equation
+%                   for h.
+%       subsystem_rule  A config option indicating how to address subsystems in 
+%                       the simplification process.
+%       extraSupport    A function determined by a config option that allows the
+%                       Logic Simplifier Tool to provide support for blocks that
+%                       are not otherwise handled by the Logic Simplifier Tool.
+%
+%   Updates: (input and output)
+%       lhsTable    A BiMap object (see BiMap.m) that records object handles and
+%                   their representation within equations. The BiMap is updated
+%                   with new handles and their representations as equations for
+%                   them are found.
+%
+%   Outputs:
+%       newEqus     Equations found during the current recursive iteration that
+%                   were not already found. If the left hand side of an equation
+%                   is in lhsTable when this is called, then it was already
+%                   found.
+%       handleID    Char array representation for h used in equations.
+%
 
 % Notes/rough overview:
 %   If h is an input port, then create an equation which sets it to the

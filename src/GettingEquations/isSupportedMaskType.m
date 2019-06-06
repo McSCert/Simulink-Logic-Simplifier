@@ -5,7 +5,8 @@ function bool = isSupportedMaskType(maskType)
 %       maskType    A mask type char array.
 %
 %   Outputs:
-%       bool         1 if supported, otherwise 0.
+%       bool        True if supported, otherwise false.
+%
 
     supportedMaskTypes = {'Compare To Constant', 'Compare To Zero'};
     bool = any(strcmp(maskType, supportedMaskTypes));

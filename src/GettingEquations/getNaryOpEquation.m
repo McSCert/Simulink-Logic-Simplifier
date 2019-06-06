@@ -9,26 +9,35 @@ function newEqus = getNaryOpEquation(startSys, h, handleID, blocks, lhsTable, ..
 %   The first equation in newEqus will be the one with the main
 %   equation (i.e. using the operator).
 %
-% Inputs:
-%   startSys
-%   h
-%   handleID
-%   blocks
-%   lhsTable
-%   subsystem_rule
-%   extraSupport
-%   op          Char array representing a valid operator for the
-%               expression.
-%   varargin{1} Cell array of values to input to the operator (the
-%               values should be given as valid char arrays for an
-%               equation). If there are inputs to the block
-%               corresponding to the given handle h, they are the first
-%               inputs to the operator, after that, elements of
-%               varargin act as inputs to the operator until varargin
-%               is empty.
+%   Inputs:
+%       startSys        The parent system of the blocks that are being used to
+%                       find an equation for h.
+%       h               Handle of a block to find an equation for.
+%       handleID        Char array representation for h used in equations.
+%       blocks          Blocks to not treat as blackbox while finding an
+%                       equation for h.
+%       subsystem_rule  A config option indicating how to address subsystems in 
+%                       the simplification process.
+%       extraSupport    A function determined by a config option that allows the
+%                       Logic Simplifier Tool to provide support for blocks that
+%                       are not otherwise handled by the Logic Simplifier Tool.
+%       op              Char array representing a valid operator for the
+%                       expression.
+%       varargin{1}     Cell array of values to input to the operator (the
+%                       values should be given as valid char arrays for an
+%                       equation). If there are inputs to the block
+%                       corresponding to the given handle h, they are the first
+%                       inputs to the operator, after that, elements of varargin
+%                       act as inputs to the operator until varargin is empty.
 %
-% Outputs:
-%   newEqus     Set of new equations used to represent the handle h
+%   Updates: (input and output)
+%       lhsTable    A BiMap object (see BiMap.m) that records object handles and
+%                   their representation within equations. The BiMap is updated
+%                   with new handles and their representations as equations for
+%                   them are found.
+%
+%   Outputs:
+%       newEqus     Set of new equations used to represent the handle h.
 
     % Get the block
     blk = getBlock(h);

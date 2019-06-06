@@ -1,11 +1,13 @@
 function bool = isSupportedBlockType(blockType)
-% ISSUPPORTEDBLOCKTYPE Determine is the block type is supported for simplification.
+% ISSUPPORTEDBLOCKTYPE Determine is the block type is supported for
+%   simplification.
 %
 %   Inputs:
-%       blockType  A block type char array.
+%       blockType   A block type char array.
 %
 %   Outputs:
-%       bool        1 if supported, otherwise 0.
+%       bool        True if supported, otherwise false.
+%
 
     % This is the list of currently supported block types. It is intended primarily for
     % reference.
