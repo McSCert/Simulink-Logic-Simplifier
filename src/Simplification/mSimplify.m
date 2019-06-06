@@ -1,4 +1,11 @@
 function newExpr = mSimplify(expr)
+% MSIMPLIFY Simplify expression using MATLAB's tools.
+%
+%   Inputs:
+%       expr    A string representing an expression. E.g. A symbolic
+%               expression in MATLAB will work if given as a string.
+%               Cell array of elements of the above format will also
+%               work. Format is the same as simplifyExpression.m.
 
     newExpr = expr;
 

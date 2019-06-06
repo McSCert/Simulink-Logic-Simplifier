@@ -20,6 +20,7 @@ function newexpression = bracketForPrecedence(expression, preserveLeft2Right)
 %   Outputs:
 %       newexpression   Resulting expression after swapping logical 1s and
 %                       0s with TRUE or FALSE respectively.
+%
 
 % Method from https://en.wikipedia.org/wiki/Operator-precedence_parser
 % under "Alternative methods"

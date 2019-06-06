@@ -1,8 +1,18 @@
 function expr = swapIn(expr)
-    % Swap out 'in {...}':
-    % While we find 'in {...}',
-    % Pattern is Case 1: 'X in {...} ...' or Case 2: '... ( Case 1 ) ...'
-    % Replace Case 1 with: '((X == (...)) | (X == (...)) | ...) ...'
+% SWAPIN Swap out 'in {...}' from expression to use '==' and '|' operators:
+%   While we find 'in {...}',
+%   Pattern is Case 1: 'X in {...} ...' or Case 2: '... ( Case 1 ) ...'
+%   Replace Case 1 with: '((X == (...)) | (X == (...)) | ...) ...'
+%   For Case 2 replace the contained instance of Case 1 as described above.
+%
+%   Inputs:
+%       expr    Char array representation of an expression returned by one of
+%               MATLAB's simplify functions. Other similar representations would
+%               also work.
+%
+%   Outputs:
+%       expr    Equivalent expression that does not use the 'in {...}' syntax.
+%
     
     inPat = '(in)[\s]*{([^}]*)}';
     while ~isempty(regexp(expr, '(in)[\s]*{([^}]*)}', 'once'))

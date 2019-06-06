@@ -6,12 +6,16 @@ function [newexpression] = makeBoolsTorF(expression, tfCase)
 %   Inputs:
 %       expression      Character array
 %       tfCase          The case to use to write TRUE/FALSE.
-%                       Lower -> true/false
-%                       Upper -> TRUE/FALSE
+%                       'lower' -> true/false
+%                       'upper' -> TRUE/FALSE
 %
 %   Outputs:
 %       newexpression   Resulting expression after swapping logical 1s and
 %                       0s with TRUE or FALSE respectively.
+%
+%   Usage:
+%       makeBoolsTorF('0', 'upper') -> FALSE
+%
 
     truestr = eval([tfCase '(''true'')']);
     falsestr = eval([tfCase '(''false'')']);

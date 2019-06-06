@@ -11,6 +11,7 @@ function newExpr = removeSpareBrackets(expr)
 %   Output:
 %       newExpr     A char array. The result of removing redundant brackets
 %                   from expr.
+%
 
 newExpr = expr;
 

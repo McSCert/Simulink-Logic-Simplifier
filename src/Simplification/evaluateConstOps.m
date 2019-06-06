@@ -20,6 +20,7 @@ function newExpr = evaluateConstOps(expression)
 %   Example:
 %       evaluateConstOps('1 == 2 & a')
 %       --> '0&a'
+%
 
     % Remove whitespace
     newExpr = regexprep(expression,'\s','');

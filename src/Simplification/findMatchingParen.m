@@ -1,6 +1,6 @@
 function match = findMatchingParen(str, index)
-% FINDMATCHINGPAREN finds the '(' to open  a ')' indicated by a given
-%   index, or       finds the ')' to close a '(' indicated by a given index
+% FINDMATCHINGPAREN finds the '(' to open  a ')' indicated by a given index, or
+%                   finds the ')' to close a '(' indicated by a given index
 %
 %   Inputs:
 %       str     Character array with balanced parentheses.
@@ -8,6 +8,7 @@ function match = findMatchingParen(str, index)
 %
 %   Ouputs:
 %       match   Index of the matching parenthesis.
+%
 
 % Code adapted from: https://stackoverflow.com/questions/12752225/how-do-i-find-the-position-of-matching-parentheses-or-braces-in-a-given-piece-of
 

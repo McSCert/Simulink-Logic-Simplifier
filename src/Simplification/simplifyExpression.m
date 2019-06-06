@@ -2,8 +2,8 @@ function expr = simplifyExpression(expr)
 % SIMPLIFYEXPRESSION Simplifies a given expression.
 %   Notes: 'simple' is ill defined so results may not be strictly
 %           'simpler'.
-%           Expression must be of an appropriate form (TODO: define
-%           this form).
+%           Expression must be of an appropriate form (a bunch of examples are
+%           included in the comments of the code).
 %
 %   Inputs:
 %       expr    A string representing an expression. E.g. A symbolic
