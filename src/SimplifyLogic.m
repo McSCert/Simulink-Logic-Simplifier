@@ -93,23 +93,23 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
     %         end
     %     end
     
-    % Save the resulting model - DO NOT MODIFY IT BELOW THIS
+    % Save the resulting model - DO NOT MODIFY THE MODEL BELOW THIS
     startDir = pwd;
     resultsDir = 'Logic_Simplifier_Results';
-    fullResultsDir = [pwd, filesep, resultsDir];
+    fullResultsDir = [fileparts(fileparts(mfilename('fullpath'))), filesep, resultsDir];
     
     try
         if ~isfolder(fullResultsDir) % 2017b+
-            mkdir(resultsDir)
+            mkdir(fullResultsDir)
         end
     catch
         if ~exist(fullResultsDir, 'dir')
-            mkdir(resultsDir)
+            mkdir(fullResultsDir)
         end
     end
     
-    addpath(resultsDir) % So that the saved model(s) is(are) still on the path
-    saveGeneratedSystem(logicSys, startDir, resultsDir)
+    addpath(fullResultsDir) % So that the saved model(s) is(are) still on the path
+    saveGeneratedSystem(logicSys, startDir, fullResultsDir)
     
     % Handle verification if needed
     if verify
@@ -163,7 +163,7 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
         automatic_layout_objs(harnessBlocks, harnessBlocks); % Functionally this is just resizing blocks
         
         % Save harness
-        saveGeneratedSystem(copySys, startDir, resultsDir)
+        saveGeneratedSystem(copySys, startDir, fullResultsDir)
         
         %% Create a copy of the simplified system
         vhLogicSys = copyModel(fullResultsDir, logicSys, 'with_harness'); % vh - verification harness
@@ -175,7 +175,7 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
         automatic_layout_objs(harnessBlocks, harnessBlocks); % Functionally this is just resizing blocks
         
         % Save harness
-        saveGeneratedSystem(vhLogicSys, startDir, resultsDir)
+        saveGeneratedSystem(vhLogicSys, startDir, fullResultsDir)
         
         % Call verification function on logicSys and copySys
         verify_model = [get_param(parent, 'Name') '_verify'];
@@ -183,7 +183,7 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
             % Name invalid so use some default
             verify_model = ['DefaultModel' '_verify'];
         end
-        makeVerificationModel(verify_model, getfullname(copySys), getfullname(vhLogicSys), [startDir filesep resultsDir]);
+        makeVerificationModel(verify_model, getfullname(copySys), getfullname(vhLogicSys), fullResultsDir);
         close_system({getfullname(copySys), vhLogicSys});
     end
     
@@ -211,8 +211,9 @@ function copyMdl = copyModel(dir, model, suffix)
     
     baseCopyMdl = [modelName '_' suffix];
     
-    period_idx = regexp(origFile, '[.]');
-    filetype = origFile(period_idx(end):end);
+%     period_idx = regexp(origFile, '[.]');
+%     filetype = origFile(period_idx(end):end);
+    [~, ~, filetype] = fileparts(origFile);
     
     baseNewFile = [dir, filesep, baseCopyMdl, filetype];
     
@@ -223,6 +224,8 @@ function copyMdl = copyModel(dir, model, suffix)
     newFile = find_available_filename(baseNewFile);
     [~, copyMdl, ~] = fileparts(newFile);
     copyfile(origFile, newFile);
+    % Alternative untested way to copy the model:
+    %new_system_makenameunique(copyMdl, 'FromFile', origFile)
     
     open_system(copyMdl)
     setModelParams(copyMdl, model)
@@ -281,7 +284,15 @@ function automatic_layout_objs(objs, old_objs)
     end
 end
 
-function setModelParams(newSys, origModel)
+function setModelParams(model1, model2)
+% SETMODELPARAMS Set model params of newSys to match origModel for verification.
+    replace_config_sets(model1, model2);
+end
+function setModelParams_old(newSys, origModel)
+% SETMODELPARAMS_OLD Set model params of newSys to match origModel for
+% verification.
+
+    % Old approach which only set a few key model parameters.
     set_param(newSys, 'Solver', get_param(origModel, 'Solver'));
     set_param(newSys, 'SolverType', 'Fixed-step'); % Must be fixed-step for compatibility
     set_param(newSys, 'ProdHWDeviceType', get_param(origModel, 'ProdHWDeviceType'));
@@ -298,9 +309,9 @@ function groundAndTerminatePorts(logicSys, SUBSYSTEM_RULE)
     fulfillPorts(ports); % Ground and terminate
 end
 
-function saveGeneratedSystem(sys, startDir, resultsDir)
+function saveGeneratedSystem(sys, startDir, fullResultsDir)
     try
-        cd([startDir filesep resultsDir])
+        cd(fullResultsDir)
         save_system(sys)
         cd(startDir)
     catch ME
