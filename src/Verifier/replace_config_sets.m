@@ -1,8 +1,16 @@
 function replace_config_sets(model1, model2)
 % REPLACE_CONFIG_SETS Replace model1 configuration sets with those of model2.
+%
+%   Inputs:
+%       model1  Model name or handle.
+%       model2  Model name or handle.
+%
+%   Outputs:
+%       N/A
+%
 
-    assert(bdIsLoaded(model1), 'model1 not loaded. Input models must be loaded to access their configuration sets.')
-    assert(bdIsLoaded(model2), 'model2 not loaded. Input models must be loaded to access their configuration sets.')
+    assert(bdIsLoaded(getfullname(model1)), 'model1 not loaded. Input models must be loaded to access their configuration sets.')
+    assert(bdIsLoaded(getfullname(model2)), 'model2 not loaded. Input models must be loaded to access their configuration sets.')
 
     % Get current config sets for model1.
     actset1 = getActiveConfigSet(model1); % Set object
