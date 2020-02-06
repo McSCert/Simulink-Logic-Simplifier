@@ -172,6 +172,7 @@ function [finalEqus, baseEqus] = doSimplification(sys, blocks, varargin)
     e_selected_handles = setdiff(e_handles, e_unselected_handles);
     removedBlocks = RemoveSimulinkDuplicates(e_selected_handles, 'DeleteDuplicateBlocks', 'on');
     e_selected_handles = setdiff(e_selected_handles, removedBlocks);
+    e_handles = union(e_selected_handles, e_unselected_handles);
     
     %
     addedBlocks = branching2multiple(e_selected_handles, {'From', 'DataStoreRead', 'Constant'});
