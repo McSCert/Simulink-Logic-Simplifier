@@ -204,7 +204,7 @@ function [newEqu, oldEqu] = SimplifyLogic(blocks, varargin)
     %     automatic_layout(getfullname(logicSys))
 end
 
-function copyMdl = copyModel(dir, model, suffix)
+function copyMdl = copyModel(saveDir, model, suffix)
     % Copy file
     modelName = getfullname(model);
     origFile = get_param(model, 'FileName');
@@ -215,7 +215,7 @@ function copyMdl = copyModel(dir, model, suffix)
 %     filetype = origFile(period_idx(end):end);
     [~, ~, filetype] = fileparts(origFile);
     
-    baseNewFile = [dir, filesep, baseCopyMdl, filetype];
+    baseNewFile = [saveDir, filesep, baseCopyMdl, filetype];
     
     % Copy file
     % Note an existing file named the same as newFile will be overwritten.
