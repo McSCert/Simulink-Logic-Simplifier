@@ -1,3 +1,6 @@
 [submodule "src/Utility"]
 	path = src/Utility
 	url = https://github.com/McSCert/Simulink-Utility
+[submodule "src/Auto-Layout"]
+	path = src/Auto-Layout
+	url = https://github.com/McSCert/Auto-Layout.git
