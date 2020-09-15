@@ -3,20 +3,29 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%
 % Packages & Macros
 %%%%%%%%%%%%%%%%%%%%%%%%%
-\usepackage{colortbl}
-\usepackage{datetime}
-	\newdateformat{monthyeardate}{\monthname[\THEMONTH] \THEYEAR}
+
+% For including graphics
 \usepackage{graphicx}
+
+% For title page
+\usepackage{datetime}
+\newdateformat{monthyeardate}{\monthname[\THEMONTH] \THEYEAR}
+
+% For supporting linking
 \usepackage[symbol]{footmisc} % Needed above hyperref for \footnote to link to the right spot
 \usepackage{hyperref}
-\hypersetup{colorlinks,urlcolor=blue}
-\usepackage{graphicx}
+\hypersetup{colorlinks,urlcolor=blue,linkcolor=blue,anchorcolor=blue,citecolor=blue}
+
+% For table colouring (in command line tables)
+\usepackage{colortbl}
+
+% For supporting subfigure captions
 \usepackage{subcaption}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%
 % Tool-Specific Macros
 %%%%%%%%%%%%%%%%%%%%%%%%%
-\input{../../common/macros}
+\input{macros}
 
 \newcommand{\ToolName}{Simulink Logic Simplifier\@\xspace}
 
@@ -64,10 +73,16 @@
 
 \begin{figure}
 	\centering
-	\includegraphics[]{../../common/McSCert_Logo.pdf} \\
+	\includegraphics[]{../figs/McSCert_Logo.pdf} \\
 	McMaster Centre for Software Certification (McSCert)
 \end{figure}
 
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Table of Contents
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\tableofcontents
 \newpage
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -134,10 +149,10 @@ This section describes what must be done to setup the tool, as well as how to us
 \subsection{Prerequisites and Installation}
 
 \begin{enumerate}
-\item Use \Matlab/\Simulink 2015b or newer.
-\item Install the \href{https://www.mathworks.com/matlabcentral/fileexchange/51228-auto-layout-tool}{Auto Layout Tool}.
-\item Install the MathWorks toolbox \href{https://www.mathworks.com/products/sldesignverifier.html}{\SDV}. This allows for verification.
-\item To install the tool,
+	\item Use \Matlab/\Simulink 2015b or newer.
+	\item Install the \href{https://github.com/McSCert/Auto-Layout}{Auto Layout Tool}.
+	\item Install the MathWorks toolbox \href{https://www.mathworks.com/products/sldesignverifier.html}{\SDV}. This allows for verification.
+	\item To install the tool,
 	\begin{enumerate}
 		\item from a \file{.zip} file --- unzip the contents into your desired location. Ensure the unzipped folder and subfolders are present in your \mpath, or add them if they are not present. Run \href{https://www.mathworks.com/help/simulink/ug/registering-customizations.html}{sl\_refresh\_customizations} to refresh the Context Menu. 
 		\item from a \file{.mltbx} file --- simply open \Matlab and double-click on the file. Your \mpath should be automatically configured.
@@ -147,7 +162,8 @@ This section describes what must be done to setup the tool, as well as how to us
 		\item \textit{Note:} If running the command ``\cmd{which SimplifyLogic}'' indicates that the script is not found, then the tool needs to be added to the \mpath.
 		For information on adding files to the \mpath, please see the \href{https://www.mathworks.com/help/matlab/matlab_env/add-remove-or-reorder-folders-on-the-search-path.html}{MathWorks documentation}.
 	\end{itemize}
-\item Ensure your model is open and unlocked.
+	\item Ensure the Simulink-Utility folder is on your \mpath. This is a dependency for the tool to work correctly.
+	\item Ensure your model is open and unlocked.
 \end{enumerate}
 
 %---------------------------------------
