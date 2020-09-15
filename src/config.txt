@@ -44,7 +44,7 @@ generate_mode: all
 #
 # Default is nothing (leave the space blank)
 #
-extra_support_function: fcaSupport
+extra_support_function: 
 
 # HANDLE_UNUSED Indicates how to handle blocks that do not impact output
 # (identified as blocks with only unconnected outports).
